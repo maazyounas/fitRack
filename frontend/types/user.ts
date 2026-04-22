@@ -1,0 +1,93 @@
+export type Language = 'en' | 'ur';
+export type UnitSystem = 'metric' | 'imperial';
+
+export type UserProfile = {
+  name: string;
+  age?: number;
+  heightCm?: number;
+  weightKg?: number;
+  dailyCalories?: number | null;
+  profilePictureUrl?: string;
+};
+
+export type UserPreferences = {
+  language: Language;
+  autoDetectLanguage: boolean;
+  darkMode: boolean;
+  highContrastMode: boolean;
+  fontScale: number;
+  notificationsEnabled: boolean;
+  voiceCommandsEnabled: boolean;
+  textToSpeechEnabled: boolean;
+  unitSystem: UnitSystem;
+};
+
+export type UserVerification = {
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  verifiedAt?: string;
+};
+
+export type User = {
+  id: string;
+  isAdmin: boolean;
+  email?: string;
+  phone?: string;
+  profile: UserProfile;
+  preferences: UserPreferences;
+  verification: UserVerification;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+  sessionSecret: string;
+};
+
+export type AuthResponse = AuthTokens & {
+  message: string;
+  user: User;
+};
+
+export type RegisterPayload = {
+  name: string;
+  email?: string;
+  phone?: string;
+  password: string;
+};
+
+export type LoginPayload = {
+  identifier: string;
+  password: string;
+};
+
+export type UpdateProfilePayload = {
+  name?: string;
+  age?: number;
+  heightCm?: number;
+  weightKg?: number;
+  profilePictureUrl?: string;
+};
+
+export type UpdatePreferencesPayload = Partial<UserPreferences>;
+
+export type ImageProcessingMode = 'local' | 'cloud';
+
+export type StoredImageRecord = {
+  id: string;
+  label: string;
+  sourceFeature: string;
+  createdAt: string;
+};
+
+export type ImageConsent = {
+  consentGiven: boolean;
+  usageExplanationAccepted: boolean;
+  processingMode: ImageProcessingMode;
+  storageAllowed: boolean;
+  consentedAt?: string;
+  revokedAt?: string;
+  storedImages: StoredImageRecord[];
+};
