@@ -20,6 +20,12 @@ export function fetchExercises(accessToken: string, query?: ExerciseQuery) {
   });
 }
 
+export function fetchFavoriteExercises(accessToken: string) {
+  return apiRequest<{ exercises: Exercise[] }>('/exercises/favorites', {
+    accessToken,
+  });
+}
+
 export function fetchExerciseFilters(accessToken: string) {
   return apiRequest<{ filters: ExerciseFilters }>('/exercises/filters', {
     accessToken,

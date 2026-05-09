@@ -11,6 +11,7 @@ type UiState = {
   resolvedLanguage: 'en' | 'ur';
   voiceCommandsEnabled: boolean;
   textToSpeechEnabled: boolean;
+  adaptiveDifficulty: boolean;
   setThemeOverride: (theme: 'light' | 'dark' | null) => void;
   setPreferences: (preferences: UserPreferences) => void;
   reset: () => void;
@@ -30,6 +31,7 @@ export const useUiStore = create<UiState>((set) => ({
   resolvedLanguage: detectLanguage(),
   voiceCommandsEnabled: false,
   textToSpeechEnabled: false,
+  adaptiveDifficulty: true,
   setThemeOverride: (themeOverride) => set({ themeOverride }),
   setPreferences: (preferences) =>
     set({
@@ -41,6 +43,7 @@ export const useUiStore = create<UiState>((set) => ({
       resolvedLanguage: preferences.autoDetectLanguage ? detectLanguage() : preferences.language,
       voiceCommandsEnabled: preferences.voiceCommandsEnabled,
       textToSpeechEnabled: preferences.textToSpeechEnabled,
+      adaptiveDifficulty: preferences.adaptiveDifficulty,
     }),
   reset: () =>
     set({
@@ -52,5 +55,6 @@ export const useUiStore = create<UiState>((set) => ({
       resolvedLanguage: detectLanguage(),
       voiceCommandsEnabled: false,
       textToSpeechEnabled: false,
+      adaptiveDifficulty: true,
     }),
 }));

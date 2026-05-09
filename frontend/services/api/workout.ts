@@ -13,6 +13,15 @@ export function fetchWorkoutTemplates(accessToken: string) {
   });
 }
 
+export function getCurrentWorkout(accessToken: string) {
+  return apiRequest<{ workout: WorkoutPlan; scheduleEntry: WorkoutScheduleEntry | null }>(
+    '/workouts/current',
+    {
+      accessToken,
+    }
+  );
+}
+
 export function createWorkoutPlan(accessToken: string, payload: WorkoutCreatePayload) {
   return apiRequest<{ workout: WorkoutPlan }>('/workouts', {
     method: 'POST',
@@ -33,6 +42,14 @@ export function updateWorkoutPlan(
   });
 }
 
+export function reorderWorkoutExercises(accessToken: string, id: string, exercises: WorkoutPlan['exercises']) {
+  return apiRequest<{ workout: WorkoutPlan }>(`/workouts/${id}/exercises`, {
+    method: 'PUT',
+    accessToken,
+    body: { exercises },
+  });
+}
+
 export function deleteWorkoutPlan(accessToken: string, id: string) {
   return apiRequest<{ message: string }>(`/workouts/${id}`, {
     method: 'DELETE',
@@ -45,6 +62,14 @@ export function scheduleWorkoutPlan(accessToken: string, id: string, scheduledDa
     method: 'POST',
     accessToken,
     body: { scheduledDate },
+  });
+}
+
+export function updateWeeklySchedule(accessToken: string, id: string, schedule: any[]) {
+  return apiRequest<{ workout: WorkoutPlan }>(`/workouts/${id}/schedule`, {
+    method: 'PUT',
+    accessToken,
+    body: { schedule },
   });
 }
 

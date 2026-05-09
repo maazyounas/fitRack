@@ -2,7 +2,10 @@ import { Request, Response } from 'express';
 import { OtpTokenModel } from '../models/OtpToken';
 import { SessionModel } from '../models/Session';
 import { UserModel } from '../models/User';
-import { sendOtpNotification, sendPasswordChangedNotification } from '../services/notificationService';
+import {
+  sendOtpNotification,
+  sendPasswordChangedNotification,
+} from '../services/notificationService';
 import { calculateDailyCalories } from '../utils/calories';
 import { decryptValue, encryptValue, hashIdentifier, normalizeIdentifier } from '../utils/crypto';
 import { HttpError } from '../utils/http';
@@ -142,6 +145,48 @@ export async function verifyRegistrationOtp(req: Request, res: Response) {
   await user.save();
 
   res.json({ message: 'Verification successful.' });
+}
+
+export async function resendOtp(req: Request, res: Response) {
+  const { identifier, purpose } = req.body as {
+    identifier?: string;
+    purpose?: 'verify-email' | 'verify-phone';
+  };
+
+  if (!identifier || !purpose) {
+    throw new HttpError(400, 'Identifier and purpose are required.');
+  }
+
+  const identifierHash = hashIdentifier(identifier);
+  const user = await UserModel.findOne(
+    purpose === 'verify-email' ? { emailHash: identifierHash } : { phoneHash: identifierHash }
+  );
+
+  // Always respond the same way regardless of whether user exists (security)
+  if (!user) {
+    res.json({ message: 'If the account exists and is unverified, a new OTP has been sent.' });
+    return;
+  }
+
+  const alreadyVerified =
+    (purpose === 'verify-email' && user.verification?.emailVerified) ||
+    (purpose === 'verify-phone' && user.verification?.phoneVerified);
+
+  if (alreadyVerified) {
+    res.json({ message: 'This contact method is already verified.' });
+    return;
+  }
+
+  // Invalidate old OTP tokens for this user/purpose
+  await OtpTokenModel.updateMany(
+    { userId: user.id, purpose, consumedAt: { $exists: false } },
+    { $set: { consumedAt: new Date() } }
+  );
+
+  const otp = await createOtp(user.id, purpose);
+  await sendOtpNotification(identifier, otp, purpose);
+
+  res.json({ message: 'If the account exists and is unverified, a new OTP has been sent.' });
 }
 
 export async function login(req: Request, res: Response) {
@@ -295,7 +340,8 @@ export async function resetPassword(req: Request, res: Response) {
   user.lockUntil = undefined;
   await user.save();
 
-  const notificationTarget = decryptValue(user.emailEncrypted ?? undefined) || decryptValue(user.phoneEncrypted ?? undefined);
+  const notificationTarget =
+    decryptValue(user.emailEncrypted ?? undefined) || decryptValue(user.phoneEncrypted ?? undefined);
   await sendPasswordChangedNotification(notificationTarget);
   await SessionModel.deleteMany({ userId: user.id });
 

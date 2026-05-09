@@ -59,6 +59,7 @@ export type ProgressDashboard = {
     weekly: ProgressTrendPoint[];
     monthly: ProgressTrendPoint[];
   };
+  plateauMessage?: string;
 };
 
 export type ProgressPayload = {

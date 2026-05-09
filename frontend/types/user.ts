@@ -4,6 +4,7 @@ export type UnitSystem = 'metric' | 'imperial';
 export type UserProfile = {
   name: string;
   age?: number;
+  gender?: 'male' | 'female' | 'other';
   heightCm?: number;
   weightKg?: number;
   dailyCalories?: number | null;
@@ -20,6 +21,14 @@ export type UserPreferences = {
   voiceCommandsEnabled: boolean;
   textToSpeechEnabled: boolean;
   unitSystem: UnitSystem;
+  adaptiveDifficulty: boolean;
+};
+
+export type FitnessGoals = {
+  primaryGoal: 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_fitness';
+  targetWeightKg?: number;
+  workoutFrequencyPerWeek: number;
+  setupCompleted: boolean;
 };
 
 export type UserVerification = {
@@ -35,6 +44,7 @@ export type User = {
   phone?: string;
   profile: UserProfile;
   preferences: UserPreferences;
+  fitnessGoals: FitnessGoals;
   verification: UserVerification;
   createdAt: string;
   updatedAt: string;
@@ -66,6 +76,7 @@ export type LoginPayload = {
 export type UpdateProfilePayload = {
   name?: string;
   age?: number;
+  gender?: 'male' | 'female' | 'other';
   heightCm?: number;
   weightKg?: number;
   profilePictureUrl?: string;

@@ -16,6 +16,9 @@ const socialPostSchema = new Schema(
     likeUserIds: { type: [Schema.Types.ObjectId], ref: 'User', default: [] },
     comments: { type: [commentSchema], default: [] },
     challengeId: { type: Schema.Types.ObjectId, ref: 'WeeklyChallenge', default: null },
+    imageUrl: { type: String, default: null },
+    isReported: { type: Boolean, default: false },
+    reportCount: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

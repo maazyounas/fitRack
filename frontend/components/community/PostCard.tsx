@@ -1,204 +1,194 @@
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, Image, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { CommunityPost } from '@/types/community';
+import { useCommunityStore } from '@/store/communityStore';
+import { useAuthStore } from '@/store/authStore';
+// @ts-ignore
+import { formatDistanceToNow } from 'date-fns';
 
-type PostCardProps = {
-  post: CommunityPost;
-  commentDraft: string;
-  onCommentDraftChange: (value: string) => void;
-  onToggleLike: (postId: string) => void | Promise<void>;
-  onSubmitComment: (postId: string) => void | Promise<void>;
-};
+export function PostCard({ post }: { post: CommunityPost }) {
+  const { toggleLike, reportPost, deletePost } = useCommunityStore();
+  const currentUser = useAuthStore((state) => state.user);
+  const [isLiked, setIsLiked] = useState(post.likedByMe);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
 
-function formatTime(dateString: string) {
-  const deltaMs = Date.now() - new Date(dateString).getTime();
-  const deltaMinutes = Math.max(1, Math.floor(deltaMs / 60000));
+  const isOwner = currentUser?.id === post.author.id;
+  const isAdmin = (currentUser as any)?.role === 'admin';
 
-  if (deltaMinutes < 60) {
-    return `${deltaMinutes}m ago`;
-  }
+  const handleLike = () => {
+    setIsLiked(!isLiked);
+    setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
+    toggleLike(post.id);
+  };
 
-  const deltaHours = Math.floor(deltaMinutes / 60);
-  if (deltaHours < 24) {
-    return `${deltaHours}h ago`;
-  }
+  const handleReport = () => {
+    Alert.alert(
+      'Report Post',
+      'Are you sure you want to report this post for inappropriate content?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Report', 
+          style: 'destructive',
+          onPress: () => reportPost(post.id)
+        },
+      ]
+    );
+  };
 
-  const deltaDays = Math.floor(deltaHours / 24);
-  return `${deltaDays}d ago`;
-}
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Post',
+      'This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => deletePost(post.id)
+        },
+      ]
+    );
+  };
 
-export function PostCard({
-  post,
-  commentDraft,
-  onCommentDraftChange,
-  onToggleLike,
-  onSubmitComment,
-}: PostCardProps) {
   return (
-    <View style={styles.card}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{post.author.name.slice(0, 1).toUpperCase()}</Text>
+        <Image source={{ uri: post.author.profilePictureUrl || 'https://via.placeholder.com/150' }} style={styles.avatar} />
+        <View style={styles.headerText}>
+          <Text style={styles.name}>{post.author.name}</Text>
+          <Text style={styles.time}>{formatDistanceToNow(new Date(post.createdAt))} ago</Text>
         </View>
-        <View style={styles.authorBlock}>
-          <Text style={styles.authorName}>{post.author.name}</Text>
-          <Text style={styles.timestamp}>{formatTime(post.createdAt)}</Text>
-        </View>
+        {(isOwner || isAdmin) ? (
+          <Pressable onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          </Pressable>
+        ) : (
+          <Pressable onPress={handleReport}>
+            <Ionicons name="alert-circle-outline" size={20} color="#94a3b8" />
+          </Pressable>
+        )}
       </View>
 
       <Text style={styles.content}>{post.content}</Text>
 
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => onToggleLike(post.id)}>
-          <Ionicons
-            color={post.likedByMe ? '#dc2626' : '#0f766e'}
-            name={post.likedByMe ? 'heart' : 'heart-outline'}
-            size={18}
+      {post.imageUrl && (
+        <Image source={{ uri: post.imageUrl }} style={styles.postImage} resizeMode="cover" />
+      )}
+
+      <View style={styles.footer}>
+        <Pressable style={styles.action} onPress={handleLike}>
+          <Ionicons 
+            name={isLiked ? 'heart' : 'heart-outline'} 
+            size={22} 
+            color={isLiked ? '#ef4444' : '#64748b'} 
           />
-          <Text style={styles.actionLabel}>{post.likeCount} likes</Text>
-        </TouchableOpacity>
+          <Text style={[styles.actionText, isLiked && styles.likedText]}>{likeCount}</Text>
+        </Pressable>
 
-        <View style={styles.actionButton}>
-          <Ionicons color="#475569" name="chatbubble-outline" size={18} />
-          <Text style={styles.actionLabel}>{post.commentCount} comments</Text>
-        </View>
+        <Pressable style={styles.action}>
+          <Ionicons name="chatbubble-outline" size={20} color="#64748b" />
+          <Text style={styles.actionText}>{post.commentCount}</Text>
+        </Pressable>
+
+        <View style={{ flex: 1 }} />
+
+        {post.challengeId && (
+          <View style={styles.challengeBadge}>
+            <Ionicons name="trophy" size={14} color="#0f766e" />
+            <Text style={styles.challengeText}>Challenge Post</Text>
+          </View>
+        )}
       </View>
-
-      <View style={styles.commentComposer}>
-        <TextInput
-          onChangeText={onCommentDraftChange}
-          placeholder="Write a supportive comment"
-          placeholderTextColor="#94a3b8"
-          style={styles.commentInput}
-          value={commentDraft}
-        />
-        <TouchableOpacity style={styles.commentButton} onPress={() => onSubmitComment(post.id)}>
-          <Text style={styles.commentButtonLabel}>Send</Text>
-        </TouchableOpacity>
-      </View>
-
-      {post.comments.length ? (
-        <View style={styles.commentsList}>
-          {post.comments.slice(-3).map((comment) => (
-            <View key={comment.id} style={styles.commentRow}>
-              <Text style={styles.commentAuthor}>{comment.author.name}</Text>
-              <Text style={styles.commentText}>{comment.content}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#ffffff',
-    borderColor: '#dbe4e8',
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 14,
-    padding: 18,
+  container: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
   },
   header: {
-    alignItems: 'center',
     flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   avatar: {
-    alignItems: 'center',
-    backgroundColor: '#ccfbf1',
-    borderRadius: 999,
-    height: 42,
-    justifyContent: 'center',
-    marginRight: 12,
-    width: 42,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
   },
-  avatarText: {
-    color: '#115e59',
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  authorBlock: {
+  headerText: {
     flex: 1,
+    marginLeft: 12,
   },
-  authorName: {
-    color: '#0f172a',
+  name: {
     fontSize: 15,
     fontWeight: '700',
+    color: '#0f172a',
   },
-  timestamp: {
-    color: '#64748b',
+  time: {
     fontSize: 12,
+    color: '#64748b',
     marginTop: 2,
   },
   content: {
-    color: '#0f172a',
     fontSize: 15,
     lineHeight: 22,
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  actionLabel: {
     color: '#334155',
-    fontSize: 13,
-    fontWeight: '700',
+    marginBottom: 12,
   },
-  commentComposer: {
-    alignItems: 'center',
+  postImage: {
+    width: '100%',
+    height: 250,
+    borderRadius: 16,
+    marginBottom: 12,
+    backgroundColor: '#f8fafc',
+  },
+  footer: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
   },
-  commentInput: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#dbe4e8',
-    borderRadius: 16,
-    borderWidth: 1,
-    color: '#0f172a',
-    flex: 1,
-    minHeight: 46,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+    paddingVertical: 4,
   },
-  commentButton: {
-    backgroundColor: '#0f766e',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  actionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+    marginLeft: 6,
   },
-  commentButtonLabel: {
-    color: '#f8fafc',
-    fontSize: 13,
-    fontWeight: '800',
+  likedText: {
+    color: '#ef4444',
   },
-  commentsList: {
-    gap: 8,
+  challengeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdfa',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
   },
-  commentRow: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  commentAuthor: {
-    color: '#0f172a',
-    fontSize: 13,
+  challengeText: {
+    fontSize: 11,
     fontWeight: '700',
-    marginBottom: 2,
-  },
-  commentText: {
-    color: '#475569',
-    fontSize: 13,
-    lineHeight: 18,
+    color: '#0f766e',
   },
 });

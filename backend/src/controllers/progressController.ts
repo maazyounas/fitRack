@@ -78,6 +78,8 @@ function calculateStreak(entries: any[]) {
 
 function buildAchievements(entries: any[], streakDays: number) {
   const achievements = [];
+  
+  // Existing milestones
   if (entries.length >= 1) {
     achievements.push({
       key: 'first-check-in',
@@ -86,27 +88,61 @@ function buildAchievements(entries: any[], streakDays: number) {
       unlockedAt: entries[0].loggedAt,
     });
   }
-  if (entries.length >= 7) {
+
+  // Streak Milestones
+  if (streakDays >= 7) {
     achievements.push({
-      key: 'seven-logs',
-      title: 'Consistency Builder',
-      description: 'Completed seven progress logs.',
-      unlockedAt: entries[6].loggedAt,
-    });
-  }
-  if (streakDays >= 3) {
-    achievements.push({
-      key: 'three-day-streak',
-      title: '3-Day Streak',
-      description: 'Tracked progress three days in a row.',
+      key: 'streak-bronze',
+      title: 'Bronze Streak',
+      description: '7-day daily check-in streak.',
       unlockedAt: new Date(),
     });
   }
+  if (streakDays >= 30) {
+    achievements.push({
+      key: 'streak-silver',
+      title: 'Silver Streak',
+      description: '30-day daily check-in streak.',
+      unlockedAt: new Date(),
+    });
+  }
+  if (streakDays >= 100) {
+    achievements.push({
+      key: 'streak-gold',
+      title: 'Gold Streak',
+      description: '100-day daily check-in streak.',
+      unlockedAt: new Date(),
+    });
+  }
+
+  // Volume Milestones
+  const totalWeightLifted = entries.reduce((sum, entry) => {
+    const dailyVolume = (entry.gymPerformance ?? []).reduce((v: number, item: any) => v + (item.weightKg * item.reps * item.sets), 0);
+    return sum + dailyVolume;
+  }, 0);
+
+  if (totalWeightLifted >= 1000) {
+    achievements.push({
+      key: 'ton-club',
+      title: 'The Ton Club',
+      description: 'Lifted a cumulative total of 1000kg.',
+      unlockedAt: new Date(),
+    });
+  }
+  if (totalWeightLifted >= 10000) {
+    achievements.push({
+      key: 'titan-lifter',
+      title: 'Titan Lifter',
+      description: 'Lifted a cumulative total of 10,000kg.',
+      unlockedAt: new Date(),
+    });
+  }
+
   if (entries.some((entry) => (entry.gymPerformance ?? []).some((item: any) => item.oneRepMaxEstimate >= 100))) {
     achievements.push({
       key: 'power-marker',
       title: 'Power Marker',
-      description: 'Estimated a 100kg+ one-rep max in at least one logged performance entry.',
+      description: 'Estimated a 100kg+ one-rep max.',
       unlockedAt: new Date(),
     });
   }
@@ -192,11 +228,83 @@ function buildDashboard(profile: any) {
   };
 }
 
+function detectPlateau(entries: any[]) {
+  if (entries.length < 5) return null;
+  const recent = entries.slice(-5);
+  const weights = recent.map(e => e.weightKg);
+  const diff = Math.max(...weights) - Math.min(...weights);
+  
+  if (diff < 0.5) {
+    return "Plateau Detected: Your weight hasn't changed much in the last 5 logs. Consider adjusting your calorie intake or workout intensity.";
+  }
+  return null;
+}
+
 export async function getProgressDashboard(req: AuthedRequest, res: Response) {
   const profile = await getOrCreateProfile(req.userId as string);
   const dashboard = buildDashboard(profile);
+  
+  // Add plateau message if relevant
+  const plateauMessage = detectPlateau(profile.entries);
+  
   await profile.save();
-  res.json(dashboard);
+  res.json({
+    ...dashboard,
+    plateauMessage
+  });
+}
+
+export async function getProgressCharts(req: AuthedRequest, res: Response) {
+  const profile = await getOrCreateProfile(req.userId as string);
+  const days = Number(req.query.days) || 30;
+  const entries = [...(profile.entries ?? [])].sort(
+    (left, right) => new Date(left.loggedAt).getTime() - new Date(right.loggedAt).getTime()
+  );
+  
+  res.json({
+    charts: buildTrend(entries, days)
+  });
+}
+
+export async function getMilestones(req: AuthedRequest, res: Response) {
+  const profile = await getOrCreateProfile(req.userId as string);
+  const entries = [...(profile.entries ?? [])];
+  const streakDays = calculateStreak(entries);
+  const achievements = buildAchievements(entries, streakDays);
+  
+  res.json({
+    achievements,
+    streakDays,
+    stats: {
+      totalLogs: entries.length,
+      totalWeightLifted: entries.reduce((sum, entry) => {
+        return sum + (entry.gymPerformance ?? []).reduce((v: number, item: any) => v + (item.weightKg * item.reps * item.sets), 0);
+      }, 0)
+    }
+  });
+}
+
+export async function postStreak(req: AuthedRequest, res: Response) {
+  const profile = await getOrCreateProfile(req.userId as string);
+  const now = new Date();
+  
+  // Check if already checked in today
+  const alreadyLogged = profile.entries.some(e => isSameDay(new Date(e.loggedAt), now));
+  
+  if (!alreadyLogged) {
+    profile.entries.push({
+      loggedAt: now,
+      weightKg: profile.entries.length > 0 ? profile.entries.at(-1)!.weightKg : 0,
+      measurements: profile.entries.length > 0 ? profile.entries.at(-1)!.measurements : {},
+      notes: 'Daily check-in streak update'
+    } as any);
+  }
+  
+  const streakDays = calculateStreak(profile.entries);
+  profile.streakDays = streakDays;
+  await profile.save();
+  
+  res.json({ streakDays, alreadyLogged });
 }
 
 export async function createProgressEntry(req: AuthedRequest, res: Response) {

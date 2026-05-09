@@ -7,12 +7,14 @@ import {
   logWaterIntake,
   updateMealEntry,
   updateNutritionGoals,
+  generateNutritionReportPdf,
 } from '../controllers/nutritionController';
 
 export const nutritionRoutes = Router();
 
 nutritionRoutes.use(requireAuth);
 nutritionRoutes.get('/', getNutritionDashboard);
+nutritionRoutes.get('/report/pdf', generateNutritionReportPdf);
 nutritionRoutes.get('/recommendations', getNutritionRecommendations);
 nutritionRoutes.patch('/goals', updateNutritionGoals);
 nutritionRoutes.post('/meals', createMealEntry);

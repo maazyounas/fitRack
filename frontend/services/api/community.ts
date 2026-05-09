@@ -1,4 +1,4 @@
-import { CommunityDashboard, CommunityPost, WeeklyChallenge } from '@/types/community';
+import { CommunityDashboard, CommunityPost, CommunityChallenge } from '@/types/community';
 import { apiRequest } from './client';
 
 export function fetchCommunityDashboard(accessToken: string, search = '') {
@@ -42,14 +42,14 @@ export function addCommunityPostComment(accessToken: string, postId: string, con
 }
 
 export function joinWeeklyChallenge(accessToken: string, challengeId: string) {
-  return apiRequest<{ message: string; challenge: WeeklyChallenge }>(`/community/challenges/${challengeId}/join`, {
+  return apiRequest<{ message: string; challenge: CommunityChallenge }>(`/community/challenges/${challengeId}/join`, {
     method: 'POST',
     accessToken,
   });
 }
 
 export function addWeeklyChallengeProgress(accessToken: string, challengeId: string, scoreDelta = 1) {
-  return apiRequest<{ message: string; challenge: WeeklyChallenge; myScore: number }>(
+  return apiRequest<{ message: string; challenge: CommunityChallenge; myScore: number }>(
     `/community/challenges/${challengeId}/progress`,
     {
       method: 'POST',

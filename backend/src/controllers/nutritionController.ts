@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import PDFDocument from 'pdfkit';
 import { NutritionProfileModel } from '../models/NutritionProfile';
 import { HttpError } from '../utils/http';
 
@@ -335,4 +336,40 @@ export async function getNutritionRecommendations(req: AuthedRequest, res: Respo
   const dashboard = buildDashboard(profile);
   await profile.save();
   res.json({ recommendations: dashboard.recommendations });
+}
+
+export async function generateNutritionReportPdf(req: AuthedRequest, res: Response) {
+  const profile = await getOrCreateProfile(req.userId as string);
+  const dashboard = buildDashboard(profile);
+
+  const doc = new PDFDocument({ margin: 50 });
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename=nutrition_report.pdf');
+
+  doc.pipe(res);
+
+  // Title
+  doc.fontSize(24).text('FitRack Nutrition Report', { align: 'center' });
+  doc.moveDown(2);
+
+  // Daily Snapshot
+  doc.fontSize(18).text('Daily Snapshot', { underline: true });
+  doc.fontSize(12).moveDown(0.5);
+  doc.text(`Date: ${dashboard.reports.daily.date}`);
+  doc.text(`Calories: ${dashboard.reports.daily.totals.calories} / ${dashboard.goals.calories} kcal`);
+  doc.text(`Protein: ${dashboard.reports.daily.totals.protein}g`);
+  doc.text(`Carbs: ${dashboard.reports.daily.totals.carbs}g`);
+  doc.text(`Fats: ${dashboard.reports.daily.totals.fats}g`);
+  doc.text(`Water Intake: ${dashboard.reports.daily.waterConsumedMl}mL`);
+  doc.moveDown(2);
+
+  // Weekly Trends
+  doc.fontSize(18).text('Last 7 Days Summary', { underline: true });
+  doc.fontSize(12).moveDown(0.5);
+  dashboard.reports.weekly.forEach((day: any) => {
+    doc.text(`${day.date} (${day.label}): ${day.calories} kcal | ${day.protein}g protein | ${day.waterMl}mL water`);
+  });
+
+  doc.end();
 }

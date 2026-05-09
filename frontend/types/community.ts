@@ -1,8 +1,8 @@
 export type CommunityMember = {
   id: string;
   name: string;
-  profilePictureUrl?: string;
-  bio?: string;
+  profilePictureUrl: string;
+  bio: string;
   followerCount: number;
   followingCount: number;
   isFollowing: boolean;
@@ -15,38 +15,41 @@ export type CommunityComment = {
   author: {
     id: string;
     name: string;
-    profilePictureUrl?: string;
+    profilePictureUrl: string;
   };
 };
 
 export type CommunityPost = {
   id: string;
   content: string;
+  imageUrl?: string;
   createdAt: string;
   updatedAt: string;
-  challengeId?: string | null;
   author: {
     id: string;
     name: string;
-    profilePictureUrl?: string;
+    profilePictureUrl: string;
   };
   likeCount: number;
   commentCount: number;
   likedByMe: boolean;
   comments: CommunityComment[];
+  challengeId?: string;
+  isReported: boolean;
+  reportCount: number;
 };
 
-export type LeaderboardEntry = {
+export type ChallengeLeaderboardEntry = {
   rank: number;
   score: number;
   user: {
     id: string;
     name: string;
-    profilePictureUrl?: string;
+    profilePictureUrl: string;
   };
 };
 
-export type WeeklyChallenge = {
+export type CommunityChallenge = {
   id: string;
   title: string;
   description: string;
@@ -57,12 +60,12 @@ export type WeeklyChallenge = {
   joined: boolean;
   myScore: number;
   participantCount: number;
-  leaderboard: LeaderboardEntry[];
+  leaderboard: ChallengeLeaderboardEntry[];
 };
 
 export type CommunityDashboard = {
   me: CommunityMember;
   suggestions: CommunityMember[];
   posts: CommunityPost[];
-  challenges: WeeklyChallenge[];
+  challenges: CommunityChallenge[];
 };

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { createProgressEntry, fetchProgressDashboard, updateProgressEntry } from '@/services/api/progress';
+import { createProgressEntry, fetchProgressDashboard, updateProgressEntry, postStreak } from '@/services/api/progress';
 import { ProgressAchievement, ProgressDashboard, ProgressEntry, ProgressPayload, ProgressTrendPoint } from '@/types/progress';
 import { useAuthStore } from './authStore';
 
@@ -11,12 +11,14 @@ type ProgressState = {
   weeklyTrend: ProgressTrendPoint[];
   monthlyTrend: ProgressTrendPoint[];
   summary: ProgressDashboard['summary'];
+  plateauMessage: string | null;
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
   initialize: () => Promise<void>;
   addEntry: (payload: ProgressPayload) => Promise<void>;
   editEntry: (entryId: string, payload: ProgressPayload) => Promise<void>;
+  trackStreak: () => Promise<void>;
 };
 
 const emptySummary: ProgressDashboard['summary'] = {
@@ -44,6 +46,7 @@ function mergeDashboard(set: any, dashboard: ProgressDashboard) {
     weeklyTrend: dashboard.reports.weekly,
     monthlyTrend: dashboard.reports.monthly,
     summary: dashboard.summary,
+    plateauMessage: dashboard.plateauMessage ?? null,
     isLoading: false,
     error: null,
   });
@@ -57,6 +60,7 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
   weeklyTrend: [],
   monthlyTrend: [],
   summary: emptySummary,
+  plateauMessage: null,
   isLoading: false,
   isSaving: false,
   error: null,
@@ -98,6 +102,14 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
         error: error instanceof Error ? error.message : 'Unable to update progress.',
       });
       throw error;
+    }
+  },
+  trackStreak: async () => {
+    try {
+      await postStreak(requireAccessToken());
+      await get().initialize();
+    } catch (error) {
+      console.error('Streak update failed', error);
     }
   },
 }));

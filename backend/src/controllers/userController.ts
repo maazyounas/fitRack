@@ -12,6 +12,7 @@ function serializeUser(user: any) {
     phone: decryptValue(user.phoneEncrypted),
     profile: user.profile,
     preferences: user.preferences,
+    fitnessGoals: user.fitnessGoals,
     verification: user.verification,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
@@ -32,9 +33,10 @@ export async function updateProfile(req: Request & { userId?: string }, res: Res
     throw new HttpError(404, 'User not found.');
   }
 
-  const { name, age, heightCm, weightKg, profilePictureUrl } = req.body as {
+  const { name, age, gender, heightCm, weightKg, profilePictureUrl } = req.body as {
     name?: string;
     age?: number;
+    gender?: 'male' | 'female' | 'other';
     heightCm?: number;
     weightKg?: number;
     profilePictureUrl?: string;
@@ -42,6 +44,7 @@ export async function updateProfile(req: Request & { userId?: string }, res: Res
 
   if (name !== undefined) user.profile.name = name.trim();
   if (age !== undefined) user.profile.age = age;
+  if (gender !== undefined) user.profile.gender = gender;
   if (heightCm !== undefined) user.profile.heightCm = heightCm;
   if (weightKg !== undefined) user.profile.weightKg = weightKg;
   if (profilePictureUrl !== undefined) user.profile.profilePictureUrl = profilePictureUrl;
@@ -50,10 +53,57 @@ export async function updateProfile(req: Request & { userId?: string }, res: Res
     age: user.profile.age ?? undefined,
     heightCm: user.profile.heightCm ?? undefined,
     weightKg: user.profile.weightKg ?? undefined,
+    gender: user.profile.gender ?? undefined,
   });
 
   await user.save();
   res.json({ message: 'Profile updated.', user: serializeUser(user) });
+}
+
+export async function uploadProfilePicture(req: Request & { userId?: string, file?: any }, res: Response) {
+  const user = await UserModel.findById(req.userId);
+  if (!user) {
+    throw new HttpError(404, 'User not found.');
+  }
+
+  if (!req.file || !req.file.path) {
+    throw new HttpError(400, 'No image file provided.');
+  }
+
+  user.profile.profilePictureUrl = req.file.path;
+  await user.save();
+
+  res.json({ message: 'Profile picture updated.', profilePictureUrl: req.file.path, user: serializeUser(user) });
+}
+
+export async function getFitnessGoals(req: Request & { userId?: string }, res: Response) {
+  const user = await UserModel.findById(req.userId);
+  if (!user) {
+    throw new HttpError(404, 'User not found.');
+  }
+  res.json({ fitnessGoals: user.fitnessGoals });
+}
+
+export async function updateFitnessGoals(req: Request & { userId?: string }, res: Response) {
+  const user = await UserModel.findById(req.userId);
+  if (!user) {
+    throw new HttpError(404, 'User not found.');
+  }
+
+  const { primaryGoal, targetWeightKg, workoutFrequencyPerWeek, setupCompleted } = req.body as {
+    primaryGoal?: 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_fitness';
+    targetWeightKg?: number;
+    workoutFrequencyPerWeek?: number;
+    setupCompleted?: boolean;
+  };
+
+  if (primaryGoal !== undefined) user.fitnessGoals.primaryGoal = primaryGoal;
+  if (targetWeightKg !== undefined) user.fitnessGoals.targetWeightKg = targetWeightKg;
+  if (workoutFrequencyPerWeek !== undefined) user.fitnessGoals.workoutFrequencyPerWeek = workoutFrequencyPerWeek;
+  if (setupCompleted !== undefined) user.fitnessGoals.setupCompleted = setupCompleted;
+
+  await user.save();
+  res.json({ message: 'Fitness goals updated.', user: serializeUser(user) });
 }
 
 export async function updatePreferences(req: Request & { userId?: string }, res: Response) {
@@ -87,6 +137,9 @@ export async function updatePreferences(req: Request & { userId?: string }, res:
     user.preferences.textToSpeechEnabled = Boolean(req.body.textToSpeechEnabled);
   }
   if (unitSystem !== undefined) user.preferences.unitSystem = unitSystem;
+  if (req.body.adaptiveDifficulty !== undefined) {
+    user.preferences.adaptiveDifficulty = Boolean(req.body.adaptiveDifficulty);
+  }
 
   await user.save();
   res.json({ message: 'Preferences updated.', user: serializeUser(user) });

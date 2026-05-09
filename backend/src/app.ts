@@ -1,6 +1,9 @@
 import cors from 'cors';
 import express, { Request } from 'express';
 import morgan from 'morgan';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { authRoutes } from './routes/authRoutes';
 import { aiRoutes } from './routes/aiRoutes';
@@ -16,16 +19,29 @@ import { recordRequestLog } from './services/adminTelemetry';
 
 export const app = express();
 
+// ── Security headers ────────────────────────────────────────────────────────
+app.use(helmet());
+
+// ── CORS ────────────────────────────────────────────────────────────────────
 app.use(
   cors({
     origin: env.clientUrl,
+    credentials: true,
   })
 );
+
+// ── Compression ──────────────────────────────────────────────────────────────
+app.use(compression());
+
+// ── Body parsing ─────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '2mb' }));
-app.use(morgan('dev'));
+
+// ── Logging ──────────────────────────────────────────────────────────────────
+app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
+
+// ── Request telemetry ────────────────────────────────────────────────────────
 app.use((req, res, next) => {
   const startedAt = Date.now();
-
   res.on('finish', () => {
     recordRequestLog({
       method: req.method,
@@ -36,21 +52,51 @@ app.use((req, res, next) => {
       userId: (req as Request & { userId?: string }).userId,
     });
   });
-
   next();
 });
 
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok' });
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' },
 });
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // 10 login/register attempts per 15 min
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many authentication attempts. Please wait before trying again.' },
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'AI rate limit reached. Please wait a moment.' },
+});
+
+app.use(globalLimiter);
+
+// ── Health check ─────────────────────────────────────────────────────────────
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', env: env.nodeEnv, ts: new Date().toISOString() });
+});
+
+// ── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/admin', adminRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/ai', aiRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/ai', aiLimiter, aiRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/workouts', workoutRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/nutrition', nutritionRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/community', communityRoutes);
+
+// ── Error handler ─────────────────────────────────────────────────────────────
 app.use(errorHandler);

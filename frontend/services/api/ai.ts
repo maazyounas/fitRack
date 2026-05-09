@@ -19,3 +19,11 @@ export async function sendAiCoachMessage(accessToken: string, message: string) {
 
   return response.response;
 }
+
+export function fetchWorkoutRecommendations(accessToken: string) {
+  return apiRequest<{ recommendation: any }>('/ai/recommendations/workout', { accessToken });
+}
+
+export function fetchWeeklyInsights(accessToken: string) {
+  return apiRequest<{ insights: any[] }>('/ai/insights/weekly', { accessToken });
+}

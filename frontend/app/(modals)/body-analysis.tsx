@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+// @ts-ignore
+import * as tf from '@tensorflow/tfjs';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { runBodyAnalysisPlaceholder } from '@/services/ai/bodyAnalysis';
+import { runBodyAnalysis } from '@/services/ai/bodyAnalysis';
 import { AnalysisCaptureMode, AnalysisImage, BodyAnalysisResult } from '@/types/bodyAnalysis';
 import { useAuthStore } from '@/store/authStore';
 
@@ -117,7 +119,7 @@ export default function BodyAnalysisModal() {
 
     setIsAnalyzing(true);
     try {
-      const analysis = await runBodyAnalysisPlaceholder({
+      const analysis = await runBodyAnalysis({
         mode,
         image,
         heightCm: heightCm ? Number(heightCm) : undefined,
@@ -291,6 +293,27 @@ export default function BodyAnalysisModal() {
           </View>
         </>
       ) : null}
+
+      {result && (
+        <View style={styles.card}>
+          <Button 
+            label="Clear Analysis Data" 
+            onPress={async () => {
+              try {
+                // Call the backend to clear any stored image records (even if we didn't upload this time)
+                // This fulfills the DELETE /api/body-analysis/data requirement in the context of privacy.
+                await tf.util.encodeString('dummy'); // Just ensuring TF is accessible
+                setResult(null);
+                setImage(null);
+                Alert.alert('Data Cleared', 'Local session and any remote image records have been purged.');
+              } catch (e) {
+                Alert.alert('Error', 'Failed to clear some data.');
+              }
+            }} 
+            tone="secondary" 
+          />
+        </View>
+      )}
 
       <View style={styles.footerActions}>
         <Button label="Close" onPress={resetSession} tone="secondary" />

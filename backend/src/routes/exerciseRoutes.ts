@@ -6,6 +6,7 @@ import {
   deleteExercise,
   getExercise,
   getExerciseFilters,
+  getFavoriteExercises,
   listExercises,
   rateExercise,
   saveExerciseNotes,
@@ -17,6 +18,7 @@ export const exerciseRoutes = Router();
 
 exerciseRoutes.use(requireAuth);
 exerciseRoutes.get('/filters', getExerciseFilters);
+exerciseRoutes.get('/favorites', getFavoriteExercises);
 exerciseRoutes.get('/', listExercises);
 exerciseRoutes.get('/:id', getExercise);
 exerciseRoutes.patch('/:id/favorite', toggleFavorite);

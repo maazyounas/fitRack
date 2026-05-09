@@ -1,128 +1,151 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { WeeklyChallenge } from '@/types/community';
+import React from 'react';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { CommunityChallenge } from '@/types/community';
+import { useCommunityStore } from '@/store/communityStore';
+import { LinearGradient } from 'expo-linear-gradient';
 
-type ChallengeCardProps = {
-  challenge: WeeklyChallenge;
-  onJoin: (challengeId: string) => void | Promise<void>;
-  onLogProgress: (challengeId: string) => void | Promise<void>;
-};
+export function ChallengeCard({ challenge }: { challenge: CommunityChallenge }) {
+  const { joinChallenge } = useCommunityStore();
 
-function formatRange(startDate: string, endDate: string) {
-  return `${new Date(startDate).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })} - ${new Date(endDate).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })}`;
-}
+  const isExpired = new Date(challenge.endDate) < new Date();
 
-export function ChallengeCard({ challenge, onJoin, onLogProgress }: ChallengeCardProps) {
   return (
-    <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>{challenge.title}</Text>
-        <View style={styles.scoreBadge}>
-          <Text style={styles.scoreText}>{challenge.myScore} pts</Text>
+    <View style={styles.container}>
+      <LinearGradient 
+        colors={challenge.joined ? ['#0f766e', '#134e4a'] : ['#1e293b', '#0f172a']} 
+        style={styles.card}
+      >
+        <View style={styles.header}>
+          <View style={styles.iconBox}>
+            <Ionicons name="trophy" size={24} color={challenge.joined ? '#5eead4' : '#fbbf24'} />
+          </View>
+          <View style={styles.titleBox}>
+            <Text style={styles.title}>{challenge.title}</Text>
+            <Text style={styles.meta}>{challenge.participantCount} participants</Text>
+          </View>
         </View>
-      </View>
 
-      <Text style={styles.description}>{challenge.description}</Text>
-      <Text style={styles.meta}>
-        {challenge.participantCount} participants | {formatRange(challenge.startDate, challenge.endDate)}
-      </Text>
-      <Text style={styles.metric}>Metric: {challenge.metricLabel}</Text>
+        <Text style={styles.description}>{challenge.description}</Text>
 
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => onJoin(challenge.id)}>
-          <Text style={styles.secondaryLabel}>{challenge.joined ? 'Joined' : 'Join challenge'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.primaryButton} onPress={() => onLogProgress(challenge.id)}>
-          <Text style={styles.primaryLabel}>+1 progress</Text>
-        </TouchableOpacity>
-      </View>
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <Text style={styles.statLabel}>Target</Text>
+            <Text style={styles.statValue}>{challenge.metricLabel}</Text>
+          </View>
+          {challenge.joined && (
+            <View style={styles.stat}>
+              <Text style={styles.statLabel}>My Progress</Text>
+              <Text style={styles.statValue}>{challenge.myScore} {challenge.unitLabel}</Text>
+            </View>
+          )}
+        </View>
+
+        {!challenge.joined && !isExpired && (
+          <Pressable style={styles.joinButton} onPress={() => joinChallenge(challenge.id)}>
+            <Text style={styles.joinButtonText}>Join Challenge</Text>
+          </Pressable>
+        )}
+
+        {challenge.joined && (
+          <View style={styles.joinedBadge}>
+            <Ionicons name="checkmark-circle" size={16} color="#5eead4" />
+            <Text style={styles.joinedText}>You're In!</Text>
+          </View>
+        )}
+      </LinearGradient>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#0f172a',
-    borderRadius: 24,
-    gap: 10,
-    marginRight: 14,
-    padding: 18,
-    width: 290,
+  container: {
+    marginBottom: 16,
   },
-  headerRow: {
-    alignItems: 'center',
+  card: {
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titleBox: {
+    marginLeft: 14,
+    flex: 1,
   },
   title: {
-    color: '#f8fafc',
-    flex: 1,
     fontSize: 18,
     fontWeight: '800',
-    marginRight: 10,
-  },
-  scoreBadge: {
-    backgroundColor: '#14b8a6',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  scoreText: {
-    color: '#042f2e',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  description: {
-    color: '#cbd5e1',
-    fontSize: 14,
-    lineHeight: 20,
+    color: '#fff',
   },
   meta: {
-    color: '#94a3b8',
     fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 2,
     fontWeight: '600',
   },
-  metric: {
-    color: '#5eead4',
-    fontSize: 13,
-    fontWeight: '700',
+  description: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    lineHeight: 20,
+    marginBottom: 16,
   },
-  actions: {
+  statsRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 4,
+    gap: 24,
+    marginBottom: 20,
   },
-  secondaryButton: {
-    backgroundColor: '#1e293b',
-    borderColor: '#334155',
-    borderRadius: 14,
-    borderWidth: 1,
+  stat: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
   },
-  secondaryLabel: {
-    color: '#e2e8f0',
-    fontSize: 13,
+  statLabel: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'uppercase',
     fontWeight: '700',
-    textAlign: 'center',
+    marginBottom: 4,
   },
-  primaryButton: {
-    backgroundColor: '#14b8a6',
-    borderRadius: 14,
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-  },
-  primaryLabel: {
-    color: '#042f2e',
-    fontSize: 13,
+  statValue: {
+    fontSize: 16,
     fontWeight: '800',
-    textAlign: 'center',
+    color: '#fff',
+  },
+  joinButton: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  joinButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  joinedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  joinedText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#5eead4',
   },
 });

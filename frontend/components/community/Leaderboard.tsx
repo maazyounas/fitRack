@@ -1,5 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { LeaderboardEntry } from '@/types/community';
+type LeaderboardEntry = {
+  rank: number;
+  user: { id: string; name: string; avatarUrl?: string };
+  score: number;
+};
 
 type LeaderboardProps = {
   entries: LeaderboardEntry[];

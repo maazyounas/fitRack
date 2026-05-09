@@ -3,11 +3,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppPalette } from '@/hooks/useAppPalette';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useUiStore } from '@/store/uiStore';
+import { useAuthStore } from '@/store/authStore';
 
 export default function TabLayout() {
   const palette = useAppPalette();
   const { t } = useTranslation();
   const fontScale = useUiStore((state) => state.fontScale);
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.isAdmin === true;
 
   return (
     <Tabs
@@ -23,7 +26,7 @@ export default function TabLayout() {
         },
         headerTintColor: palette.text,
         tabBarLabelStyle: {
-          fontSize: 12 * fontScale,
+          fontSize: 10 * fontScale,
         },
         headerShown: true,
       }}
@@ -57,17 +60,26 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="coach"
-        options={{
-          title: t('tabs_coach'),
-          tabBarIcon: ({ color }) => <Ionicons name="sparkles" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="community"
         options={{
           title: t('tabs_community'),
           tabBarIcon: ({ color }) => <Ionicons name="people" size={24} color={color} />,
+        }}
+      />
+      {isAdmin && (
+        <Tabs.Screen
+          name="admin"
+          options={{
+            title: 'Admin Hub',
+            tabBarIcon: ({ color }) => <Ionicons name="shield-checkmark" size={24} color={color} />,
+          }}
+        />
+      )}
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+          title: 'Notifications',
         }}
       />
       <Tabs.Screen
@@ -82,6 +94,18 @@ export default function TabLayout() {
         options={{
           title: t('tabs_settings'),
           tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="coach"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="exercises"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

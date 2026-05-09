@@ -6,6 +6,7 @@ import {
   UpdatePreferencesPayload,
   UpdateProfilePayload,
   User,
+  FitnessGoals,
 } from '@/types/user';
 import { apiRequest } from './client';
 
@@ -22,6 +23,16 @@ export function verifyRegistrationOtp(payload: {
   purpose: 'verify-email' | 'verify-phone';
 }) {
   return apiRequest<{ message: string }>('/auth/verify', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export function resendOtp(payload: {
+  identifier: string;
+  purpose: 'verify-email' | 'verify-phone';
+}) {
+  return apiRequest<{ message: string }>('/auth/resend-otp', {
     method: 'POST',
     body: payload,
   });
@@ -71,6 +82,29 @@ export function fetchCurrentUser(accessToken: string) {
 export function updateUserProfile(accessToken: string, payload: UpdateProfilePayload) {
   return apiRequest<{ message: string; user: User }>('/users/profile', {
     method: 'PATCH',
+    accessToken,
+    body: payload,
+  });
+}
+
+export function uploadProfilePicture(accessToken: string, formData: FormData) {
+  return apiRequest<{ message: string; profilePictureUrl: string; user: User }>('/users/profile/picture', {
+    method: 'POST',
+    accessToken,
+    body: formData,
+    isFormData: true,
+  });
+}
+
+export function getFitnessGoals(accessToken: string) {
+  return apiRequest<{ fitnessGoals: FitnessGoals }>('/users/fitness-goals', {
+    accessToken,
+  });
+}
+
+export function updateFitnessGoals(accessToken: string, payload: Partial<FitnessGoals>) {
+  return apiRequest<{ message: string; user: User }>('/users/fitness-goals', {
+    method: 'PUT',
     accessToken,
     body: payload,
   });

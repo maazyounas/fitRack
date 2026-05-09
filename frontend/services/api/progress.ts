@@ -24,3 +24,10 @@ export async function updateProgressEntry(accessToken: string, entryId: string, 
 
   return response.entry;
 }
+
+export function postStreak(accessToken: string) {
+  return apiRequest<{ streakDays: number; alreadyLogged: boolean }>('/progress/streak', {
+    method: 'POST',
+    accessToken,
+  });
+}

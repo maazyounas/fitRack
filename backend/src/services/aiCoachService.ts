@@ -1,3 +1,6 @@
+import OpenAI from 'openai';
+import { env } from '../config/env';
+
 type CoachingSnapshot = {
   userName: string;
   dailyCalories?: number | null;
@@ -7,6 +10,12 @@ type CoachingSnapshot = {
     completionRate: number;
     missedCount: number;
     updatedAt: Date;
+    exercises?: Array<{
+      name: string;
+      sets: number;
+      reps: number;
+      intensity: string;
+    }>;
   }>;
   nutrition: {
     calories: number;
@@ -24,6 +33,8 @@ type CoachingSnapshot = {
     streakDays: number;
   };
 };
+
+const openai = env.openaiApiKey ? new OpenAI({ apiKey: env.openaiApiKey }) : null;
 
 function round(value: number) {
   return Math.round(value * 10) / 10;
@@ -112,7 +123,60 @@ export function buildCoachSummary(snapshot: CoachingSnapshot) {
   };
 }
 
-export function answerCoachQuestion(snapshot: CoachingSnapshot, message: string) {
+export async function answerCoachQuestion(snapshot: CoachingSnapshot, message: string) {
+  if (openai) {
+    try {
+      const summary = buildCoachSummary(snapshot);
+      const systemPrompt = `You are the FITRACK AI Coach, a highly motivating and data-driven fitness expert.
+Your goal is to provide personalized coaching based on the user's data.
+
+User Profile:
+- Name: ${snapshot.userName}
+- Daily Calories: ${snapshot.dailyCalories ?? 'Not set'}
+- Adherence: ${snapshot.progress.streakDays} day streak
+
+Current Status:
+- Recovery Score: ${summary.recovery.recoveryScore}/100
+- Stress Level: ${summary.stress.level} (${summary.stress.stressScore}/100)
+- Nutrition: ${snapshot.nutrition.calories}/${snapshot.nutrition.calorieGoal} kcal, ${snapshot.nutrition.protein}/${snapshot.nutrition.proteinGoal}g protein
+- Hydration: ${snapshot.nutrition.waterMl}/${snapshot.nutrition.waterGoal} mL
+
+Recent Workouts:
+${snapshot.recentWorkouts.map(w => `- ${w.name}: ${Math.round(w.completionRate * 100)}% completion, ${w.missedCount} missed`).join('\n')}
+
+Guidelines:
+1. Be concise but encouraging.
+2. If the user asks about training while their recovery score is low (< 50), strongly advise active recovery.
+3. If they are missing protein targets, suggest specific food ideas.
+4. If they are on a streak, celebrate it!
+5. ALWAYS format your response with a clear 'reply' and provide exactly 2 relevant 'followUps' as a JSON-like structure.
+
+Example Response Format:
+{
+  "reply": "Your 5-day streak is amazing, ${snapshot.userName}! Your recovery is at 85, so you're primed for a heavy session today.",
+  "followUps": ["Suggest a workout?", "Check my protein target?"]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        response_format: { type: 'json_object' }
+      });
+
+      const content = JSON.parse(response.choices[0].message.content || '{}');
+      return {
+        reply: content.reply || "I'm having trouble analyzing the data right now, but stay consistent!",
+        followUps: content.followUps || ['How is my recovery?', 'Need meal ideas.']
+      };
+    } catch (error) {
+      console.error('OpenAI Error:', error);
+    }
+  }
+
+  // Fallback Rule-Based Logic
   const normalized = message.toLowerCase();
   const summary = buildCoachSummary(snapshot);
 
@@ -151,3 +215,63 @@ export function answerCoachQuestion(snapshot: CoachingSnapshot, message: string)
     followUps: ['Ask about recovery days.', 'Ask about stress or nutrition.'],
   };
 }
+
+export function getWorkoutIntensityRecommendation(snapshot: CoachingSnapshot) {
+  const highPerformance = snapshot.progress.performanceScore > 100;
+  const consistentAdherence = snapshot.recentWorkouts.every(w => w.completionRate > 0.8);
+  const goodRecovery = analyzeRecovery(snapshot).recoveryScore > 75;
+
+  if (consistentAdherence && goodRecovery) {
+    return {
+      action: 'increase',
+      value: 5,
+      unit: '%',
+      reason: 'Your recovery and adherence are peak. Time for progressive overload.',
+      banner: '🚀 Performance Boost: Increase your weights by 5% this session.'
+    };
+  }
+
+  if (analyzeRecovery(snapshot).recommendRecoveryDay) {
+    return {
+      action: 'decrease',
+      value: 10,
+      unit: '%',
+      reason: 'Recovery indicators are low. Focus on form and mobility.',
+      banner: '🧘 Recovery Alert: Drop intensity by 10% to prevent burnout.'
+    };
+  }
+
+  return {
+    action: 'maintain',
+    reason: 'Steady progress. Keep hitting your current targets.',
+    banner: '✅ Stay Consistent: Your current training intensity is optimal.'
+  };
+}
+
+export function getWeeklyInsights(snapshot: CoachingSnapshot) {
+  const missedWorkouts = snapshot.recentWorkouts.reduce((sum, workout) => sum + workout.missedCount, 0);
+  const streak = snapshot.progress.streakDays;
+
+  const insights = [];
+  if (missedWorkouts > 1) {
+    insights.push({
+      type: 'warning',
+      text: `You missed ${missedWorkouts} workouts. Try scheduling evening sessions if mornings are too busy.`,
+    });
+  } else if (streak > 3) {
+    insights.push({
+      type: 'celebration',
+      text: `A ${streak}-day streak! You're building incredible momentum.`,
+    });
+  }
+
+  if (snapshot.nutrition.calories < snapshot.nutrition.calorieGoal * 0.8) {
+    insights.push({
+      type: 'nutrition',
+      text: 'You are under-fueling. Add a carbohydrate-dense snack pre-workout.',
+    });
+  }
+
+  return insights.slice(0, 3);
+}
+

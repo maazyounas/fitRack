@@ -299,6 +299,35 @@ export async function scheduleWorkoutPlan(req: Request & { userId?: string }, re
   res.json({ workout: normalizePlan(plan) });
 }
 
+export async function updateWeeklySchedule(req: Request & { userId?: string }, res: Response) {
+  const plan = await WorkoutPlanModel.findOne({
+    _id: req.params.id,
+    ownerId: req.userId,
+  });
+
+  if (!plan) {
+    throw new HttpError(404, 'Workout plan not found.');
+  }
+
+  const { schedule } = req.body as { schedule?: any[] };
+  if (!Array.isArray(schedule)) {
+    throw new HttpError(400, 'Schedule array is required.');
+  }
+
+  // Preserve completed workouts, update the rest
+  const completedEntries = plan.schedule.filter((entry: any) => entry.completed);
+  const newEntries = schedule.map((entry) => ({
+    scheduledDate: new Date(entry.scheduledDate),
+    status: entry.status || 'scheduled',
+    completed: false,
+  }));
+
+  plan.schedule = [...completedEntries, ...newEntries] as any;
+
+  await plan.save();
+  res.json({ workout: normalizePlan(plan) });
+}
+
 export async function markWorkoutCompleted(req: Request & { userId?: string }, res: Response) {
   const plan = await WorkoutPlanModel.findOne({
     _id: req.params.id,
@@ -385,4 +414,61 @@ export async function createWorkoutFromTemplate(req: Request & { userId?: string
   });
 
   res.status(201).json({ workout: normalizePlan(plan) });
+}
+
+export async function getCurrentWorkoutPlan(req: Request & { userId?: string }, res: Response) {
+  // Find the most recently scheduled incomplete workout
+  const now = new Date();
+  const plan = await WorkoutPlanModel.findOne({
+    ownerId: req.userId,
+    'schedule.scheduledDate': { $lte: now },
+    'schedule.completed': false,
+  }).sort({ 'schedule.scheduledDate': -1 });
+
+  if (!plan) {
+    throw new HttpError(404, 'No active workout found.');
+  }
+
+  const scheduleEntry = plan.schedule.find((entry: any) => {
+    return (
+      new Date(entry.scheduledDate).getTime() <= now.getTime() &&
+      !entry.completed
+    );
+  });
+
+  res.json({
+    workout: normalizePlan(plan),
+    scheduleEntry: scheduleEntry
+      ? {
+          id: scheduleEntry.id,
+          scheduledDate: scheduleEntry.scheduledDate,
+          status: scheduleEntry.status,
+        }
+      : null,
+  });
+}
+
+export async function reorderExercises(req: Request & { userId?: string }, res: Response) {
+  const plan = await WorkoutPlanModel.findOne({
+    _id: req.params.id,
+    ownerId: req.userId,
+  });
+
+  if (!plan) {
+    throw new HttpError(404, 'Workout plan not found.');
+  }
+
+  const { exercises } = req.body as { exercises?: any[] };
+  if (!Array.isArray(exercises)) {
+    throw new HttpError(400, 'Exercises array is required.');
+  }
+
+  // Update order field for each exercise
+  plan.exercises = exercises.map((exercise, index) => ({
+    ...exercise,
+    order: index + 1,
+  })) as any;
+
+  await plan.save();
+  res.json({ workout: normalizePlan(plan) });
 }

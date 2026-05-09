@@ -1,14 +1,15 @@
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 
 type InputProps = TextInputProps & {
-  label: string;
+  /** Optional — when omitted the label line is hidden (for inline/custom layouts) */
+  label?: string;
   error?: string | null;
 };
 
 export function Input({ label, error, style, ...props }: InputProps) {
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
+      {label ? <Text style={styles.label}>{label}</Text> : null}
       <TextInput
         placeholderTextColor="#6b7280"
         style={[styles.input, error ? styles.inputError : null, style]}
@@ -21,7 +22,7 @@ export function Input({ label, error, style, ...props }: InputProps) {
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: 16,
+    marginBottom: 0,
   },
   label: {
     color: '#0f172a',

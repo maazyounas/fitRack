@@ -5,9 +5,12 @@ import { SessionModel } from '../models/Session';
 import { SocialPostModel } from '../models/SocialPost';
 import { UserModel } from '../models/User';
 import { WeeklyChallengeModel } from '../models/WeeklyChallenge';
+import { NotificationTokenModel } from '../models/NotificationToken';
 import { getApiErrors, getRequestLogs } from '../services/adminTelemetry';
+import { sendPushNotification, broadcastNotification } from '../services/notificationService';
 import { decryptValue } from '../utils/crypto';
 import { HttpError } from '../utils/http';
+import { WorkoutPlanModel } from '../models/WorkoutPlan';
 
 type AuthedRequest = Request & { userId?: string; isAdmin?: boolean };
 
@@ -138,6 +141,20 @@ async function buildAnalytics() {
       startDate: challenge.startDate,
       endDate: challenge.endDate,
     })),
+    retention: {
+      newLast7Days: await UserModel.countDocuments({ createdAt: { $gt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }),
+      activeLast7Days: await UserModel.countDocuments({ lastLoginAt: { $gt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }),
+    },
+    popularExercises: await WorkoutPlanModel.aggregate([
+      { $unwind: '$days' },
+      { $unwind: '$days.exercises' },
+      { $group: { _id: '$days.exercises.exerciseId', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 5 },
+      { $lookup: { from: 'exercises', localField: '_id', foreignField: '_id', as: 'exercise' } },
+      { $unwind: '$exercise' },
+      { $project: { name: '$exercise.name', count: 1 } }
+    ]),
   };
 }
 
@@ -239,4 +256,82 @@ export async function deleteCommunityComment(req: AuthedRequest, res: Response) 
   await post.save();
 
   res.json({ message: 'Comment deleted.' });
+}
+
+export async function getUsers(req: AuthedRequest, res: Response) {
+  const page = Math.max(1, Number(req.query.page ?? 1));
+  const limit = Math.min(100, Math.max(10, Number(req.query.limit ?? 20)));
+  const search = String(req.query.search ?? '').trim();
+
+  const query: any = {};
+  if (search) {
+    query.$or = [
+      { 'profile.name': { $regex: search, $options: 'i' } },
+      { emailHash: { $exists: true } }, // Searching by hash isn't helpful here, but we can search by name
+    ];
+  }
+
+  const [users, total] = await Promise.all([
+    UserModel.find(query)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit),
+    UserModel.countDocuments(query),
+  ]);
+
+  res.json({
+    users: users.map(serializeAdminUser),
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
+  });
+}
+
+export async function createExercise(req: AuthedRequest, res: Response) {
+  const exercise = await ExerciseModel.create(req.body);
+  res.status(201).json({ exercise: serializeAdminExercise(exercise) });
+}
+
+export async function updateExercise(req: AuthedRequest, res: Response) {
+  const exercise = await ExerciseModel.findByIdAndUpdate(req.params.exerciseId, req.body, { new: true });
+  if (!exercise) throw new HttpError(404, 'Exercise not found.');
+  res.json({ exercise: serializeAdminExercise(exercise) });
+}
+
+export async function deleteExercise(req: AuthedRequest, res: Response) {
+  const exercise = await ExerciseModel.findByIdAndDelete(req.params.exerciseId);
+  if (!exercise) throw new HttpError(404, 'Exercise not found.');
+  res.json({ message: 'Exercise deleted.' });
+}
+
+export async function sendManualNotification(req: AuthedRequest, res: Response) {
+  const { title, body, userIds } = req.body;
+  if (!title || !body) throw new HttpError(400, 'Title and body are required.');
+
+  if (userIds && userIds.length) {
+    await sendPushNotification(userIds, title, body);
+  } else {
+    await broadcastNotification(title, body);
+  }
+
+  res.json({ message: 'Notification sent.' });
+}
+
+export async function toggleUserStatus(req: AuthedRequest, res: Response) {
+  const user = await UserModel.findById(req.params.userId);
+  if (!user) throw new HttpError(404, 'User not found.');
+  if (user.isAdmin && req.userId !== String(user._id)) throw new HttpError(403, 'Cannot toggle status of other admins.');
+
+  if (user.deactivatedAt) {
+    user.deactivatedAt = undefined;
+  } else {
+    user.deactivatedAt = new Date();
+    await SessionModel.updateMany({ userId: user._id }, { $set: { revokedAt: new Date() } });
+  }
+
+  await user.save();
+  res.json({ user: serializeAdminUser(user) });
 }

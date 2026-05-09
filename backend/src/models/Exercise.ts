@@ -64,4 +64,7 @@ const exerciseSchema = new Schema(
   { timestamps: true }
 );
 
+// Add text index for search
+exerciseSchema.index({ name: 'text', description: 'text', muscleGroup: 'text', equipment: 'text' });
+
 export const ExerciseModel = model('Exercise', exerciseSchema);

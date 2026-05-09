@@ -10,12 +10,15 @@ import {
   refreshSession,
   revokeImageConsent,
   registerUser,
+  resendOtp as resendOtpApi,
   updateImageConsent,
   updateUserPreferences,
   updateUserProfile,
+  uploadProfilePicture as uploadProfilePictureApi,
+  updateFitnessGoals as updateFitnessGoalsApi,
   verifyRegistrationOtp,
 } from '@/services/api/auth';
-import { SESSION_TIMEOUT_MS } from '@/constants/config';
+import { SESSION_TIMEOUT_MS, SESSION_WARNING_MS } from '@/constants/config';
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/services/storage/secureStore';
 import {
   AuthTokens,
@@ -24,10 +27,12 @@ import {
   UpdatePreferencesPayload,
   UpdateProfilePayload,
   User,
+  FitnessGoals,
 } from '@/types/user';
 import { useUiStore } from './uiStore';
 
 const sessionStorageKey = 'session';
+const rememberMeKey = 'rememberMe';
 
 type AuthState = {
   user: User | null;
@@ -36,6 +41,9 @@ type AuthState = {
   isLoading: boolean;
   isHydrated: boolean;
   lastActivityAt: number;
+  rememberMe: boolean;
+  /** True when the session is <SESSION_WARNING_MS away from expiring */
+  sessionWarning: boolean;
   initialize: () => Promise<void>;
   register: (payload: RegisterPayload) => Promise<{ message: string; user: User }>;
   verifyOtp: (payload: {
@@ -43,13 +51,17 @@ type AuthState = {
     otp: string;
     purpose: 'verify-email' | 'verify-phone';
   }) => Promise<void>;
-  login: (identifier: string, password: string) => Promise<void>;
+  resendOtp: (payload: { identifier: string; purpose: 'verify-email' | 'verify-phone' }) => Promise<void>;
+  login: (identifier: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   touchActivity: () => void;
   refreshAccessToken: () => Promise<void>;
+  /** Returns true if the session was expired and the user was logged out */
   checkInactivity: () => Promise<boolean>;
   updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
   updatePreferences: (payload: UpdatePreferencesPayload) => Promise<void>;
+  updateFitnessGoals: (payload: Partial<FitnessGoals>) => Promise<void>;
+  uploadProfilePicture: (imageUri: string) => Promise<void>;
   deactivateAccount: () => Promise<void>;
   deleteAccount: (confirmation: string) => Promise<void>;
   loadImageConsent: () => Promise<void>;
@@ -60,6 +72,8 @@ type AuthState = {
   ) => Promise<void>;
   revokeImageConsent: () => Promise<void>;
   deleteStoredImages: () => Promise<void>;
+  setRememberMe: (value: boolean) => Promise<void>;
+  dismissSessionWarning: () => void;
 };
 
 async function persistSession(session: { user: User; tokens: AuthTokens } | null) {
@@ -67,7 +81,6 @@ async function persistSession(session: { user: User; tokens: AuthTokens } | null
     await removeSecureItem(sessionStorageKey);
     return;
   }
-
   await setSecureItem(sessionStorageKey, session);
 }
 
@@ -78,11 +91,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: false,
   isHydrated: false,
   lastActivityAt: Date.now(),
+  rememberMe: true,
+  sessionWarning: false,
+
   initialize: async () => {
     try {
+      const storedRememberMe = await getSecureItem<boolean>(rememberMeKey);
+      const remembering = storedRememberMe !== false; // default true
+
       const storedSession = await getSecureItem<{ user: User; tokens: AuthTokens }>(sessionStorageKey);
       if (!storedSession) {
-        set({ isHydrated: true });
+        set({ isHydrated: true, rememberMe: remembering });
         return;
       }
 
@@ -90,6 +109,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: storedSession.user,
         tokens: storedSession.tokens,
         lastActivityAt: Date.now(),
+        rememberMe: remembering,
       });
 
       useUiStore.getState().setPreferences(storedSession.user.preferences);
@@ -132,6 +152,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user: null, tokens: null, imageConsent: null, isHydrated: true });
     }
   },
+
   register: async (payload) => {
     set({ isLoading: true });
     try {
@@ -140,6 +161,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
     }
   },
+
   verifyOtp: async (payload) => {
     set({ isLoading: true });
     try {
@@ -148,7 +170,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
     }
   },
-  login: async (identifier, password) => {
+
+  resendOtp: async (payload) => {
+    set({ isLoading: true });
+    try {
+      await resendOtpApi(payload);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  login: async (identifier, password, rememberMe = true) => {
     set({ isLoading: true });
     try {
       const response = await loginUser({ identifier, password });
@@ -158,43 +190,53 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         sessionSecret: response.sessionSecret,
       };
 
-      await persistSession({ user: response.user, tokens });
+      // Persist rememberMe preference
+      await setSecureItem(rememberMeKey, rememberMe);
+      set({ rememberMe });
+
+      if (rememberMe) {
+        await persistSession({ user: response.user, tokens });
+      }
+
       useUiStore.getState().setPreferences(response.user.preferences);
       set({
         user: response.user,
         tokens,
         lastActivityAt: Date.now(),
+        sessionWarning: false,
       });
     } finally {
       set({ isLoading: false });
     }
   },
+
   logout: async () => {
     const tokens = get().tokens;
     if (tokens?.refreshToken) {
       try {
         await logoutUser(tokens.refreshToken);
       } catch {
-        // Clear the local session even if the network request fails.
+        // Clear local session even if network request fails
       }
     }
 
     await persistSession(null);
     useUiStore.getState().reset();
-      set({
+    set({
       user: null,
       tokens: null,
       imageConsent: null,
       isLoading: false,
       lastActivityAt: Date.now(),
+      sessionWarning: false,
     });
   },
-  touchActivity: () => set({ lastActivityAt: Date.now() }),
+
+  touchActivity: () => set({ lastActivityAt: Date.now(), sessionWarning: false }),
+
   refreshAccessToken: async () => {
     const tokens = get().tokens;
-    if (!tokens) {
-      return;
-    }
+    if (!tokens) return;
 
     const refreshed = await refreshSession({
       refreshToken: tokens.refreshToken,
@@ -208,85 +250,135 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     };
 
     set({ tokens: updatedTokens });
-    if (get().user) {
+    if (get().user && get().rememberMe) {
       await persistSession({ user: get().user as User, tokens: updatedTokens });
     }
   },
+
   checkInactivity: async () => {
-    if (!get().tokens) {
-      return false;
+    if (!get().tokens) return false;
+
+    const elapsed = Date.now() - get().lastActivityAt;
+
+    if (elapsed >= SESSION_TIMEOUT_MS) {
+      await get().logout();
+      return true;
     }
 
-    if (Date.now() - get().lastActivityAt < SESSION_TIMEOUT_MS) {
-      return false;
+    // Warn when within SESSION_WARNING_MS of timeout
+    if (elapsed >= SESSION_TIMEOUT_MS - SESSION_WARNING_MS) {
+      set({ sessionWarning: true });
+    } else {
+      set({ sessionWarning: false });
     }
 
-    await get().logout();
-    return true;
+    return false;
   },
+
   updateProfile: async (payload) => {
     const tokens = get().tokens;
-    if (!tokens) {
-      throw new Error('You need to log in first.');
-    }
+    if (!tokens) throw new Error('You need to log in first.');
 
     set({ isLoading: true });
     try {
       const response = await updateUserProfile(tokens.accessToken, payload);
-      await persistSession({ user: response.user, tokens });
+      if (get().rememberMe) {
+        await persistSession({ user: response.user, tokens });
+      }
       set({ user: response.user, lastActivityAt: Date.now() });
     } finally {
       set({ isLoading: false });
     }
   },
+
   updatePreferences: async (payload) => {
     const tokens = get().tokens;
-    if (!tokens) {
-      throw new Error('You need to log in first.');
-    }
+    if (!tokens) throw new Error('You need to log in first.');
 
     set({ isLoading: true });
     try {
       const response = await updateUserPreferences(tokens.accessToken, payload);
-      await persistSession({ user: response.user, tokens });
+      if (get().rememberMe) {
+        await persistSession({ user: response.user, tokens });
+      }
       useUiStore.getState().setPreferences(response.user.preferences);
       set({ user: response.user, lastActivityAt: Date.now() });
     } finally {
       set({ isLoading: false });
     }
   },
+
+  updateFitnessGoals: async (payload) => {
+    const tokens = get().tokens;
+    if (!tokens) throw new Error('You need to log in first.');
+
+    set({ isLoading: true });
+    try {
+      const response = await updateFitnessGoalsApi(tokens.accessToken, payload);
+      if (get().rememberMe) {
+        await persistSession({ user: response.user, tokens });
+      }
+      set({ user: response.user, lastActivityAt: Date.now() });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  uploadProfilePicture: async (imageUri) => {
+    const tokens = get().tokens;
+    if (!tokens) throw new Error('You need to log in first.');
+
+    set({ isLoading: true });
+    try {
+      const formData = new FormData();
+      // Adjust file name and type as needed based on the URI if possible.
+      // For expo-image-picker, we can just append it:
+      const match = /\.(\w+)$/.exec(imageUri);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      formData.append('image', {
+        uri: imageUri,
+        name: `profile.${match ? match[1] : 'jpg'}`,
+        type,
+      } as any);
+
+      const response = await uploadProfilePictureApi(tokens.accessToken, formData);
+      if (get().rememberMe) {
+        await persistSession({ user: response.user, tokens });
+      }
+      set({ user: response.user, lastActivityAt: Date.now() });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   deactivateAccount: async () => {
     const tokens = get().tokens;
-    if (!tokens) {
-      throw new Error('You need to log in first.');
-    }
+    if (!tokens) throw new Error('You need to log in first.');
 
     await deactivateUser(tokens.accessToken);
     await get().logout();
   },
+
   deleteAccount: async (confirmation) => {
     const tokens = get().tokens;
-    if (!tokens) {
-      throw new Error('You need to log in first.');
-    }
+    if (!tokens) throw new Error('You need to log in first.');
 
     await deleteUser(tokens.accessToken, confirmation);
     await get().logout();
   },
+
   loadImageConsent: async () => {
     const tokens = get().tokens;
-    if (!tokens) {
-      throw new Error('You need to log in first.');
-    }
+    if (!tokens) throw new Error('You need to log in first.');
 
     const response = await fetchImageConsent(tokens.accessToken);
     set({ imageConsent: response.consent });
   },
+
   saveImageConsent: async (payload) => {
     const tokens = get().tokens;
-    if (!tokens) {
-      throw new Error('You need to log in first.');
-    }
+    if (!tokens) throw new Error('You need to log in first.');
 
     set({ isLoading: true });
     try {
@@ -296,11 +388,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
     }
   },
+
   revokeImageConsent: async () => {
     const tokens = get().tokens;
-    if (!tokens) {
-      throw new Error('You need to log in first.');
-    }
+    if (!tokens) throw new Error('You need to log in first.');
 
     set({ isLoading: true });
     try {
@@ -310,11 +401,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
     }
   },
+
   deleteStoredImages: async () => {
     const tokens = get().tokens;
-    if (!tokens) {
-      throw new Error('You need to log in first.');
-    }
+    if (!tokens) throw new Error('You need to log in first.');
 
     set({ isLoading: true });
     try {
@@ -324,4 +414,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isLoading: false });
     }
   },
+
+  setRememberMe: async (value) => {
+    await setSecureItem(rememberMeKey, value);
+    set({ rememberMe: value });
+  },
+
+  dismissSessionWarning: () => set({ sessionWarning: false }),
 }));

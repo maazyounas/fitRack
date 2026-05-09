@@ -38,7 +38,7 @@ export type BodyAnalysisResult = {
   confidence: number;
   processedLocally: boolean;
   storageAllowed: boolean;
-  mediapipeStatus: 'placeholder';
+  mediapipeStatus: 'placeholder' | 'active';
   summary: string;
   landmarks: LandmarkPoint[];
   workoutSuggestions: AnalysisSuggestion[];

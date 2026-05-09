@@ -171,6 +171,13 @@ export default function CoachScreen() {
     }
   }
 
+  const promptChips = [
+    { label: 'Workout ideas?', icon: 'barbell-outline' },
+    { label: 'How is my recovery?', icon: 'heart-outline' },
+    { label: 'Why no progress?', icon: 'trending-down-outline' },
+    { label: 'Healthy meal ideas', icon: 'nutrition-outline' },
+  ];
+
   const resolvedSummary = summary ?? generateAiCoachSummary(dataPoints);
   const adherence =
     dataPoints.recentWorkouts.length > 0
@@ -299,6 +306,15 @@ export default function CoachScreen() {
           </View>
         </View>
 
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.promptRow}>
+          {promptChips.map((chip) => (
+            <Pressable key={chip.label} onPress={() => void handleSend(chip.label)} style={styles.promptChip}>
+              <Ionicons name={chip.icon as any} size={14} color="#0f766e" />
+              <Text style={styles.promptChipText}>{chip.label}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
         {messages.map((message) => (
           <View
             key={message.id}
@@ -321,6 +337,13 @@ export default function CoachScreen() {
             ) : null}
           </View>
         ))}
+
+        {isSending && (
+          <View style={[styles.messageCard, styles.coachMessage, styles.typingBubble]}>
+            <ActivityIndicator size="small" color="#0f766e" />
+            <Text style={styles.typingText}>Coach is thinking...</Text>
+          </View>
+        )}
 
         <Input
           label="Ask your AI trainer"
@@ -571,5 +594,37 @@ const styles = StyleSheet.create({
     color: '#115e59',
     fontSize: 12,
     fontWeight: '700',
+  },
+  promptRow: {
+    marginBottom: 16,
+    paddingVertical: 4,
+  },
+  promptChip: {
+    alignItems: 'center',
+    backgroundColor: '#f0fdfa',
+    borderColor: '#ccfbf1',
+    borderRadius: 999,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    marginRight: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  promptChipText: {
+    color: '#0f766e',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+  },
+  typingText: {
+    color: '#64748b',
+    fontSize: 13,
+    fontStyle: 'italic',
   },
 });

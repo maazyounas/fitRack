@@ -3,7 +3,7 @@ import { NutritionProfileModel } from '../models/NutritionProfile';
 import { ProgressProfileModel } from '../models/ProgressProfile';
 import { UserModel } from '../models/User';
 import { WorkoutPlanModel } from '../models/WorkoutPlan';
-import { analyzeRecovery, answerCoachQuestion, buildCoachSummary, detectStress } from '../services/aiCoachService';
+import { analyzeRecovery, answerCoachQuestion, buildCoachSummary, detectStress, getWeeklyInsights, getWorkoutIntensityRecommendation } from '../services/aiCoachService';
 import { HttpError } from '../utils/http';
 
 type AuthedRequest = Request & { userId?: string };
@@ -59,6 +59,12 @@ async function buildSnapshot(userId: string) {
         completionRate: completed / total,
         missedCount,
         updatedAt: plan.updatedAt,
+        exercises: plan.exercises?.map((ex: any) => ({
+          name: ex.name,
+          sets: ex.sets,
+          reps: ex.reps,
+          intensity: ex.intensity,
+        })),
       };
     }),
     nutrition: {
@@ -102,7 +108,20 @@ export async function sendAiCoachMessage(req: AuthedRequest, res: Response) {
     throw new HttpError(400, 'Message is required.');
   }
 
+  const response = await answerCoachQuestion(snapshot, message);
+  res.json({ response });
+}
+
+export async function getWorkoutRecommendations(req: AuthedRequest, res: Response) {
+  const snapshot = await buildSnapshot(req.userId as string);
   res.json({
-    response: answerCoachQuestion(snapshot, message),
+    recommendation: getWorkoutIntensityRecommendation(snapshot)
+  });
+}
+
+export async function getWeeklyInsightsController(req: AuthedRequest, res: Response) {
+  const snapshot = await buildSnapshot(req.userId as string);
+  res.json({
+    insights: getWeeklyInsights(snapshot)
   });
 }

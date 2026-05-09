@@ -5,6 +5,7 @@ import { SocialProfileModel } from '../models/SocialProfile';
 import { SocialPostModel } from '../models/SocialPost';
 import { WeeklyChallengeModel } from '../models/WeeklyChallenge';
 import { HttpError } from '../utils/http';
+import { cleanText } from '../utils/moderation';
 
 type AuthedRequest = Request & { userId?: string };
 
@@ -130,6 +131,9 @@ function serializePost(post: any, currentUserId: string, usersMap: Map<string, a
     likeCount: post.likeUserIds.length,
     commentCount: post.comments.length,
     likedByMe: post.likeUserIds.some((id: Types.ObjectId) => String(id) === currentUserId),
+    imageUrl: post.imageUrl ?? null,
+    isReported: post.isReported ?? false,
+    reportCount: post.reportCount ?? 0,
     comments: post.comments
       .slice()
       .sort((left: any, right: any) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime())
@@ -302,8 +306,9 @@ export async function createPost(req: AuthedRequest, res: Response) {
 
   const post = await SocialPostModel.create({
     authorId: req.userId,
-    content,
+    content: cleanText(content),
     challengeId,
+    imageUrl: req.body.imageUrl || null,
   });
 
   const usersMap = await loadUsersMap([req.userId as string]);
@@ -354,7 +359,7 @@ export async function addPostComment(req: AuthedRequest, res: Response) {
 
   post.comments.push({
     authorId: req.userId,
-    content,
+    content: cleanText(content),
     createdAt: new Date(),
   } as any);
 
@@ -427,5 +432,94 @@ export async function addChallengeProgress(req: AuthedRequest, res: Response) {
     message: 'Challenge progress updated.',
     challenge: serializeChallenge(challenge, currentUserId, usersMap),
     myScore: participant?.score ?? delta,
+  });
+}
+
+export async function reportPost(req: AuthedRequest, res: Response) {
+  const post = await SocialPostModel.findById(req.params.postId);
+  if (!post) {
+    throw new HttpError(404, 'Post not found.');
+  }
+
+  post.reportCount = (post.reportCount ?? 0) + 1;
+  if (post.reportCount >= 3) {
+    post.isReported = true;
+  }
+
+  await post.save();
+  res.json({ message: 'Post reported. Thank you for helping keep the community safe.' });
+}
+
+export async function deletePost(req: AuthedRequest, res: Response) {
+  const post = await SocialPostModel.findById(req.params.postId);
+  if (!post) {
+    throw new HttpError(404, 'Post not found.');
+  }
+
+  const user = await UserModel.findById(req.userId);
+  const isOwner = String(post.authorId) === req.userId;
+  const isAdmin = user?.isAdmin === true;
+
+  if (!isOwner && !isAdmin) {
+    throw new HttpError(403, 'You do not have permission to delete this post.');
+  }
+
+  await post.deleteOne();
+  res.json({ message: 'Post deleted successfully.' });
+}
+
+export async function getPublicProfile(req: AuthedRequest, res: Response) {
+  const targetUserId = req.params.userId as string;
+  const targetUser = await UserModel.findById(targetUserId);
+  if (!targetUser) {
+    throw new HttpError(404, 'Member not found.');
+  }
+
+  const socialProfile = await getOrCreateSocialProfile(targetUserId);
+  const posts = await SocialPostModel.find({ authorId: targetUserId, isReported: false })
+    .sort({ createdAt: -1 })
+    .limit(30);
+
+  const currentUserId = req.userId as string;
+  const usersMap = await loadUsersMap([targetUserId, currentUserId]);
+
+  res.json({
+    profile: serializeMember(targetUser, socialProfile, currentUserId),
+    posts: posts.map((post) => serializePost(post, currentUserId, usersMap)),
+  });
+}
+
+export async function searchUsers(req: AuthedRequest, res: Response) {
+  const query = String(req.query.q ?? '').trim();
+  if (!query) {
+    return res.json({ users: [] });
+  }
+
+  const users = await UserModel.find({
+    'profile.name': { $regex: query, $options: 'i' },
+  })
+    .limit(20)
+    .sort({ 'profile.name': 1 });
+
+  const socialProfilesMap = await loadSocialProfilesMap(users.map((u) => u.id));
+  const currentUserId = req.userId as string;
+
+  res.json({
+    users: users.map((user) => serializeMember(user, socialProfilesMap.get(String(user.id)), currentUserId)),
+  });
+}
+
+export async function getLeaderboard(req: AuthedRequest, res: Response) {
+  const challenge = await WeeklyChallengeModel.findById(req.params.challengeId);
+  if (!challenge) {
+    throw new HttpError(404, 'Challenge not found.');
+  }
+
+  const userIds = challenge.participants.map((p: any) => String(p.userId));
+  const usersMap = await loadUsersMap(userIds);
+  const currentUserId = req.userId as string;
+
+  res.json({
+    challenge: serializeChallenge(challenge, currentUserId, usersMap),
   });
 }
