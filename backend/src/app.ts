@@ -21,13 +21,23 @@ import { recordRequestLog } from './services/adminTelemetry';
 export const app = express();
 
 // ── Security headers ────────────────────────────────────────────────────────
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: env.nodeEnv === 'production',
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 // ── CORS ────────────────────────────────────────────────────────────────────
 app.use(
   cors({
-    origin: env.clientUrl,
+    origin: env.nodeEnv === 'production' ? env.clientUrl : (origin, callback) => {
+      // Allow all origins in development, even without origin header
+      callback(null, true);
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   })
 );
 
@@ -67,7 +77,7 @@ const globalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10, // 10 login/register attempts per 15 min
+  max: env.nodeEnv === 'production' ? 10 : 1000, // Relaxed for development
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many authentication attempts. Please wait before trying again.' },

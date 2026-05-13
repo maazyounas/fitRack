@@ -145,7 +145,7 @@ export default function GenderScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.eyebrow}>PERSONALIZATION</Text>
-          <Text style={styles.title}>What's your{'\n'}biological sex?</Text>
+          <Text style={styles.title}>Select Gender</Text>
           <Text style={styles.subtitle}>
             This helps us accurately calibrate your AI body analysis and personalized plan.
           </Text>
@@ -163,13 +163,7 @@ export default function GenderScreen() {
           ))}
         </View>
 
-        {/* Privacy note */}
-        <View style={styles.privacyRow}>
-          <Ionicons name="shield-checkmark-outline" size={14} color="#2dd4bf" />
-          <Text style={styles.privacyText}>
-            Used only for analysis — never shared or sold.
-          </Text>
-        </View>
+
       </View>
 
       {/* CTA */}
