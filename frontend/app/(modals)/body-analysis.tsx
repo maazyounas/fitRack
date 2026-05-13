@@ -11,8 +11,6 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-// @ts-ignore
-import * as tf from '@tensorflow/tfjs';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { runBodyAnalysis } from '@/services/ai/bodyAnalysis';
@@ -302,7 +300,6 @@ export default function BodyAnalysisModal() {
               try {
                 // Call the backend to clear any stored image records (even if we didn't upload this time)
                 // This fulfills the DELETE /api/body-analysis/data requirement in the context of privacy.
-                await tf.util.encodeString('dummy'); // Just ensuring TF is accessible
                 setResult(null);
                 setImage(null);
                 Alert.alert('Data Cleared', 'Local session and any remote image records have been purged.');

@@ -45,7 +45,12 @@ export function decryptValue(payload?: {
 }
 
 export function normalizeIdentifier(value: string) {
-  return value.trim().toLowerCase();
+  const trimmed = value.trim();
+  if (trimmed.includes('@')) {
+    return trimmed.toLowerCase();
+  }
+  // If it's likely a phone number, strip non-digits except '+'
+  return trimmed.replace(/[^\d+]/g, '');
 }
 
 export function hashIdentifier(value: string) {

@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
-import { UserModel } from '../models/User';
-import { connectDatabase } from '../config/database';
-import { encryptValue } from '../utils/crypto';
+import bcrypt from 'bcryptjs';
+import { UserModel } from './models/User';
+import { connectDatabase } from './config/database';
+import { encryptValue } from './utils/crypto';
 import crypto from 'crypto';
 
 async function seed() {

@@ -48,7 +48,11 @@ export default function ForgotPasswordScreen() {
 
     setIsSubmitting(true);
     try {
-      await requestPasswordReset(identifier.trim());
+      const normalizedIdentifier = identifier.trim().includes('@')
+        ? identifier.trim().toLowerCase()
+        : identifier.trim().replace(/[^\d+]/g, '');
+
+      await requestPasswordReset(normalizedIdentifier);
       setStep('reset');
     } catch (error) {
       Alert.alert('Request failed', error instanceof Error ? error.message : 'Try again.');
@@ -67,7 +71,11 @@ export default function ForgotPasswordScreen() {
 
     setIsSubmitting(true);
     try {
-      await resetPassword({ identifier: identifier.trim(), otp, newPassword });
+      const normalizedIdentifier = identifier.trim().includes('@')
+        ? identifier.trim().toLowerCase()
+        : identifier.trim().replace(/[^\d+]/g, '');
+
+      await resetPassword({ identifier: normalizedIdentifier, otp, newPassword });
       Alert.alert(
         'Password Updated',
         'Your password was changed successfully. Please log in again.',

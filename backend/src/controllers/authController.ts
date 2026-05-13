@@ -61,18 +61,25 @@ export async function register(req: Request, res: Response) {
   const emailHash = email ? hashIdentifier(email) : undefined;
   const phoneHash = phone ? hashIdentifier(phone) : undefined;
   const userCount = await UserModel.countDocuments();
-  const existingUser = await UserModel.findOne({
-    $or: [{ emailHash }, { phoneHash }].filter((entry) => Object.values(entry)[0]),
-  });
 
-  if (existingUser) {
-    throw new HttpError(409, 'Email or phone is already registered.');
+  if (emailHash) {
+    const existingEmail = await UserModel.findOne({ emailHash });
+    if (existingEmail) {
+      throw new HttpError(409, 'Email is already registered.');
+    }
+  }
+
+  if (phoneHash) {
+    const existingPhone = await UserModel.findOne({ phoneHash });
+    if (existingPhone) {
+      throw new HttpError(409, 'Phone number is already registered.');
+    }
   }
 
   const user = await UserModel.create({
     emailEncrypted: email ? encryptValue(normalizeIdentifier(email)) : undefined,
     emailHash,
-    phoneEncrypted: phone ? encryptValue(phone.trim()) : undefined,
+    phoneEncrypted: phone ? encryptValue(normalizeIdentifier(phone)) : undefined,
     phoneHash,
     passwordHash: await hashPassword(password),
     isAdmin: userCount === 0,

@@ -151,7 +151,13 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   isHydrated: false,
   isSyncing: false,
   initialize: async (context) => {
-    const persisted = await loadPersistedSettings();
+    let persisted = defaultSettings;
+    try {
+      persisted = await loadPersistedSettings();
+    } catch (err) {
+      console.error('Failed to load persisted notification settings:', err);
+    }
+
     const merged = normalizeSettings({
       ...persisted,
       hydrationAlert: context.hydrationReminder ? normalizeHydrationReminder(context.hydrationReminder) : persisted.hydrationAlert,

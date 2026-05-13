@@ -147,8 +147,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ user, imageConsent, isHydrated: true });
         await persistSession({ user, tokens: nextTokens });
       }
-    } catch {
-      await persistSession(null);
+    } catch (err) {
+      console.error('Auth initialization error:', err);
+      try {
+        await persistSession(null);
+      } catch (storageErr) {
+        console.error('Failed to clear session storage during recovery:', storageErr);
+      }
       set({ user: null, tokens: null, imageConsent: null, isHydrated: true });
     }
   },

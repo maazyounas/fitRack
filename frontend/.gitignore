@@ -45,6 +45,8 @@ pnpm-debug.*
 coverage/
 .cache/
 
+.env
+
 app-example
 
 # generated native folders

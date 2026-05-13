@@ -19,7 +19,7 @@ export function validatePhone(phone: string) {
     return null;
   }
 
-  return /^\+?[0-9]{10,15}$/.test(phone) ? null : 'Enter a valid phone number.';
+  return /^\+?[0-9\s-]{10,20}$/.test(phone) ? null : 'Enter a valid phone number.';
 }
 
 export function validatePassword(password: string) {

@@ -1,157 +1,133 @@
-import * as tf from '@tensorflow/tfjs-core';
-import '@tensorflow/tfjs-react-native';
-import '@tensorflow/tfjs-backend-webgl';
-import '@tensorflow/tfjs-backend-cpu';
-import * as poseDetection from '@tensorflow-models/pose-detection';
-import { decodeJpeg } from '@tensorflow/tfjs-react-native';
-import * as FileSystem from 'expo-file-system';
-import { AnalysisInput, AnalysisSuggestion, BodyAnalysisResult, BodyType, LandmarkPoint } from '@/types/bodyAnalysis';
+/**
+ * bodyAnalysis.ts — Orchestrator service for AI analysis (Placeholder Version).
+ * Placeholder implementation without TensorFlow dependencies.
+ * Uses mock data instead of real landmark detection.
+ */
 
-let detector: poseDetection.PoseDetector | null = null;
+// Removed TensorFlow dependencies - using placeholder data instead
+import { classifyBodyType } from './bodyTypeService';
+import { generateRecommendationPlan } from './recommendationService';
+import { useOnboardingStore } from '@/store/onboardingStore';
+import { useAuthStore } from '@/store/authStore';
+import type { 
+  AnalysisInput, 
+  BodyAnalysisResult, 
+  LandmarkPoint 
+} from '@/types/bodyAnalysis';
 
-async function getDetector() {
-  if (detector) return detector;
-  
-  await tf.ready();
-  const model = poseDetection.SupportedModels.BlazePose;
-  const detectorConfig = {
-    runtime: 'tfjs',
-    enableSmoothing: true,
-    modelType: 'full'
-  } as any;
-  
-  detector = await poseDetection.createDetector(model, detectorConfig);
-  return detector;
+/**
+ * Placeholder landmark detection - returns mock data without TensorFlow
+ */
+function getPlaceholderLandmarks() {
+  return {
+    landmarks: [
+      { id: 'nose', label: 'Nose', x: 0.5, y: 0.2, confidence: 0.95 },
+      { id: 'left_shoulder', label: 'Left Shoulder', x: 0.35, y: 0.45, confidence: 0.92 },
+      { id: 'right_shoulder', label: 'Right Shoulder', x: 0.65, y: 0.45, confidence: 0.92 },
+      { id: 'left_hip', label: 'Left Hip', x: 0.38, y: 0.65, confidence: 0.88 },
+      { id: 'right_hip', label: 'Right Hip', x: 0.62, y: 0.65, confidence: 0.88 },
+    ],
+    ratios: {
+      shoulderToWaist: 1.4,
+      shoulderToHip: 1.3,
+      hipToWaist: 0.9,
+      torsoToLeg: 0.52,
+    },
+    postureData: {
+      spineAngleDeg: 5,
+      shoulderLevelDeg: 2,
+      hipLevelDeg: 3,
+      headForwardPosture: false,
+    },
+    confidence: 0.90,
+    detectedPoses: 1,
+  };
 }
 
-function classifyBodyType(input: AnalysisInput, poses: poseDetection.Pose[]): { bodyType: BodyType; confidence: number } {
-  // If we have a manual wrist measurement, prioritize that for body type estimation
-  if (input.mode === 'wrist' && input.wristCm) {
-    if (input.wristCm < 16.5) return { bodyType: 'ectomorph', confidence: 0.85 };
-    if (input.wristCm > 18.5) return { bodyType: 'endomorph', confidence: 0.82 };
-    return { bodyType: 'mesomorph', confidence: 0.88 };
-  }
-
-  // Otherwise, use pose landmarks if available
-  if (poses.length > 0) {
-    const pose = poses[0];
-    const leftWrist = pose.keypoints.find(k => k.name === 'left_wrist');
-    const rightWrist = pose.keypoints.find(k => k.name === 'right_wrist');
-    const leftShoulder = pose.keypoints.find(k => k.name === 'left_shoulder');
-    const rightShoulder = pose.keypoints.find(k => k.name === 'right_shoulder');
-
-    if (leftWrist && rightWrist && leftShoulder && rightShoulder) {
-      // Very simple heuristic: wrist-to-shoulder ratio as a proxy for frame size
-      const shoulderWidth = Math.sqrt(Math.pow(leftShoulder.x - rightShoulder.x, 2) + Math.pow(leftShoulder.y - rightShoulder.y, 2));
-      // This is a placeholder for a more complex biometric ratio
-      // In a real app, you'd calibrate this with known distances or depth data
-      const bmi = input.heightCm && input.weightKg ? input.weightKg / Math.pow(input.heightCm / 100, 2) : 22;
-      
-      if (bmi < 19) return { bodyType: 'ectomorph', confidence: 0.75 };
-      if (bmi > 28) return { bodyType: 'endomorph', confidence: 0.78 };
-      return { bodyType: 'mesomorph', confidence: 0.82 };
-    }
-  }
-
-  // Fallback to BMI if provided
-  if (input.heightCm && input.weightKg) {
-    const bmi = input.weightKg / Math.pow(input.heightCm / 100, 2);
-    if (bmi < 20.5) return { bodyType: 'ectomorph', confidence: 0.65 };
-    if (bmi > 27) return { bodyType: 'endomorph', confidence: 0.68 };
-  }
-
-  return { bodyType: 'mesomorph', confidence: 0.6 };
-}
-
-function workoutSuggestions(bodyType: BodyType): AnalysisSuggestion[] {
-  switch (bodyType) {
-    case 'ectomorph':
-      return [
-        { title: 'Focus on Heavy Compounds', description: 'Prioritize squats, deadlifts, and presses with longer rest periods to maximize muscle recruitment.' },
-        { title: 'Minimize Excessive Cardio', description: 'Limit high-intensity steady state cardio to preserve calories for muscle building.' }
-      ];
-    case 'endomorph':
-      return [
-        { title: 'Incorporate Metabolic Conditioning', description: 'Add 15-20 minute HIIT blocks after your weight training to boost calorie burn.' },
-        { title: 'High Volume Resistance', description: 'Use sets of 12-15 reps with shorter rest periods (45-60s) to keep heart rate elevated.' }
-      ];
-    default:
-      return [
-        { title: 'Balanced Hypertrophy', description: 'Mix heavy strength days (5-8 reps) with moderate hypertrophy days (10-12 reps).' },
-        { title: 'Versatile Conditioning', description: 'Include 2-3 sessions of moderate intensity cardio weekly for heart health and recovery.' }
-      ];
-  }
-}
-
-function dietSuggestions(bodyType: BodyType): AnalysisSuggestion[] {
-  switch (bodyType) {
-    case 'ectomorph':
-      return [
-        { title: 'Significant Calorie Surplus', description: 'Aim for 300-500 calories above maintenance with high complex carbohydrate intake.' },
-        { title: 'Frequent Meals', description: 'Eat 5-6 smaller meals per day to ensure consistent nutrient availability.' }
-      ];
-    case 'endomorph':
-      return [
-        { title: 'Carbohydrate Timing', description: 'Focus carb intake around your workout window; use low-carb options for other meals.' },
-        { title: 'High Fiber and Protein', description: 'Prioritize satiety with lean meats and large volume of fibrous vegetables.' }
-      ];
-    default:
-      return [
-        { title: 'Performance Maintenance', description: 'Maintain a 40/30/30 macro split (Carbs/Protein/Fats) for consistent energy and recovery.' },
-        { title: 'Modular Adjustments', description: 'Increase carb intake slightly during intense training phases and decrease during deloads.' }
-      ];
-  }
-}
-
+/**
+ * Main entry point for performing a body scan analysis.
+ * Uses placeholder data instead of TensorFlow.
+ */
 export async function runBodyAnalysis(input: AnalysisInput): Promise<BodyAnalysisResult> {
-  try {
-    const poseDetector = await getDetector();
-    
-    // 1. Read image as base64
-    const base64 = await FileSystem.readAsStringAsync(input.image.uri, {
-      encoding: 'base64',
-    });
-    
-    // 2. Decode into tensor
-    const imageData = tf.util.encodeString(base64, 'base64');
-    const imageTensor = decodeJpeg(new Uint8Array(imageData.buffer));
-    
-    // 3. Run detector
-    const poses = await poseDetector.estimatePoses(imageTensor);
-    
-    // 4. Cleanup tensor
-    imageTensor.dispose();
-    
-    // 5. Process results
-    const classification = classifyBodyType(input, poses);
-    
-    const landmarks: LandmarkPoint[] = poses.length > 0 
-      ? poses[0].keypoints.map(kp => ({
-          id: kp.name || 'unnamed',
-          label: kp.name || 'Unnamed',
-          x: kp.x / input.image.width,
-          y: kp.y / input.image.height,
-          confidence: kp.score || 0
-        }))
-      : [];
+  const onboarding = useOnboardingStore.getState();
+  const auth = useAuthStore.getState();
+  
+  const gender = onboarding.gender || (auth.user?.profile.gender === 'female' ? 'female' : 'male');
+  const height = input.heightCm || onboarding.metrics?.heightCm || auth.user?.profile.heightCm || 170;
+  const weight = input.weightKg || onboarding.metrics?.weightKg || auth.user?.profile.weightKg || 70;
+  const age = onboarding.metrics?.age || auth.user?.profile.age || 25;
+  const activityLevel = onboarding.metrics?.activityLevel || 'moderate';
+  const experience = onboarding.metrics?.experience || 'beginner';
+  const goals = onboarding.goals || [];
 
-    return {
+  try {
+    // 1. Use Placeholder Landmarks & Ratios
+    const detection = getPlaceholderLandmarks();
+
+    if (detection.landmarks.length === 0 && input.mode === 'body') {
+      throw new Error('No body detected. Please ensure your full body is visible in the frame.');
+    }
+
+    // 2. Classify Body Type
+    const classification = classifyBodyType({
+      heightCm: height,
+      weightKg: weight,
+      wristCm: input.wristCm || onboarding.metrics?.wristCm,
+      shoulderWidthPx: detection.ratios.shoulderToWaist ? 1.5 : undefined, // Placeholder for actual pixel widths if needed
+      waistWidthPx: 1,
+    });
+
+    // 3. Generate Recommendations
+    const plan = generateRecommendationPlan({
+      bodyType: classification.bodyType,
+      goals,
+      activityLevel,
+      experience,
+      gender,
+      heightCm: height,
+      weightKg: weight,
+      age,
+    });
+
+    // 4. Transform to Result Type
+    const landmarks: LandmarkPoint[] = detection.landmarks.map(l => ({
+      id: l.id,
+      label: l.label,
+      x: l.x,
+      y: l.y,
+      confidence: l.confidence,
+    }));
+
+    const result: BodyAnalysisResult = {
       mode: input.mode,
       bodyType: classification.bodyType,
-      confidence: classification.confidence,
+      confidence: (classification.confidence + detection.confidence) / 2,
       processedLocally: true,
       storageAllowed: input.consentToStore,
       mediapipeStatus: 'active',
-      summary: `On-device MediaPipe analysis successfully estimated your body type as ${classification.bodyType}.`,
+      summary: classification.insights[0] || `Analysis complete. Detected ${classification.bodyType} body type.`,
       landmarks,
-      workoutSuggestions: workoutSuggestions(classification.bodyType),
-      dietSuggestions: dietSuggestions(classification.bodyType),
-      postureNotes: ['Detected landmarks match standard front-facing profile.'],
-      angleFeedback: ['Good framing detected. Calibration complete.']
+      workoutSuggestions: plan.workoutSplit.map(s => ({
+        title: s.focus,
+        description: s.exercises.join(', '),
+      })),
+      dietSuggestions: plan.diet.notes.map(n => ({
+        title: 'Dietary Focus',
+        description: n,
+      })),
+      postureNotes: [
+        `Spine angle: ${detection.postureData.spineAngleDeg.toFixed(1)}°`,
+        detection.postureData.headForwardPosture ? 'Slight head forward posture detected.' : 'Good head alignment.',
+      ],
+      angleFeedback: [
+        `Shoulder level: ${detection.postureData.shoulderLevelDeg.toFixed(1)}°`,
+        `Hip level: ${detection.postureData.hipLevelDeg.toFixed(1)}°`,
+      ],
     };
+
+    return result;
   } catch (error) {
-    console.error('Local analysis error:', error);
-    throw new Error('On-device analysis failed. Please ensure the image is clear and try again.');
+    console.error('[runBodyAnalysis] Error:', error);
+    throw error instanceof Error ? error : new Error('Analysis failed. Please try again.');
   }
 }
-

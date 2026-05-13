@@ -39,7 +39,11 @@ export default function LoginScreen() {
 
     try {
       touchActivity();
-      await login(identifier.trim(), password, rememberMe);
+      const normalizedIdentifier = identifier.trim().includes('@')
+        ? identifier.trim().toLowerCase()
+        : identifier.trim().replace(/[^\d+]/g, '');
+
+      await login(normalizedIdentifier, password, rememberMe);
       router.replace('/(tabs)/home');
     } catch (error) {
       Alert.alert('Login failed', error instanceof Error ? error.message : 'Unable to log in.');

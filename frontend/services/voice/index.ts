@@ -50,12 +50,12 @@ export async function startVoiceRecognition(language: 'en' | 'ur'): Promise<Voic
     recognition.lang = language === 'ur' ? 'ur-PK' : 'en-US';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: any) => {
       const transcript = event.results[0]?.[0]?.transcript?.trim();
       recognition.stop();
       resolve({ supported: true, transcript });
     };
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: any) => {
       recognition.stop();
       resolve({ supported: true, error: event.error ?? 'error' });
     };

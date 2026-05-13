@@ -14,6 +14,7 @@ import { progressRoutes } from './routes/progressRoutes';
 import { communityRoutes } from './routes/communityRoutes';
 import { userRoutes } from './routes/userRoutes';
 import { workoutRoutes } from './routes/workoutRoutes';
+import bodyAnalysisRoutes from './routes/bodyAnalysis';
 import { errorHandler } from './middleware/errorHandler';
 import { recordRequestLog } from './services/adminTelemetry';
 
@@ -97,6 +98,7 @@ app.use('/api/exercises', exerciseRoutes);
 app.use('/api/nutrition', nutritionRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/community', communityRoutes);
+app.use('/api/body-analysis', bodyAnalysisRoutes);
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 app.use(errorHandler);

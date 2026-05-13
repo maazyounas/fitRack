@@ -91,9 +91,15 @@ export default function SignupScreen() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [resendCooldown, setResendCooldown] = useState(0);
 
+  const [preferredVerification, setPreferredVerification] = useState<'email' | 'phone' | null>(null);
+
   const verificationPurpose = useMemo(
-    () => (email.trim() ? 'verify-email' : 'verify-phone'),
-    [email]
+    () => {
+      if (preferredVerification === 'phone') return 'verify-phone';
+      if (preferredVerification === 'email') return 'verify-email';
+      return email.trim() ? 'verify-email' : 'verify-phone';
+    },
+    [email, preferredVerification]
   );
 
   const setField = (field: keyof FieldErrors) => (value: string) => {
@@ -141,12 +147,16 @@ export default function SignupScreen() {
 
     try {
       touchActivity();
+      const identifier = verificationPurpose === 'verify-email' 
+        ? email.trim().toLowerCase() 
+        : phone.trim().replace(/[^\d+]/g, '');
+
       await verifyOtp({
-        identifier: email.trim() || phone.trim(),
+        identifier,
         otp,
         purpose: verificationPurpose,
       });
-      await useAuthStore.getState().login(email.trim() || phone.trim(), password, true);
+      await useAuthStore.getState().login(identifier, password, true);
       router.replace('/(tabs)/home');
     } catch (error) {
       Alert.alert('Verification failed', error instanceof Error ? error.message : 'Try again.');
@@ -156,8 +166,12 @@ export default function SignupScreen() {
   const handleResend = async () => {
     if (resendCooldown > 0) return;
     try {
+      const identifier = verificationPurpose === 'verify-email' 
+        ? email.trim().toLowerCase() 
+        : phone.trim().replace(/[^\d+]/g, '');
+
       await resendOtp({
-        identifier: email.trim() || phone.trim(),
+        identifier,
         purpose: verificationPurpose,
       });
       Alert.alert('OTP Resent', 'A new 6-digit code has been sent.');

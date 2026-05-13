@@ -2,7 +2,6 @@ import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import {
-  ActivityIndicator,
   Animated,
   AppState,
   Pressable,
@@ -19,7 +18,9 @@ import { useTheme } from '@/hooks/useTheme';
 import { useNutritionStore } from '@/store/nutritionStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useNotificationStore } from '@/store/notificationStore';
+import { useOnboardingStore } from '@/store/onboardingStore';
 import { SESSION_TIMEOUT_MS, SESSION_WARNING_MS } from '@/constants/config';
+import { AnimatedSplashScreen } from '@/components/AnimatedSplashScreen';
 
 // ─── Session Warning Banner ───────────────────────────────────────────────────
 
@@ -71,6 +72,11 @@ export default function RootLayout() {
     touchActivity,
     sessionWarning,
   } = useAuthStore();
+  const {
+    initialize: initOnboarding,
+    isHydrated: onboardingHydrated,
+    onboardingCompleted,
+  } = useOnboardingStore();
   const hydrationReminder = useNutritionStore((state) => state.hydrationReminder);
   const workoutPlans = useWorkoutStore((state) => state.plans);
   const initializeNotifications = useNotificationStore((state) => state.initialize);
@@ -78,11 +84,16 @@ export default function RootLayout() {
   const notificationsHydrated = useNotificationStore((state) => state.isHydrated);
   const clearNotifications = useNotificationStore((state) => state.clear);
 
+  const fullyHydrated = isHydrated && onboardingHydrated;
+
   useEffect(() => {
     initialize().catch(err => {
       console.error('Auth initialization failed:', err);
     });
-  }, [initialize]);
+    initOnboarding().catch(err => {
+      console.error('Onboarding initialization failed:', err);
+    });
+  }, [initialize, initOnboarding]);
 
   // Inactivity check — every 30 seconds + on app foreground
   useEffect(() => {
@@ -106,18 +117,28 @@ export default function RootLayout() {
 
   // Navigation guard
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!fullyHydrated) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const inOnboardingGroup = segments[0] === '(onboarding)';
+
+    // Not logged in → go to login
     if (!user && !inAuthGroup) {
       router.replace('/login');
       return;
     }
 
-    if (user && (inAuthGroup || pathname === '/')) {
+    // Logged in but onboarding not done → start onboarding (except if already there)
+    if (user && !onboardingCompleted && !inOnboardingGroup && !inAuthGroup) {
+      router.replace('/(onboarding)/gender' as any);
+      return;
+    }
+
+    // Logged in and onboarding done → go to home
+    if (user && onboardingCompleted && (inAuthGroup || inOnboardingGroup || pathname === '/')) {
       router.replace('/(tabs)/home');
     }
-  }, [isHydrated, pathname, router, segments, user]);
+  }, [fullyHydrated, pathname, router, segments, user, onboardingCompleted]);
 
   // Notifications sync
   useEffect(() => {
@@ -158,33 +179,29 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
-      {!isHydrated ? (
-        <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#0f766e" />
-        </View>
-      ) : (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          {/* Session warning banner renders above the Stack */}
-          {user && <SessionWarningBanner />}
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="admin" />
-            <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
-          </Stack>
-        </GestureHandlerRootView>
-      )}
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        {/* Premium animated splash — visible while stores hydrate */}
+        <AnimatedSplashScreen visible={!fullyHydrated} />
+
+        {fullyHydrated && (
+          <>
+            {/* Session warning banner renders above the Stack */}
+            {user && <SessionWarningBanner />}
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="(onboarding)" />
+              <Stack.Screen name="admin" />
+              <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
+            </Stack>
+          </>
+        )}
+      </GestureHandlerRootView>
     </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  loader: {
-    alignItems: 'center',
-    backgroundColor: '#f4f7f5',
-    flex: 1,
-    justifyContent: 'center',
-  },
   warningBanner: {
     backgroundColor: '#b45309',
     flexDirection: 'row',
