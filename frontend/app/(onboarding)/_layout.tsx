@@ -50,12 +50,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#0a0f1e',
+    backgroundColor: '#f1f5f9',
   },
   track: {
     flex: 1,
-    height: 3,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    height: 4,
+    backgroundColor: '#e2e8f0',
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -65,9 +65,9 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   stepLabel: {
-    color: 'rgba(255,255,255,0.45)',
+    color: '#64748b',
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
 });

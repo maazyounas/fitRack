@@ -35,7 +35,6 @@ function ScanAnimation() {
   const cornerScale = useSharedValue(1);
 
   useEffect(() => {
-    // Scan line sweeping up-down
     scanY.value = withRepeat(
       withSequence(
         withTiming(160, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
@@ -61,24 +60,17 @@ function ScanAnimation() {
 
   return (
     <View style={scanStyles.container}>
-      {/* Silhouette placeholder */}
       <View style={scanStyles.silhouetteBox}>
-        <Ionicons name="person-outline" size={80} color="rgba(13,148,136,0.3)" />
+        <Ionicons name="person-outline" size={80} color="#cbd5e1" />
       </View>
 
-      {/* Animated corners */}
       <Animated.View style={[StyleSheet.absoluteFill, cornerStyle]}>
-        {/* Top-left */}
         <View style={[scanStyles.corner, scanStyles.tl]} />
-        {/* Top-right */}
         <View style={[scanStyles.corner, scanStyles.tr]} />
-        {/* Bottom-left */}
         <View style={[scanStyles.corner, scanStyles.bl]} />
-        {/* Bottom-right */}
         <View style={[scanStyles.corner, scanStyles.br]} />
       </Animated.View>
 
-      {/* Scan line */}
       <Animated.View style={[scanStyles.scanLine, scanStyle]}>
         <LinearGradient
           colors={['transparent', '#0d9488', '#14b8a6', '#0d9488', 'transparent']}
@@ -92,7 +84,7 @@ function ScanAnimation() {
 }
 
 const scanStyles = StyleSheet.create({
-  container: { width: 200, height: 240, alignSelf: 'center', position: 'relative', alignItems: 'center', justifyContent: 'center', marginVertical: 32 },
+  container: { width: 200, height: 240, alignSelf: 'center', position: 'relative', alignItems: 'center', justifyContent: 'center', marginVertical: 24 },
   silhouetteBox: { alignItems: 'center', justifyContent: 'center' },
   corner: { position: 'absolute', width: 24, height: 24, borderColor: '#0d9488', borderWidth: 3 },
   tl: { top: 0, left: 0, borderBottomWidth: 0, borderRightWidth: 0, borderTopLeftRadius: 6 },
@@ -101,13 +93,6 @@ const scanStyles = StyleSheet.create({
   br: { bottom: 0, right: 0, borderTopWidth: 0, borderLeftWidth: 0, borderBottomRightRadius: 6 },
   scanLine: { position: 'absolute', left: 0, right: 0, height: 2, zIndex: 10 },
 });
-
-// ─── Feature Rows ─────────────────────────────────────────────────────────────
-const FEATURES = [
-  { icon: 'shield-checkmark-outline', title: 'Privacy First', desc: 'All image processing happens on your device. Nothing is uploaded.' },
-  { icon: 'body-outline', title: 'Body Type AI', desc: 'Detects Ectomorph, Mesomorph, or Endomorph from posture & proportions.' },
-  { icon: 'sparkles-outline', title: 'Instant Plan', desc: 'Get personalized workouts & nutrition tailored to your body type.' },
-] as const;
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function AiIntroScreen() {
@@ -119,7 +104,6 @@ export default function AiIntroScreen() {
     await completeOnboarding();
     try {
       if (metrics && gender) {
-        // 1. Sync to standard profile endpoint
         await updateProfile({
           gender,
           heightCm: metrics.heightCm,
@@ -127,7 +111,6 @@ export default function AiIntroScreen() {
           age: metrics.age,
         });
 
-        // 2. Sync to dedicated onboarding endpoint for deep analysis
         await saveOnboardingToBackend({
           gender,
           heightCm: metrics.heightCm,
@@ -140,7 +123,7 @@ export default function AiIntroScreen() {
         });
       }
     } catch (err) {
-      console.warn('Backend sync failed, but onboarding completed locally:', err);
+      console.warn('Backend sync failed, locally completed:', err);
     }
   };
 
@@ -155,39 +138,58 @@ export default function AiIntroScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0f1e" />
-      <LinearGradient colors={['#0a0f1e', '#0f1c2a']} style={StyleSheet.absoluteFill} />
+    <View style={styles.safe}>
+      <StatusBar barStyle="light-content" />
 
-      <View style={styles.progressWrap}>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: '100%' }]} />
-        </View>
-        <Text style={styles.progressLabel}>4 of 4</Text>
-      </View>
-
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.eyebrow}>AI ANALYSIS</Text>
-        <Text style={styles.title}>Meet your{'\n'}AI Body Coach</Text>
-        <Text style={styles.subtitle}>
-          One quick scan is all we need to unlock your fully personalised fitness plan.
-        </Text>
-
-        <ScanAnimation />
-
-        <View style={styles.features}>
-          {FEATURES.map((f) => (
-            <View key={f.title} style={styles.featureRow}>
-              <LinearGradient colors={['#0d9488', '#0f766e']} style={styles.featureIcon}>
-                <Ionicons name={f.icon} size={20} color="#fff" />
-              </LinearGradient>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureDesc}>{f.desc}</Text>
-              </View>
+      {/* Hero Banner */}
+      <LinearGradient
+        colors={['#0d9488', '#0f766e', '#115e59']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        <SafeAreaView edges={['top']}>
+          <View style={styles.progressWrap}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: '100%' }]} />
             </View>
-          ))}
+            <Text style={styles.progressLabel}>Final Step</Text>
+          </View>
+
+          <View style={styles.heroContent}>
+            <Text style={styles.eyebrow}>AI ANALYSIS</Text>
+            <Text style={styles.title}>AI Body Coach</Text>
+            <Text style={styles.subtitle}>
+              One quick scan is all we need to unlock your fully personalised fitness plan.
+            </Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+
+      <ScrollView 
+        style={{ flex: 1 }} 
+        contentContainerStyle={styles.scrollContent} 
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.card}>
+          <ScanAnimation />
+
+          <View style={styles.features}>
+            {FEATURES.map((f) => (
+              <View key={f.title} style={styles.featureRow}>
+                <View style={styles.featureIcon}>
+                  <Ionicons name={f.icon} size={20} color="#0d9488" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.featureTitle}>{f.title}</Text>
+                  <Text style={styles.featureDesc}>{f.desc}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
+
+        <View style={{ height: 160 }} />
       </ScrollView>
 
       <View style={styles.footer}>
@@ -200,24 +202,51 @@ export default function AiIntroScreen() {
           style={{ marginTop: 8 }}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
+const FEATURES = [
+  {
+    title: 'Precise Metrics',
+    desc: 'Get accurate body fat %, BMI, and muscle mass estimates.',
+    icon: 'analytics-outline' as const,
+  },
+  {
+    title: 'Privacy First',
+    desc: 'Your photos never leave your device. Analysis is done securely.',
+    icon: 'shield-checkmark-outline' as const,
+  },
+  {
+    title: 'Smart Progress',
+    desc: 'Track changes over time with visual comparisons and trends.',
+    icon: 'trending-up-outline' as const,
+  },
+];
+
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0a0f1e' },
-  progressWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 },
-  progressTrack: { flex: 1, height: 3, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#0d9488', borderRadius: 2 },
-  progressLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '600' },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 24 },
-  eyebrow: { color: '#2dd4bf', fontSize: 11, fontWeight: '700', letterSpacing: 3, marginBottom: 8 },
-  title: { color: '#fff', fontSize: 34, fontWeight: '800', lineHeight: 40, marginBottom: 8 },
-  subtitle: { color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 20 },
-  features: { gap: 16 },
+  safe: { flex: 1, backgroundColor: '#f1f5f9' },
+  hero: {
+    paddingTop: 20,
+    paddingBottom: 60,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  heroContent: { marginTop: 20 },
+  progressWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24 },
+  progressTrack: { flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 2 },
+  progressLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700' },
+  eyebrow: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase' },
+  title: { color: '#fff', fontSize: 32, fontWeight: '800', lineHeight: 38, marginBottom: 10 },
+  subtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 14, lineHeight: 20, maxWidth: '90%' },
+  card: { backgroundColor: '#fff', borderRadius: 24, marginHorizontal: 20, marginTop: -40, padding: 24, shadowColor: '#0f172a', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 8 },
+  scrollContent: { paddingTop: 0 },
+  features: { gap: 16, marginTop: 12 },
   featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  featureIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  featureTitle: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 3 },
-  featureDesc: { color: 'rgba(255,255,255,0.45)', fontSize: 13, lineHeight: 18 },
-  footer: { paddingHorizontal: 24, paddingBottom: 36, paddingTop: 12, gap: 0 },
+  featureIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#f0fdfa', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#ccfbf1' },
+  featureTitle: { color: '#1e293b', fontSize: 15, fontWeight: '700', marginBottom: 3 },
+  featureDesc: { color: '#64748b', fontSize: 13, lineHeight: 18 },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingBottom: 40, paddingTop: 16, backgroundColor: '#f1f5f9' },
 });

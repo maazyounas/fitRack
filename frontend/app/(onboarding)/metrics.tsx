@@ -70,14 +70,13 @@ function MetricSlider({
       </View>
 
       <View style={sliderStyles.track} onStartShouldSetResponder={() => true} onResponderGrant={handlePress} onResponderMove={handlePress}>
-        {/* Filled track */}
+        <View style={sliderStyles.trackBg} />
         <LinearGradient
           colors={['#0d9488', '#14b8a6']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[sliderStyles.fill, { width: `${progress * 100}%` }]}
         />
-        {/* Thumb */}
         <View style={[sliderStyles.thumb, { left: thumbLeft }]} />
       </View>
 
@@ -92,15 +91,16 @@ function MetricSlider({
 const sliderStyles = StyleSheet.create({
   wrap: { marginBottom: 24 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  label: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600' },
-  valuePill: { flexDirection: 'row', alignItems: 'baseline', backgroundColor: 'rgba(13,148,136,0.2)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, gap: 3 },
-  value: { color: '#2dd4bf', fontSize: 22, fontWeight: '800' },
-  unit: { color: 'rgba(45,212,191,0.7)', fontSize: 13, fontWeight: '600' },
-  track: { height: 4, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, position: 'relative', justifyContent: 'center' },
-  fill: { position: 'absolute', height: '100%', borderRadius: 2, left: 0 },
-  thumb: { position: 'absolute', width: 28, height: 28, borderRadius: 14, backgroundColor: '#0d9488', borderWidth: 3, borderColor: '#fff', shadowColor: '#0d9488', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 8, elevation: 6, top: -12 },
+  label: { color: '#334155', fontSize: 14, fontWeight: '700' },
+  valuePill: { flexDirection: 'row', alignItems: 'baseline', backgroundColor: '#f0fdfa', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, gap: 3, borderWidth: 1, borderColor: '#ccfbf1' },
+  value: { color: '#0d9488', fontSize: 20, fontWeight: '800' },
+  unit: { color: '#0d9488', fontSize: 12, fontWeight: '600', opacity: 0.7 },
+  track: { height: 32, position: 'relative', justifyContent: 'center' },
+  trackBg: { height: 6, backgroundColor: '#e2e8f0', borderRadius: 3, width: '100%' },
+  fill: { position: 'absolute', height: 6, borderRadius: 3, left: 0 },
+  thumb: { position: 'absolute', width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff', borderWidth: 2, borderColor: '#0d9488', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
   rangeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  rangeLabel: { color: 'rgba(255,255,255,0.3)', fontSize: 11 },
+  rangeLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '600' },
 });
 
 // ─── Chip Selector ─────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ function ChipGroup<T extends string>({
                 <Ionicons
                   name={opt.icon}
                   size={14}
-                  color={active ? '#fff' : 'rgba(255,255,255,0.45)'}
+                  color={active ? '#fff' : '#64748b'}
                 />
               )}
               <Text style={[chipStyles.chipLabel, active && chipStyles.chipLabelActive]}>
@@ -148,11 +148,11 @@ function ChipGroup<T extends string>({
 
 const chipStyles = StyleSheet.create({
   wrap: { marginBottom: 24 },
-  groupLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600', marginBottom: 12 },
+  groupLabel: { color: '#334155', fontSize: 14, fontWeight: '700', marginBottom: 12 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.04)', flexDirection: 'row', alignItems: 'center', gap: 6 },
+  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', gap: 6 },
   chipActive: { backgroundColor: '#0d9488', borderColor: '#0d9488' },
-  chipLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: '600' },
+  chipLabel: { color: '#64748b', fontSize: 14, fontWeight: '600' },
   chipLabelActive: { color: '#fff' },
 });
 
@@ -200,17 +200,34 @@ export default function MetricsScreen() {
   const bmi = weight / Math.pow(height / 100, 2);
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0f1e" />
-      <LinearGradient colors={['#0a0f1e', '#0f1c2a']} style={StyleSheet.absoluteFill} />
+    <View style={styles.safe}>
+      <StatusBar barStyle="light-content" />
 
-      {/* Progress */}
-      <View style={styles.progressWrap}>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: '50%' }]} />
-        </View>
-        <Text style={styles.progressLabel}>2 of 4</Text>
-      </View>
+      {/* Hero Banner */}
+      <LinearGradient
+        colors={['#0d9488', '#0f766e', '#115e59']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        <SafeAreaView edges={['top']}>
+          {/* Progress */}
+          <View style={styles.progressWrap}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: '50%' }]} />
+            </View>
+            <Text style={styles.progressLabel}>Step 2 of 4</Text>
+          </View>
+
+          <View style={styles.heroContent}>
+            <Text style={styles.eyebrow}>YOUR BODY</Text>
+            <Text style={styles.title}>Body Metrics</Text>
+            <Text style={styles.subtitle}>
+              Accurate measurements unlock precise AI recommendations.
+            </Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
       <ScrollView
         style={{ flex: 1 }}
@@ -218,33 +235,31 @@ export default function MetricsScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <Text style={styles.eyebrow}>YOUR BODY</Text>
-        <Text style={styles.title}>Body Metrics</Text>
-        <Text style={styles.subtitle}>
-          Accurate measurements unlock precise AI recommendations.
-        </Text>
-
-        {/* BMI preview */}
-        <View style={styles.bmiCard}>
-          <LinearGradient colors={['#0d9488', '#115e59']} style={styles.bmiGradient}>
-            <Text style={styles.bmiLabel}>Current BMI</Text>
+        {/* Card */}
+        <View style={styles.card}>
+          {/* BMI preview */}
+          <View style={styles.bmiSection}>
+            <View style={styles.bmiHeader}>
+              <Text style={styles.bmiLabel}>Estimated BMI</Text>
+              <View style={styles.bmiBadge}>
+                <Text style={styles.bmiBadgeText}>
+                  {bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese'}
+                </Text>
+              </View>
+            </View>
             <Text style={styles.bmiValue}>{bmi.toFixed(1)}</Text>
-            <Text style={styles.bmiCategory}>
-              {bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese'}
-            </Text>
-          </LinearGradient>
-        </View>
+          </View>
 
-        {/* Sliders */}
-        <View style={styles.section}>
+          <View style={styles.divider} />
+
+          {/* Sliders */}
           <MetricSlider label="Height" value={height} min={140} max={220} unit="cm" onValueChange={setHeight} />
           <MetricSlider label="Weight" value={weight} min={40} max={150} unit="kg" onValueChange={setWeight} step={0.5} />
           <MetricSlider label="Age" value={age} min={16} max={80} unit="yrs" onValueChange={setAge} />
-        </View>
 
-        {/* Chips */}
-        <View style={styles.section}>
+          <View style={styles.divider} />
+
+          {/* Chips */}
           <ChipGroup
             label="Activity Level"
             options={ACTIVITY_OPTIONS}
@@ -257,57 +272,73 @@ export default function MetricsScreen() {
             value={experience}
             onChange={setExperience}
           />
-        </View>
 
-        {/* Optional wrist */}
-        <View style={styles.section}>
-          <Text style={styles.optionalLabel}>Wrist Circumference (optional)</Text>
-          <Text style={styles.optionalSub}>
-            Improves body frame estimation for ectomorph / endomorph detection.
-          </Text>
-          <View style={styles.wristInput}>
-            <Ionicons name="watch-outline" size={18} color="#2dd4bf" />
-            <TextInput
-              value={wrist}
-              onChangeText={setWrist}
-              keyboardType="decimal-pad"
-              placeholder="e.g. 17.5"
-              placeholderTextColor="rgba(255,255,255,0.25)"
-              style={styles.wristField}
-            />
-            <Text style={styles.wristUnit}>cm</Text>
+          <View style={styles.divider} />
+
+          {/* Optional wrist */}
+          <View style={styles.wristSection}>
+            <Text style={styles.optionalLabel}>Wrist Circumference (optional)</Text>
+            <Text style={styles.optionalSub}>
+              Helps detect your body frame type (Ectomorph/Endomorph).
+            </Text>
+            <View style={styles.wristInput}>
+              <Ionicons name="watch-outline" size={18} color="#0d9488" />
+              <TextInput
+                value={wrist}
+                onChangeText={setWrist}
+                keyboardType="decimal-pad"
+                placeholder="e.g. 17.5"
+                placeholderTextColor="#94a3b8"
+                style={styles.wristField}
+              />
+              <Text style={styles.wristUnit}>cm</Text>
+            </View>
           </View>
         </View>
+
+        {/* Extra padding for footer */}
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* CTA */}
+      {/* Footer CTA */}
       <View style={styles.footer}>
         <PremiumButton label="Continue" disabled={!canContinue} onPress={handleContinue} />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0a0f1e' },
-  progressWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 },
-  progressTrack: { flex: 1, height: 3, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#0d9488', borderRadius: 2 },
-  progressLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '600' },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 24 },
-  eyebrow: { color: '#2dd4bf', fontSize: 11, fontWeight: '700', letterSpacing: 3, marginBottom: 8 },
-  title: { color: '#fff', fontSize: 32, fontWeight: '800', marginBottom: 8 },
-  subtitle: { color: 'rgba(255,255,255,0.5)', fontSize: 14, lineHeight: 20, marginBottom: 24 },
-  bmiCard: { borderRadius: 20, overflow: 'hidden', marginBottom: 28 },
-  bmiGradient: { padding: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  bmiLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '600' },
-  bmiValue: { color: '#fff', fontSize: 36, fontWeight: '800' },
-  bmiCategory: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600' },
-  section: { marginBottom: 8 },
-  optionalLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600', marginBottom: 6 },
-  optionalSub: { color: 'rgba(255,255,255,0.35)', fontSize: 12, lineHeight: 18, marginBottom: 14 },
-  wristInput: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  wristField: { flex: 1, color: '#fff', fontSize: 16, fontWeight: '600' },
-  wristUnit: { color: 'rgba(255,255,255,0.4)', fontSize: 14 },
-  footer: { paddingHorizontal: 24, paddingBottom: 36, paddingTop: 12 },
+  safe: { flex: 1, backgroundColor: '#f1f5f9' },
+  hero: {
+    paddingTop: 20,
+    paddingBottom: 60,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  heroContent: { marginTop: 20 },
+  progressWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24 },
+  progressTrack: { flex: 1, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 2 },
+  progressLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700' },
+  eyebrow: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase' },
+  title: { color: '#fff', fontSize: 32, fontWeight: '800', lineHeight: 38, marginBottom: 10 },
+  subtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 14, lineHeight: 20, maxWidth: '90%' },
+  card: { backgroundColor: '#fff', borderRadius: 24, marginHorizontal: 20, marginTop: -40, padding: 24, shadowColor: '#0f172a', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 8 },
+  scrollContent: { paddingTop: 0 },
+  bmiSection: { marginBottom: 20 },
+  bmiHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  bmiLabel: { color: '#64748b', fontSize: 13, fontWeight: '600' },
+  bmiBadge: { backgroundColor: '#f0fdfa', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  bmiBadgeText: { color: '#0d9488', fontSize: 11, fontWeight: '700' },
+  bmiValue: { color: '#1e293b', fontSize: 36, fontWeight: '800' },
+  divider: { height: 1, backgroundColor: '#f1f5f9', marginVertical: 24 },
+  wristSection: { marginBottom: 8 },
+  optionalLabel: { color: '#334155', fontSize: 14, fontWeight: '700', marginBottom: 6 },
+  optionalSub: { color: '#64748b', fontSize: 12, lineHeight: 18, marginBottom: 14 },
+  wristInput: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f8fafc', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1.5, borderColor: '#e2e8f0' },
+  wristField: { flex: 1, color: '#1e293b', fontSize: 16, fontWeight: '600' },
+  wristUnit: { color: '#94a3b8', fontSize: 14, fontWeight: '600' },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingBottom: 40, paddingTop: 16, backgroundColor: '#f1f5f9' },
 });

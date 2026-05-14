@@ -112,11 +112,7 @@ export default function HomeScreen() {
   const [recommendation, setRecommendation] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (user && !user.fitnessGoals?.setupCompleted) {
-      router.push('/(modals)/goals-setup' as any);
-    }
-  }, [user, router]);
+
 
   useEffect(() => {
     async function loadData() {

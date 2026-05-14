@@ -129,29 +129,37 @@ export default function GenderScreen() {
   const { gender, setGender } = useOnboardingStore();
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#0a0f1e" />
-      <LinearGradient colors={['#0a0f1e', '#0f1c2a']} style={StyleSheet.absoluteFill} />
+    <View style={styles.safe}>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Hero Banner */}
+      <LinearGradient
+        colors={['#0d9488', '#0f766e', '#115e59']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.hero}
+      >
+        <SafeAreaView edges={['top']}>
+          {/* Progress */}
+          <View style={styles.progressWrap}>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: '25%' }]} />
+            </View>
+            <Text style={styles.progressLabel}>Step 1 of 4</Text>
+          </View>
 
-      {/* Progress pill */}
-      <View style={styles.progressWrap}>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: '25%' }]} />
-        </View>
-        <Text style={styles.progressLabel}>1 of 4</Text>
-      </View>
+          <View style={styles.heroContent}>
+            <Text style={styles.eyebrow}>PERSONALIZATION</Text>
+            <Text style={styles.title}>Select Gender</Text>
+            <Text style={styles.subtitle}>
+              This helps us accurately calibrate your AI body analysis and personalized plan.
+            </Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
 
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.eyebrow}>PERSONALIZATION</Text>
-          <Text style={styles.title}>Select Gender</Text>
-          <Text style={styles.subtitle}>
-            This helps us accurately calibrate your AI body analysis and personalized plan.
-          </Text>
-        </View>
-
-        {/* Cards */}
+      {/* Main Content Card */}
+      <View style={styles.card}>
         <View style={styles.cardsRow}>
           {OPTIONS.map((opt) => (
             <GenderCard
@@ -163,10 +171,15 @@ export default function GenderScreen() {
           ))}
         </View>
 
-
+        <View style={styles.infoBox}>
+          <Ionicons name="information-circle-outline" size={18} color="#64748b" />
+          <Text style={styles.infoText}>
+            Biological sex is required for accurate body fat and metabolic rate calculations.
+          </Text>
+        </View>
       </View>
 
-      {/* CTA */}
+      {/* Footer CTA */}
       <View style={styles.footer}>
         <PremiumButton
           label="Continue"
@@ -174,138 +187,156 @@ export default function GenderScreen() {
           onPress={() => router.push('/(onboarding)/metrics')}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0a0f1e' },
+  safe: { flex: 1, backgroundColor: '#f1f5f9' },
+  hero: {
+    paddingTop: 20,
+    paddingBottom: 60,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  heroContent: {
+    marginTop: 20,
+  },
   progressWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 8,
+    gap: 12,
+    marginBottom: 24,
   },
   progressTrack: {
     flex: 1,
-    height: 3,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 2,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#0d9488',
+    backgroundColor: '#fff',
     borderRadius: 2,
   },
   progressLabel: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-  },
-  header: {
-    marginBottom: 40,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    fontWeight: '700',
   },
   eyebrow: {
-    color: '#2dd4bf',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 3,
-    marginBottom: 12,
+    letterSpacing: 2,
+    marginBottom: 8,
+    textTransform: 'uppercase',
   },
   title: {
     color: '#fff',
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '800',
-    lineHeight: 40,
-    marginBottom: 12,
+    lineHeight: 38,
+    marginBottom: 10,
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 15,
-    lineHeight: 22,
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    lineHeight: 20,
+    maxWidth: '90%',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    marginHorizontal: 20,
+    marginTop: -40,
+    padding: 24,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
   },
   cardsRow: {
     flexDirection: 'row',
     gap: 16,
-    marginBottom: 28,
+    marginBottom: 24,
   },
   glowBorder: {
     borderRadius: 24,
-    padding: 1.5,
+    padding: 2,
     zIndex: -1,
   },
   cardInner: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 23,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#f8fafc',
+    borderRadius: 22,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
     padding: 20,
     alignItems: 'center',
     gap: 12,
-    minHeight: 200,
+    minHeight: 180,
     justifyContent: 'center',
   },
   cardSelected: {
-    backgroundColor: 'rgba(13,148,136,0.12)',
-    borderColor: 'transparent',
+    backgroundColor: '#f0fdfa',
+    borderColor: '#0d9488',
   },
   iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardLabel: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 20,
+    color: '#64748b',
+    fontSize: 18,
     fontWeight: '800',
   },
   cardLabelActive: {
-    color: '#fff',
+    color: '#0d9488',
   },
   cardDesc: {
-    color: 'rgba(255,255,255,0.35)',
+    color: '#94a3b8',
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 16,
   },
   checkBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    top: 10,
+    right: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#0d9488',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  privacyRow: {
+  infoBox: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(45,212,191,0.08)',
+    gap: 8,
+    backgroundColor: '#f1f5f9',
+    padding: 12,
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
   },
-  privacyText: {
-    color: '#2dd4bf',
-    fontSize: 12,
+  infoText: {
     flex: 1,
+    color: '#64748b',
+    fontSize: 12,
+    lineHeight: 18,
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     paddingHorizontal: 24,
-    paddingBottom: 36,
+    paddingBottom: 40,
     paddingTop: 16,
+    backgroundColor: '#f1f5f9',
   },
 });
