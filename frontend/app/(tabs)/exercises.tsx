@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { StyleSheet, Modal, View } from 'react-native';
 import { Exercise } from '@/types/exercise';
 import { ExerciseLibrary } from '@/components/exercises/ExerciseLibrary';
@@ -56,3 +56,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+

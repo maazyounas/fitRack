@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { StyleSheet, Text, View, FlatList, Pressable, Switch, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useUiStore } from '@/store/uiStore';
@@ -14,7 +14,7 @@ type Notification = {
 };
 
 const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: '1', title: 'New Badge Unlocked! 🏆', body: 'Congratulations! You earned the "7-Day Streak" badge.', time: '2h ago', read: false, type: 'system' },
+  { id: '1', title: 'New Badge Unlocked! ðŸ†', body: 'Congratulations! You earned the "7-Day Streak" badge.', time: '2h ago', read: false, type: 'system' },
   { id: '2', title: 'Workout Reminder', body: "It's time for your Upper Body session. Let's get it!", time: '5h ago', read: true, type: 'workout' },
   { id: '3', title: 'Meal Suggestion', body: 'Based on your remaining macros, how about a high-protein salad?', time: '1d ago', read: true, type: 'nutrition' },
 ];
@@ -154,3 +154,4 @@ const styles = StyleSheet.create({
   prefTitle: { fontSize: 15, fontWeight: '700', color: '#0f172a' },
   prefSubtitle: { fontSize: 12, color: '#64748b', marginTop: 2 },
 });
+

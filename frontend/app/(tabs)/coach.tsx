@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -628,3 +628,4 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 });
+

@@ -10,9 +10,10 @@ import { StreakFire } from '@/components/progress/StreakFire';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useProgressStore } from '@/store/progressStore';
-import { BodyMeasurements, GymPerformanceEntry, ProgressPayload, ProgressAchievement } from '@/types/progress';
+import { ProgressPayload, ProgressAchievement, BodyMeasurements, GymPerformanceEntry } from '@/types/progress';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { AppHeader } from '@/components/common/AppHeader';
 
 const emptyMeasurements: BodyMeasurements = {
   chestCm: 0,
@@ -89,7 +90,7 @@ export default function ProgressScreen() {
   }, [achievements.length]);
 
   const fatVsMuscleCopy = useMemo(
-    () => `${summary.bodyFatTrend?.toFixed(1) ?? '0.0'}% fat • ${summary.muscleMassTrend?.toFixed(1) ?? '0.0'}kg muscle`,
+    () => `${summary.bodyFatTrend?.toFixed(1) ?? '0.0'}% fat â€¢ ${summary.muscleMassTrend?.toFixed(1) ?? '0.0'}kg muscle`,
     [summary.bodyFatTrend, summary.muscleMassTrend]
   );
 
@@ -142,21 +143,20 @@ export default function ProgressScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {showConfetti && <ConfettiCannon count={200} origin={{ x: -10, y: 0 }} fadeOut={true} />}
+    <View style={styles.page}>
+      <AppHeader title="Progress" />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {showConfetti && <ConfettiCannon count={200} origin={{ x: -10, y: 0 }} fadeOut={true} />}
 
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Your Progress</Text>
+        <View style={styles.subHeader}>
           <Text style={styles.subtitle}>Keep showing up to win</Text>
+          <TouchableOpacity 
+            onPress={() => trackStreak()}
+            disabled={isLoading}
+          >
+            <StreakFire streak={streakDays} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity 
-          onPress={() => trackStreak()}
-          disabled={isLoading}
-        >
-          <StreakFire streak={streakDays} />
-        </TouchableOpacity>
-      </View>
 
       {plateauMessage && (
         <LinearGradient colors={['#fff7ed', '#ffedd5']} style={styles.plateauBox}>
@@ -309,6 +309,7 @@ export default function ProgressScreen() {
         </View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -326,10 +327,10 @@ function CollapsibleSection({ title, children }: { title: string, children: Reac
 }
 
 const styles = StyleSheet.create({
-  screen: { backgroundColor: '#f8fafc', flex: 1 },
-  content: { padding: 20, paddingBottom: 40 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  title: { color: '#0f172a', fontSize: 32, fontWeight: '900' },
+  page: { flex: 1, backgroundColor: '#f8fafc' },
+  screen: { flex: 1 },
+  content: { padding: 20, paddingTop: 16, paddingBottom: 40 },
+  subHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   subtitle: { color: '#64748b', fontSize: 16, fontWeight: '600' },
   plateauBox: { borderRadius: 20, padding: 16, marginBottom: 20, flexDirection: 'row', alignItems: 'center' },
   plateauIcon: { marginRight: 12 },
@@ -365,3 +366,4 @@ const styles = StyleSheet.create({
   collapsibleContent: { paddingBottom: 16 },
   badgesGrid: { marginTop: 8 },
 });
+

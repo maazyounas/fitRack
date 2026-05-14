@@ -22,8 +22,9 @@ import { PremiumButton } from '@/components/ui/PremiumButton';
 import { useAuthStore } from '@/store/authStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { validateNumberRange, validateRequired } from '@/utils/validators';
+import { AppHeader } from '@/components/common/AppHeader';
 
-// ─── Stat Pill ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Stat Pill â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function StatPill({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value: string }) {
   return (
     <View style={styles.statPill}>
@@ -36,7 +37,7 @@ function StatPill({ icon, label, value }: { icon: React.ComponentProps<typeof Io
   );
 }
 
-// ─── Section Header ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Section Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SectionHeader({ icon, title }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string }) {
   return (
     <View style={styles.sectionHeader}>
@@ -46,7 +47,7 @@ function SectionHeader({ icon, title }: { icon: React.ComponentProps<typeof Ioni
   );
 }
 
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, updateProfile, isLoading, logout, touchActivity } = useAuthStore();
@@ -116,7 +117,7 @@ export default function ProfileScreen() {
         weightKg: weightKg ? Number(weightKg) : undefined,
       });
       setEditing(false);
-      Alert.alert('✓ Saved', 'Your profile has been updated.');
+      Alert.alert('âœ“ Saved', 'Your profile has been updated.');
     } catch (error) {
       Alert.alert('Update failed', error instanceof Error ? error.message : 'Please try again.');
     }
@@ -143,9 +144,11 @@ export default function ProfileScreen() {
   const firstName = user?.profile.name?.split(' ')[0] || 'Member';
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <View style={styles.page}>
+      <AppHeader title="Profile" />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-      {/* ── Hero Avatar Card ─────────────────────────────────────────────────── */}
+        {/* â”€â”€ Hero Avatar Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Animated.View entering={FadeInDown.springify()}>
         <LinearGradient colors={['#0a0f1e', '#0f1c2a']} style={styles.heroCard}>
           {/* Avatar */}
@@ -178,7 +181,7 @@ export default function ProfileScreen() {
           {bmi && (
             <View style={[styles.bmiBadge, { borderColor: bmiColor + '50' }]}>
               <Text style={[styles.bmiVal, { color: bmiColor }]}>{bmi}</Text>
-              <Text style={styles.bmiCat}>BMI · {bmiCategory}</Text>
+              <Text style={styles.bmiCat}>BMI Â· {bmiCategory}</Text>
             </View>
           )}
 
@@ -192,7 +195,7 @@ export default function ProfileScreen() {
         </LinearGradient>
       </Animated.View>
 
-      {/* ── AI Body Scan CTA ─────────────────────────────────────────────────── */}
+      {/* â”€â”€ AI Body Scan CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Animated.View entering={FadeInDown.delay(80).springify()} style={styles.scanCta}>
         <LinearGradient colors={['rgba(13,148,136,0.1)', 'rgba(13,148,136,0.04)']} style={styles.scanCtaInner}>
           <LinearGradient colors={['#0d9488', '#14b8a6']} style={styles.scanCtaIcon}>
@@ -211,7 +214,7 @@ export default function ProfileScreen() {
         </LinearGradient>
       </Animated.View>
 
-      {/* ── Edit Profile ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Edit Profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Animated.View entering={FadeInDown.delay(120).springify()} style={styles.card}>
         <View style={styles.cardHeaderRow}>
           <SectionHeader icon="person-outline" title="Personal Info" />
@@ -254,11 +257,11 @@ export default function ProfileScreen() {
         ) : (
           <View style={styles.infoGrid}>
             {[
-              { label: 'Name', value: user?.profile.name || '—' },
-              { label: 'Age', value: age ? `${age} yrs` : '—' },
-              { label: 'Gender', value: gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : '—' },
-              { label: 'Height', value: heightCm ? `${heightCm} cm` : '—' },
-              { label: 'Weight', value: weightKg ? `${weightKg} kg` : '—' },
+              { label: 'Name', value: user?.profile.name || 'â€”' },
+              { label: 'Age', value: age ? `${age} yrs` : 'â€”' },
+              { label: 'Gender', value: gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : 'â€”' },
+              { label: 'Height', value: heightCm ? `${heightCm} cm` : 'â€”' },
+              { label: 'Weight', value: weightKg ? `${weightKg} kg` : 'â€”' },
             ].map((item) => (
               <View key={item.label} style={styles.infoRow}>
                 <Text style={styles.infoLabel}>{item.label}</Text>
@@ -269,7 +272,7 @@ export default function ProfileScreen() {
         )}
       </Animated.View>
 
-      {/* ── AI Preferences ────────────────────────────────────────────────────── */}
+      {/* â”€â”€ AI Preferences â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Animated.View entering={FadeInDown.delay(160).springify()} style={styles.card}>
         <SectionHeader icon="sparkles-outline" title="AI Preferences" />
         <View style={styles.prefRow}>
@@ -292,7 +295,7 @@ export default function ProfileScreen() {
         </View>
       </Animated.View>
 
-      {/* ── Actions ───────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.actionsWrap}>
         <Button label="Open Settings" onPress={() => router.push('/settings' as any)} tone="secondary" />
 
@@ -312,16 +315,18 @@ export default function ProfileScreen() {
       </Animated.View>
 
       <View style={{ height: 32 }} />
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f4f7f5' },
-  content: { paddingBottom: 40 },
+  page: { flex: 1, backgroundColor: '#f4f7f5' },
+  screen: { flex: 1 },
+  content: { paddingBottom: 40, paddingTop: 16 },
 
   // Hero card
-  heroCard: { paddingTop: 56, paddingBottom: 28, paddingHorizontal: 20, alignItems: 'center', marginBottom: 16 },
+  heroCard: { paddingTop: 28, paddingBottom: 28, paddingHorizontal: 20, alignItems: 'center', marginBottom: 16 },
   avatarWrap: { marginBottom: 16, position: 'relative' },
   avatarBorder: { width: 104, height: 104, borderRadius: 52, padding: 3 },
   avatar: { width: 98, height: 98, borderRadius: 49 },
@@ -382,3 +387,4 @@ const styles = StyleSheet.create({
   retakeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12 },
   retakeBtnText: { color: '#0d9488', fontSize: 14, fontWeight: '700' },
 });
+

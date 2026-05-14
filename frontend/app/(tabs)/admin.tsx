@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, Pressable, FlatList, ActivityIndicator, Alert, TextInput, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAdminStore, AdminAnalytics, AdminLog, AdminError } from '@/store/adminStore';
@@ -149,7 +149,7 @@ export default function AdminHubScreen() {
         <View style={styles.listItem}>
           <View style={styles.listMain}>
             <Text style={styles.listTitle}>{item.name}</Text>
-            <Text style={styles.listSubtitle}>{item.muscleGroup} • {item.difficulty}</Text>
+            <Text style={styles.listSubtitle}>{item.muscleGroup} â€¢ {item.difficulty}</Text>
           </View>
           <Pressable onPress={() => Alert.alert('Edit', 'Edit exercise logic goes here.')}>
             <Ionicons name="create-outline" size={20} color="#0f766e" />
@@ -168,7 +168,7 @@ export default function AdminHubScreen() {
             {log.method}
           </Text>
           <Text style={styles.logPath} numberOfLines={1}>{log.path}</Text>
-          <Text style={styles.logMeta}>{log.statusCode} • {log.durationMs}ms</Text>
+          <Text style={styles.logMeta}>{log.statusCode} â€¢ {log.durationMs}ms</Text>
         </View>
       ))}
     </ScrollView>
@@ -270,3 +270,4 @@ const styles = StyleSheet.create({
   logMeta: { fontSize: 10, color: '#94a3b8', width: 80, textAlign: 'right' },
   input: { backgroundColor: '#f8fafc', borderRadius: 12, padding: 14, fontSize: 15, color: '#0f172a', marginBottom: 16, borderWidth: 1, borderColor: '#e2e8f0' },
 });
+

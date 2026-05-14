@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+﻿import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppPalette } from '@/hooks/useAppPalette';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -19,7 +19,15 @@ export default function TabLayout() {
         tabBarInactiveTintColor: palette.mutedText,
         tabBarStyle: {
           backgroundColor: palette.card,
-          borderTopColor: palette.border,
+          borderTopColor: 'transparent',
+          height: 68,
+          paddingTop: 6,
+          paddingBottom: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 12,
         },
         headerStyle: {
           backgroundColor: palette.card,
@@ -28,7 +36,7 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 10 * fontScale,
         },
-        headerShown: true,
+        headerShown: false,
       }}
     >
       <Tabs.Screen
@@ -83,20 +91,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
-        options={{
-          title: t('tabs_profile'),
-          tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: t('tabs_settings'),
-          tabBarIcon: ({ color }) => <Ionicons name="settings" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="coach"
         options={{
           href: null,
@@ -111,3 +105,4 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+

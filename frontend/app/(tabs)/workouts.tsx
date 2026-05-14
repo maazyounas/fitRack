@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { TemplateSelector } from '@/components/workouts/TemplateSelector';
 import { WorkoutCard } from '@/components/workouts/WorkoutCard';
 import { useWorkoutStore } from '@/store/workoutStore';
+import { AppHeader } from '@/components/common/AppHeader';
 
 function formatShortDate(date: Date) {
   return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
@@ -91,21 +92,20 @@ export default function WorkoutsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>Workout Planning</Text>
+    <View style={styles.page}>
+      <AppHeader title="Workout Planning" />
+      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.subHeader}>
           <Text style={styles.subtitle}>
             Build routines, schedule them weekly, and let AI flag stale plans.
           </Text>
+          <Pressable
+            onPress={() => router.push('/(modals)/workout-builder' as never)}
+            style={styles.addButton}
+          >
+            <Ionicons color="#fff" name="add" size={24} />
+          </Pressable>
         </View>
-        <Pressable
-          onPress={() => router.push('/(modals)/workout-builder' as never)}
-          style={styles.addButton}
-        >
-          <Ionicons color="#fff" name="add" size={24} />
-        </Pressable>
-      </View>
 
       <View style={styles.calendarCard}>
         <View style={styles.sectionTopRow}>
@@ -251,26 +251,27 @@ export default function WorkoutsScreen() {
           }}
         />
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  page: {
+    flex: 1,
     backgroundColor: '#f4f7f5',
-    flexGrow: 1,
-    padding: 20,
   },
-  header: {
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+  subHeader: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 18,
-  },
-  title: {
-    color: '#0f172a',
-    fontSize: 30,
-    fontWeight: '800',
   },
   subtitle: {
     color: '#475569',
@@ -388,3 +389,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+

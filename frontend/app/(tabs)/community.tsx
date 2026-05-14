@@ -8,6 +8,7 @@ import { CreatePostModal } from '@/components/community/CreatePostModal';
 import { CommunityMember } from '@/types/community';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { AppHeader } from '@/components/common/AppHeader';
 
 export default function CommunityScreen() {
   const { dashboard, isLoading, initialize, searchUsers, toggleFollow } = useCommunityStore();
@@ -132,6 +133,7 @@ export default function CommunityScreen() {
 
   return (
     <View style={styles.container}>
+      <AppHeader title="Community" />
       <FlatList
         data={(activeTab === 'feed' ? dashboard?.posts : dashboard?.challenges) as any[]}
         keyExtractor={(item: any) => item.id}
@@ -373,3 +375,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 });
+

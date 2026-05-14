@@ -6,6 +6,7 @@ import { MealCard } from '../../components/nutrition/MealCard';
 import { MicronutrientGrid } from '../../components/nutrition/MicronutrientGrid';
 import { TrendChart } from '../../components/nutrition/TrendChart';
 import { useNutritionStore } from '../../store/nutritionStore';
+import { AppHeader } from '@/components/common/AppHeader';
 
 export default function NutritionScreen() {
   const router = useRouter();
@@ -27,13 +28,14 @@ export default function NutritionScreen() {
   }, [initialize]);
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Nutrition & Diet Planning</Text>
-        <Text style={styles.subtitle}>
-          Food logging, hydration, adaptive suggestions, and trend reporting in one place.
-        </Text>
-      </View>
+    <View style={styles.page}>
+      <AppHeader title="Nutrition & Diet" />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.subtitle}>
+            Food logging, hydration, adaptive suggestions, and trend reporting in one place.
+          </Text>
+        </View>
 
       <CalorieProgress report={dailyReport} goals={goals} />
 
@@ -45,7 +47,7 @@ export default function NutritionScreen() {
         <Pressable style={[styles.action, styles.secondaryAction]} onPress={() => router.push('/(modals)/water-tracker')}>
           <Text style={styles.secondaryActionTitle}>Track water</Text>
           <Text style={styles.secondaryActionText}>
-            {dailyReport.waterConsumedMl} mL today • reminders {hydrationReminder.enabled ? 'on' : 'off'}
+            {dailyReport.waterConsumedMl} mL today â€¢ reminders {hydrationReminder.enabled ? 'on' : 'off'}
           </Text>
         </Pressable>
       </View>
@@ -92,26 +94,25 @@ export default function NutritionScreen() {
         )}
       </View>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
+  page: {
+    flex: 1,
     backgroundColor: '#eef6f2',
+  },
+  screen: {
     flex: 1,
   },
   content: {
     padding: 16,
-    paddingBottom: 28,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   header: {
     marginBottom: 16,
-  },
-  title: {
-    color: '#0f172a',
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 6,
   },
   subtitle: {
     color: '#475569',
@@ -206,3 +207,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+

@@ -1,5 +1,5 @@
 /**
- * Home Screen — Premium AI-powered dashboard.
+ * Home Screen â€” Premium AI-powered dashboard.
  * Upgraded design with animated greeting, fitness score ring,
  * AI insights, quick action cards, and today's plan.
  */
@@ -36,7 +36,7 @@ import { useNutritionStore } from '@/store/nutritionStore';
 
 const { width } = Dimensions.get('window');
 
-// ─── Quick Actions Config ─────────────────────────────────────────────────────
+// â”€â”€â”€ Quick Actions Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const getQuickActions = (isAdmin: boolean) => [
   { icon: 'barbell', label: 'Start Workout', route: '/(modals)/workout-builder', gradient: ['#0d9488', '#0f766e'] as const },
   { icon: 'body', label: 'Body Scan', route: '/(modals)/scan', gradient: ['#7c3aed', '#6d28d9'] as const },
@@ -49,60 +49,9 @@ const getQuickActions = (isAdmin: boolean) => [
     : []),
 ];
 
-// ─── Greeting Helper ──────────────────────────────────────────────────────────
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good Morning';
-  if (h < 17) return 'Good Afternoon';
-  return 'Good Evening';
-}
+import { AppHeader } from '@/components/common/AppHeader';
 
-// ─── Pulse Dot ────────────────────────────────────────────────────────────────
-function PulseDot() {
-  const scale = useSharedValue(1);
-  useEffect(() => {
-    scale.value = withRepeat(
-      withSequence(withTiming(1.5, { duration: 700 }), withTiming(1, { duration: 700 })),
-      -1,
-      false
-    );
-  }, []);
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }], opacity: 1 / scale.value }));
-  return <Animated.View style={[styles.pulseDot, style]} />;
-}
-
-// ─── Quick Action Card ────────────────────────────────────────────────────────
-function QuickActionCard({
-  icon, label, route, gradient, delay,
-}: {
-  icon: string;
-  label: string;
-  route: string;
-  gradient: readonly [string, string, ...string[]];
-  delay: number;
-}) {
-  const router = useRouter();
-  const scale = useSharedValue(1);
-  const pressStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
-  return (
-    <Animated.View entering={FadeInDown.delay(delay).springify()} style={pressStyle}>
-      <Pressable
-        onPress={() => router.push(route as any)}
-        onPressIn={() => { scale.value = withTiming(0.94, { duration: 100 }); }}
-        onPressOut={() => { scale.value = withTiming(1, { duration: 150 }); }}
-        style={styles.quickCard}
-      >
-        <LinearGradient colors={gradient} style={styles.quickIcon}>
-          <Ionicons name={icon as any} size={22} color="#fff" />
-        </LinearGradient>
-        <Text style={styles.quickLabel}>{label}</Text>
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-// ─── Screen ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function HomeScreen() {
   const router = useRouter();
   const { user, tokens } = useAuthStore();
@@ -111,8 +60,6 @@ export default function HomeScreen() {
   const [insights, setInsights] = useState<any[]>([]);
   const [recommendation, setRecommendation] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-
-
 
   useEffect(() => {
     async function loadData() {
@@ -137,7 +84,6 @@ export default function HomeScreen() {
 
   const quickActions = getQuickActions(user?.isAdmin === true);
   const firstName = user?.profile.name?.split(' ')[0] || 'Athlete';
-  const avatarUrl = user?.profile.profilePictureUrl;
   
   const calorieGoal = user?.profile.dailyCalories || nutritionGoals.calories || 2000;
   const caloriesConsumed = Math.round(dailyReport.totals.calories || 0);
@@ -154,33 +100,10 @@ export default function HomeScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <LinearGradient colors={['#0a0f1e', '#0f1c2a']} style={styles.headerGradient}>
-        <View style={styles.headerRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.heroName}>{firstName} 👋</Text>
-          </View>
-          <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => router.push('/notifications' as any)} style={styles.iconBtn}>
-              <Ionicons name="notifications-outline" size={22} color="#fff" />
-              <View style={styles.notifDot}>
-                <PulseDot />
-              </View>
-            </TouchableOpacity>
-            <Pressable onPress={() => router.push('/profile' as any)}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-              ) : (
-                <LinearGradient colors={['#0d9488', '#14b8a6']} style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarLetter}>{firstName.charAt(0)}</Text>
-                </LinearGradient>
-              )}
-            </Pressable>
-          </View>
-        </View>
+      <AppHeader showGreeting />
 
-        {/* ── Fitness Score Ring + Stats Row ─────────────────────────────────── */}
+      {/* â”€â”€ Fitness Score Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <LinearGradient colors={['#0f1c2a', '#1a2b3c']} style={styles.statsGradient}>
         <View style={styles.statsRow}>
           <View style={styles.ringWrap}>
             <AnimatedProgressRing
@@ -210,13 +133,13 @@ export default function HomeScreen() {
             <View style={styles.miniDivider} />
             <View style={styles.miniStat}>
               <Text style={styles.miniStatVal}>3</Text>
-              <Text style={styles.miniStatLabel}>Streak 🔥</Text>
+              <Text style={styles.miniStatLabel}>Streak ðŸ”¥</Text>
             </View>
           </View>
         </View>
       </LinearGradient>
 
-      {/* ── AI Recommendation Banner ─────────────────────────────────────────── */}
+      {/* â”€â”€ AI Recommendation Banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {recommendation?.banner && (
         <Animated.View entering={FadeInDown.delay(100).springify()}>
           <Pressable
@@ -237,7 +160,7 @@ export default function HomeScreen() {
         </Animated.View>
       )}
 
-      {/* ── Today's Plan ─────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Today's Plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Animated.View entering={FadeInDown.delay(150).springify()} style={styles.sectionWrap}>
         <Text style={styles.sectionTitle}>Today's Plan</Text>
         <Pressable onPress={() => router.push('/(modals)/workout-builder' as any)}>
@@ -261,7 +184,7 @@ export default function HomeScreen() {
         </Pressable>
       </Animated.View>
 
-      {/* ── Calorie Progress ──────────────────────────────────────────────────── */}
+      {/* â”€â”€ Calorie Progress â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.sectionWrap}>
         <Text style={styles.sectionTitle}>Nutrition</Text>
         <View style={styles.nutritionCard}>
@@ -301,7 +224,7 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
 
-      {/* ── AI Weekly Insights ────────────────────────────────────────────────── */}
+      {/* â”€â”€ AI Weekly Insights â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {insights.length > 0 && (
         <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.sectionWrap}>
           <Text style={styles.sectionTitle}>AI Weekly Insights</Text>
@@ -323,40 +246,39 @@ export default function HomeScreen() {
         </Animated.View>
       )}
 
-      {/* ── Quick Actions Grid ────────────────────────────────────────────────── */}
-      <Animated.View entering={FadeInDown.delay(300).springify()} style={styles.sectionWrap}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+      {/* ── Quick Actions Grid ────────────────────────────── */}
+      <View style={styles.sectionWrap}>
         <View style={styles.quickGrid}>
           {quickActions.map((action, idx) => (
-            <QuickActionCard
-              key={action.label}
-              icon={action.icon}
-              label={action.label}
-              route={action.route}
-              gradient={action.gradient}
-              delay={idx * 50}
-            />
+            <Animated.View key={action.label} entering={FadeInDown.delay(300 + idx * 50).springify()}>
+              <Pressable onPress={() => router.push(action.route as any)} style={styles.quickCard}>
+                <LinearGradient colors={action.gradient} style={styles.quickIcon}>
+                  <Ionicons name={action.icon as any} size={20} color="#fff" />
+                </LinearGradient>
+                <Text style={styles.quickLabel}>{action.label}</Text>
+              </Pressable>
+            </Animated.View>
           ))}
         </View>
-      </Animated.View>
-
-      <View style={{ height: 20 }} />
+      </View>
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f4f7f5' },
-  content: { flexGrow: 1, paddingBottom: 32 },
-
-  // Header
-  headerGradient: { paddingTop: 56, paddingBottom: 28, paddingHorizontal: 20, marginBottom: 16 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
-  greeting: { color: 'rgba(255,255,255,0.55)', fontSize: 13, fontWeight: '600', letterSpacing: 0.5 },
-  heroName: { color: '#fff', fontSize: 28, fontWeight: '800', marginTop: 2 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+  content: { paddingBottom: 40 },
+  // Header & Stats
+  statsGradient: { paddingBottom: 28, paddingHorizontal: 20, marginBottom: 16, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, marginTop: -20, paddingTop: 20 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 20 },
+  ringWrap: { alignItems: 'center', gap: 6 },
+  ringLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 11, fontWeight: '600' },
+  miniStats: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' },
+  miniStat: { alignItems: 'center', gap: 3 },
+  miniStatVal: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  miniStatLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: '600' },
+  miniDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.1)' },
   notifDot: { position: 'absolute', top: 8, right: 8, width: 8, height: 8 },
   pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' },
   avatar: { width: 42, height: 42, borderRadius: 21, borderWidth: 2, borderColor: '#0d9488' },
@@ -421,3 +343,4 @@ const styles = StyleSheet.create({
   quickIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   quickLabel: { color: '#0f172a', fontSize: 11, fontWeight: '700', textAlign: 'center' },
 });
+

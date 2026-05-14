@@ -11,6 +11,7 @@ import { useFontScale } from '@/hooks/useFontScale';
 import { useTranslation } from '@/hooks/useTranslation';
 import { DailyReminder } from '@/types/notifications';
 import { parseVoiceRoute, speakText, startVoiceRecognition } from '@/services/voice';
+import { AppHeader } from '@/components/common/AppHeader';
 
 function PreferenceRow({
   label,
@@ -180,13 +181,12 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={[styles.container, { backgroundColor: palette.background }]}>
-      <Text style={[styles.title, { color: palette.text, fontSize: 30 * fontScale, textAlign: align }]}>
-        {t('settings_title')}
-      </Text>
-      <Text style={[styles.subtitle, { color: palette.mutedText, fontSize: 15 * fontScale, textAlign: align }]}>
-        {t('settings_subtitle')}
-      </Text>
+    <View style={styles.page}>
+      <AppHeader title={t('settings_title')} />
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: palette.background }]} showsVerticalScrollIndicator={false}>
+        <Text style={[styles.subtitle, { color: palette.mutedText, fontSize: 15 * fontScale, textAlign: align }]}>
+          {t('settings_subtitle')}
+        </Text>
 
       <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <Text style={[styles.sectionTitle, { color: palette.text, fontSize: 18 * fontScale, textAlign: align }]}>
@@ -578,18 +578,21 @@ export default function SettingsScreen() {
           tone="danger"
         />
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   container: {
     flexGrow: 1,
-    padding: 20,
-  },
-  title: {
-    fontWeight: '800',
-    marginBottom: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   subtitle: {
     lineHeight: 22,
@@ -642,3 +645,4 @@ const styles = StyleSheet.create({
     height: 12,
   },
 });
+
