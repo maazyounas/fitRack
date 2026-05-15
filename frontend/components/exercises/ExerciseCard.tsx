@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Exercise } from '@/types/exercise';
 import { useAppPalette } from '@/hooks/useAppPalette';
 
@@ -19,24 +20,35 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
 }) => {
   const palette = useAppPalette();
 
-  const difficultyColor = {
-    beginner: '#4CAF50',
-    intermediate: '#FF9800',
-    advanced: '#F44336',
-  }[exercise.difficulty];
+  const getDifficultyConfig = (difficulty: string) => {
+    switch (difficulty) {
+      case 'beginner':
+        return { color: '#10b981', label: 'Beginner' };
+      case 'intermediate':
+        return { color: '#f59e0b', label: 'Intermediate' };
+      case 'advanced':
+        return { color: '#ef4444', label: 'Advanced' };
+      default:
+        return { color: '#64748b', label: difficulty };
+    }
+  };
+
+  const difficultyConfig = getDifficultyConfig(exercise.difficulty);
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.container, { backgroundColor: palette.card }]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [
+      styles.container,
+      { backgroundColor: palette.card },
+      pressed && styles.containerPressed,
+    ]}>
       <View style={styles.header}>
         <View style={styles.titleSection}>
           <Text style={[styles.exerciseName, { color: palette.text }]} numberOfLines={1}>
             {exercise.name}
           </Text>
           <View style={styles.meta}>
-            <View style={[styles.difficultyBadge, { backgroundColor: difficultyColor }]}>
-              <Text style={styles.difficultyText}>{exercise.difficulty}</Text>
+            <View style={[styles.difficultyBadge, { backgroundColor: difficultyConfig.color }]}>
+              <Text style={styles.difficultyText}>{difficultyConfig.label}</Text>
             </View>
             <Text style={[styles.muscleGroup, { color: palette.mutedText }]}>
               {exercise.muscleGroup}
@@ -49,11 +61,13 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
               e.preventDefault();
               onFavoritePress?.();
             }}
-            style={styles.favoriteButton}>
+            style={styles.favoriteButton}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Ionicons
               name={exercise.isFavorite ? 'heart' : 'heart-outline'}
-              size={24}
-              color={exercise.isFavorite ? '#FF1744' : palette.mutedText}
+              size={22}
+              color={exercise.isFavorite ? '#ef4444' : palette.mutedText}
             />
           </Pressable>
         )}
@@ -67,7 +81,7 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
         <View style={styles.stats}>
           {exercise.ratingCount > 0 && (
             <View style={styles.stat}>
-              <Ionicons name="star" size={16} color="#FFB800" />
+              <Ionicons name="star" size={14} color="#fbbf24" />
               <Text style={[styles.statText, { color: palette.text }]}>
                 {exercise.ratingAverage.toFixed(1)}
               </Text>
@@ -75,16 +89,19 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
           )}
           {exercise.favoriteCount > 0 && (
             <View style={styles.stat}>
-              <Ionicons name="heart" size={16} color="#FF1744" />
+              <Ionicons name="heart" size={14} color="#ef4444" />
               <Text style={[styles.statText, { color: palette.text }]}>
                 {exercise.favoriteCount}
               </Text>
             </View>
           )}
         </View>
-        <Text style={[styles.equipment, { color: palette.mutedText }]}>
-          {exercise.equipment}
-        </Text>
+        <View style={styles.equipmentBadge}>
+          <Ionicons name="fitness-outline" size={12} color={palette.mutedText} />
+          <Text style={[styles.equipment, { color: palette.mutedText }]} numberOfLines={1}>
+            {exercise.equipment}
+          </Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -92,50 +109,63 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 16,
+    padding: 16,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  containerPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   titleSection: {
     flex: 1,
+    marginRight: 12,
   },
   exerciseName: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 6,
+    letterSpacing: -0.3,
   },
   meta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
   },
   difficultyBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
+    borderRadius: 12,
   },
   difficultyText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: '500',
+    color: '#ffffff',
     textTransform: 'capitalize',
   },
   muscleGroup: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '400',
   },
   favoriteButton: {
     padding: 4,
   },
   description: {
     fontSize: 13,
-    marginBottom: 8,
+    fontWeight: '400',
+    marginBottom: 12,
     lineHeight: 18,
   },
   footer: {
@@ -156,7 +186,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
+  equipmentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   equipment: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '400',
   },
 });

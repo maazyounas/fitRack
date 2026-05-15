@@ -101,7 +101,7 @@ export default function NutritionScreen() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#f4fbf8',
+    backgroundColor: '#f3fbf7',
   },
 
   screen: {
@@ -114,17 +114,18 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    marginBottom: 14,
+    marginBottom: 12,
   },
 
   subtitle: {
     color: '#64748b',
     fontSize: 13,
-    lineHeight: 19,
+    lineHeight: 18,
     fontWeight: '400',
+    letterSpacing: 0.2,
   },
 
-  /* ───── ACTION CARDS ───── */
+  /* ───────── ACTION CARDS ───────── */
   actionRow: {
     flexDirection: 'row',
     gap: 12,
@@ -132,10 +133,16 @@ const styles = StyleSheet.create({
   },
 
   action: {
-    borderRadius: 20,
+    borderRadius: 18,
     flex: 1,
-    minHeight: 110,
+    minHeight: 105,
     padding: 14,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 2,
   },
 
   primaryAction: {
@@ -143,18 +150,18 @@ const styles = StyleSheet.create({
   },
 
   secondaryAction: {
-    backgroundColor: '#e6fffb',
+    backgroundColor: '#eafffb',
   },
 
   primaryActionTitle: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     marginBottom: 6,
   },
 
   primaryActionText: {
-    color: 'rgba(255,255,255,0.75)',
+    color: 'rgba(255,255,255,0.78)',
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '400',
@@ -162,19 +169,19 @@ const styles = StyleSheet.create({
 
   secondaryActionTitle: {
     color: '#0f172a',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     marginBottom: 6,
   },
 
   secondaryActionText: {
-    color: '#334155',
+    color: '#475569',
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '400',
   },
 
-  /* ───── STATES ───── */
+  /* ───────── STATES ───────── */
   loadingBox: {
     alignItems: 'center',
     marginVertical: 12,
@@ -185,15 +192,17 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 12,
     padding: 12,
+    borderWidth: 1,
+    borderColor: '#ffe4e6',
   },
 
   errorText: {
     color: '#b91c1c',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '400',
   },
 
-  /* ───── CARDS ───── */
+  /* ───────── CARDS ───────── */
   card: {
     backgroundColor: '#ffffff',
     borderRadius: 18,
@@ -201,20 +210,21 @@ const styles = StyleSheet.create({
     padding: 16,
 
     shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
 
   sectionTitle: {
     color: '#0f172a',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     marginBottom: 10,
+    letterSpacing: 0.2,
   },
 
-  /* ───── AI RECOMMENDATIONS ───── */
+  /* ───────── AI RECOMMENDATIONS ───────── */
   recommendation: {
     borderBottomColor: '#f1f5f9',
     borderBottomWidth: 1,
@@ -235,11 +245,13 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
 
-  /* ───── EMPTY ───── */
+  /* ───────── EMPTY STATE ───────── */
   emptyText: {
     color: '#94a3b8',
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '400',
+    textAlign: 'center',
+    paddingVertical: 10,
   },
 });

@@ -11,6 +11,7 @@ import {
   Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Exercise, ExerciseFilters } from '@/types/exercise';
 import { useAuthStore } from '@/store/authStore';
 import { fetchExercises, fetchExerciseFilters } from '@/services/api/exercise';
@@ -88,11 +89,16 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
     return filters.muscleGroups.sort();
   }, [filters]);
 
+  const difficulties = useMemo(() => {
+    if (!filters) return [];
+    return filters.difficulties;
+  }, [filters]);
+
   return (
     <View style={[styles.container, { backgroundColor: palette.background }]}>
       {/* Search Bar */}
       <View style={[styles.searchContainer, { backgroundColor: palette.card }]}>
-        <Ionicons name="search" size={20} color={palette.mutedText} style={styles.searchIcon} />
+        <Ionicons name="search-outline" size={20} color={palette.mutedText} />
         <TextInput
           style={[styles.searchInput, { color: palette.text }]}
           placeholder="Search exercises..."
@@ -101,8 +107,8 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           onChangeText={setSearchText}
         />
         {searchText ? (
-          <Pressable onPress={() => setSearchText('')}>
-            <Ionicons name="close-circle" size={20} color={palette.mutedText} />
+          <Pressable onPress={() => setSearchText('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="close-circle" size={18} color={palette.mutedText} />
           </Pressable>
         ) : null}
       </View>
@@ -111,19 +117,22 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filterContent}>
+        style={styles.filterSection}
+        contentContainerStyle={styles.filterContent}
+      >
         <Pressable
           onPress={() => onMuscleGroupChange?.(null)}
           style={[
-            styles.filterChip,
-            !selectedMuscleGroup && { backgroundColor: palette.tint },
-          ]}>
+            styles.filterPill,
+            !selectedMuscleGroup && styles.filterPillActive,
+          ]}
+        >
           <Text
             style={[
-              styles.filterChipText,
-              !selectedMuscleGroup && { color: palette.background },
-            ]}>
+              styles.filterPillText,
+              !selectedMuscleGroup && styles.filterPillTextActive,
+            ]}
+          >
             All
           </Text>
         </Pressable>
@@ -132,64 +141,103 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             key={group}
             onPress={() => onMuscleGroupChange?.(group)}
             style={[
-              styles.filterChip,
-              { backgroundColor: palette.card },
-              selectedMuscleGroup === group && { backgroundColor: palette.tint },
-            ]}>
+              styles.filterPill,
+              selectedMuscleGroup === group && styles.filterPillActive,
+            ]}
+          >
             <Text
               style={[
-                styles.filterChipText,
-                { color: palette.text },
-                selectedMuscleGroup === group && { color: palette.background },
-              ]}>
+                styles.filterPillText,
+                selectedMuscleGroup === group && styles.filterPillTextActive,
+              ]}
+            >
               {group}
             </Text>
           </Pressable>
         ))}
       </ScrollView>
 
-      {/* Difficulty and Equipment Filters */}
-      <View style={styles.secondaryFilters}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {filters?.difficulties.map((difficulty) => (
+      {/* Difficulty Filters */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.difficultySection}
+        contentContainerStyle={styles.filterContent}
+      >
+        {difficulties.map((difficulty) => {
+          const getDifficultyStyle = () => {
+            switch (difficulty) {
+              case 'beginner': return { bg: '#10b981', text: '#ffffff' };
+              case 'intermediate': return { bg: '#f59e0b', text: '#ffffff' };
+              case 'advanced': return { bg: '#ef4444', text: '#ffffff' };
+              default: return { bg: '#64748b', text: '#ffffff' };
+            }
+          };
+          const style = getDifficultyStyle();
+          const isActive = selectedDifficulty === difficulty;
+          
+          return (
             <Pressable
               key={difficulty}
-              onPress={() => setSelectedDifficulty(selectedDifficulty === difficulty ? null : difficulty)}
+              onPress={() => setSelectedDifficulty(isActive ? null : difficulty)}
               style={[
-                styles.smallFilterChip,
-                selectedDifficulty === difficulty && { backgroundColor: palette.tint },
-              ]}>
+                styles.difficultyPill,
+                isActive && { backgroundColor: style.bg },
+                !isActive && { backgroundColor: palette.card, borderWidth: 1, borderColor: palette.border },
+              ]}
+            >
               <Text
                 style={[
-                  styles.smallFilterText,
-                  selectedDifficulty === difficulty && { color: palette.background },
-                ]}>
-                {difficulty}
+                  styles.difficultyPillText,
+                  isActive && { color: style.text },
+                  !isActive && { color: palette.text },
+                ]}
+              >
+                {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
               </Text>
             </Pressable>
-          ))}
-        </ScrollView>
-      </View>
+          );
+        })}
+      </ScrollView>
+
+      {/* Results Count */}
+      {!isLoading && exercises.length > 0 && (
+        <View style={styles.resultsHeader}>
+          <Text style={[styles.resultsText, { color: palette.mutedText }]}>
+            {exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'} found
+          </Text>
+        </View>
+      )}
 
       {/* Exercise List */}
       {isLoading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={palette.tint} />
+          <ActivityIndicator size="large" color="#0d9488" />
+          <Text style={[styles.loaderText, { color: palette.mutedText }]}>Loading exercises...</Text>
         </View>
       ) : (
         <FlatList
           data={exercises}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <ExerciseCard exercise={item} onPress={() => onSelectExercise(item)} />
+            <ExerciseCard 
+              exercise={item} 
+              onPress={() => onSelectExercise(item)}
+              showFavoriteButton
+            />
           )}
           contentContainerStyle={styles.listContent}
           scrollEnabled={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="barbell-outline" size={48} color={palette.mutedText} />
-              <Text style={[styles.emptyText, { color: palette.text }]}>No exercises found</Text>
+              <LinearGradient colors={['#f8fafc', '#f1f5f9']} style={styles.emptyStateContent}>
+                <Ionicons name="barbell-outline" size={56} color="#cbd5e1" />
+                <Text style={[styles.emptyStateTitle, { color: palette.text }]}>No exercises found</Text>
+                <Text style={[styles.emptyStateSubtitle, { color: palette.mutedText }]}>
+                  Try adjusting your search or filters
+                </Text>
+              </LinearGradient>
             </View>
           }
         />
@@ -205,68 +253,108 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     marginHorizontal: 16,
-    marginVertical: 12,
-    borderRadius: 12,
-  },
-  searchIcon: {
-    marginRight: 8,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    paddingVertical: 8,
+    fontSize: 15,
+    fontWeight: '400',
+    paddingVertical: 6,
   },
-  filterScroll: {
-    paddingHorizontal: 16,
-    marginBottom: 8,
+  filterSection: {
+    marginTop: 8,
+    marginBottom: 4,
   },
-  filterContent: {
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  secondaryFilters: {
-    paddingHorizontal: 16,
+  difficultySection: {
     marginBottom: 12,
   },
-  smallFilterChip: {
-    paddingHorizontal: 12,
+  filterContent: {
+    paddingHorizontal: 16,
+    gap: 10,
     paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
   },
-  smallFilterText: {
-    fontSize: 12,
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  filterPillActive: {
+    backgroundColor: '#0d9488',
+    borderColor: '#0d9488',
+  },
+  filterPillText: {
+    fontSize: 14,
     fontWeight: '500',
+    color: '#475569',
+  },
+  filterPillTextActive: {
+    color: '#ffffff',
+  },
+  difficultyPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  difficultyPillText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  resultsText: {
+    fontSize: 12,
+    fontWeight: '400',
   },
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 24,
   },
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingVertical: 48,
+  },
+  loaderText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '400',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 48,
   },
-  emptyText: {
-    marginTop: 12,
-    fontSize: 16,
+  emptyStateContent: {
+    alignItems: 'center',
+    padding: 32,
+    borderRadius: 24,
+  },
+  emptyStateTitle: {
+    marginTop: 16,
+    fontSize: 18,
     fontWeight: '500',
+  },
+  emptyStateSubtitle: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: '400',
+    textAlign: 'center',
   },
 });

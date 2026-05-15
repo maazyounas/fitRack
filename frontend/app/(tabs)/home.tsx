@@ -15,10 +15,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   FadeInDown,
-  FadeInRight,
 } from 'react-native-reanimated';
 import { useAuthStore } from '../../store/authStore';
-import { fetchWeeklyInsights, fetchWorkoutRecommendations } from '../../services/api/ai';
+import { fetchWorkoutRecommendations } from '../../services/api/ai';
 import { AnimatedProgressRing } from '@/components/ui/AnimatedProgressRing';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useNutritionStore } from '@/store/nutritionStore';
@@ -44,7 +43,6 @@ export default function HomeScreen() {
   const { user, tokens } = useAuthStore();
   const { goals } = useOnboardingStore();
   const { dailyReport, goals: nutritionGoals, initialize: initNutrition } = useNutritionStore();
-  const [insights, setInsights] = useState<any[]>([]);
   const [recommendation, setRecommendation] = useState<any>(null);
   const [, setLoading] = useState(false);
 
@@ -53,12 +51,10 @@ export default function HomeScreen() {
       if (!tokens?.accessToken) return;
       setLoading(true);
       try {
-        const [insightsRes, recRes] = await Promise.all([
-          fetchWeeklyInsights(tokens.accessToken),
+        const [recRes] = await Promise.all([
           fetchWorkoutRecommendations(tokens.accessToken),
           initNutrition(),
         ]);
-        setInsights(insightsRes.insights ?? []);
         setRecommendation(recRes.recommendation ?? null);
       } catch (err) {
         console.error('Failed to load dashboard AI data', err);
@@ -74,11 +70,6 @@ export default function HomeScreen() {
   
   const calorieGoal = user?.profile.dailyCalories || nutritionGoals.calories || 2000;
   const caloriesConsumed = Math.round(dailyReport.totals.calories || 0);
-  const proteinConsumed = Math.round(dailyReport.totals.protein || 0);
-  const carbsConsumed = Math.round(dailyReport.totals.carbs || 0);
-  const fatsConsumed = Math.round(dailyReport.totals.fats || 0);
-
-  const progressPercent = Math.min(100, (caloriesConsumed / calorieGoal) * 100);
 
   return (
     <ScrollView

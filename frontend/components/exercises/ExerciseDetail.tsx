@@ -12,6 +12,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Exercise } from '@/types/exercise';
 import { useAppPalette } from '@/hooks/useAppPalette';
 import { useAuthStore } from '@/store/authStore';
@@ -68,72 +69,82 @@ export const ExerciseDetail: React.FC<ExerciseDetailProps> = ({
     }
   };
 
-  const getYouTubeEmbedUrl = (url: string) => {
-    // Extract video ID from YouTube URL
-    const videoIdMatch = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=))([^&\n?#]+)/);
-    const videoId = videoIdMatch?.[1];
-    if (!videoId) return null;
-    return `https://www.youtube.com/embed/${videoId}`;
+  const getDifficultyConfig = (difficulty: string) => {
+    switch (difficulty) {
+      case 'beginner':
+        return { color: '#10b981', label: 'Beginner' };
+      case 'intermediate':
+        return { color: '#f59e0b', label: 'Intermediate' };
+      case 'advanced':
+        return { color: '#ef4444', label: 'Advanced' };
+      default:
+        return { color: '#64748b', label: difficulty };
+    }
   };
 
-  const difficultyColor = {
-    beginner: '#4CAF50',
-    intermediate: '#FF9800',
-    advanced: '#F44336',
-  }[exercise.difficulty];
+  const difficultyConfig = getDifficultyConfig(exercise.difficulty);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: palette.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: palette.card }]}>
-        <View style={styles.titleContainer}>
-          <Text style={[styles.title, { color: palette.text }]}>{exercise.name}</Text>
-          <View style={styles.badgeContainer}>
-            <View style={[styles.badge, { backgroundColor: difficultyColor }]}>
-              <Text style={styles.badgeText}>{exercise.difficulty}</Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: palette.tint }]}>
-              <Text style={[styles.badgeText, { color: palette.background }]}>
-                {exercise.muscleGroup}
-              </Text>
-            </View>
-          </View>
-        </View>
-        <Pressable onPress={handleFavoritePress} disabled={isLoading}>
+    <ScrollView 
+      style={[styles.container, { backgroundColor: palette.background }]}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Hero Header */}
+      <LinearGradient colors={['#0a0f1e', '#0f1c2a']} style={styles.heroSection}>
+        <Pressable onPress={onClose} style={styles.closeButton}>
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
+        </Pressable>
+        <Pressable onPress={handleFavoritePress} disabled={isLoading} style={styles.heroFavorite}>
           <Ionicons
             name={isFavorite ? 'heart' : 'heart-outline'}
-            size={28}
-            color={isFavorite ? '#FF1744' : palette.mutedText}
+            size={24}
+            color={isFavorite ? '#ef4444' : '#ffffff'}
           />
         </Pressable>
-      </View>
+        <Text style={styles.heroTitle}>{exercise.name}</Text>
+        <View style={styles.heroBadges}>
+          <View style={[styles.heroBadge, { backgroundColor: difficultyConfig.color }]}>
+            <Text style={styles.heroBadgeText}>{difficultyConfig.label}</Text>
+          </View>
+          <View style={[styles.heroBadge, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+            <Text style={styles.heroBadgeText}>{exercise.muscleGroup}</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
-      {/* Description */}
+      {/* Overview Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: palette.text }]}>Overview</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="information-circle-outline" size={20} color="#0d9488" />
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>Overview</Text>
+        </View>
         <Text style={[styles.description, { color: palette.mutedText }]}>
           {exercise.description}
         </Text>
+        
         <View style={styles.infoGrid}>
-          <View style={styles.infoItem}>
-            <Ionicons name="settings" size={20} color={palette.tint} />
+          <View style={styles.infoCard}>
+            <Ionicons name="fitness-outline" size={22} color="#0d9488" />
             <Text style={[styles.infoLabel, { color: palette.mutedText }]}>Equipment</Text>
             <Text style={[styles.infoValue, { color: palette.text }]}>{exercise.equipment}</Text>
           </View>
-          <View style={styles.infoItem}>
-            <Ionicons name="flame" size={20} color={palette.tint} />
-            <Text style={[styles.infoLabel, { color: palette.mutedText }]}>Target</Text>
-            <Text style={[styles.infoValue, { color: palette.text }]}>
+          <View style={styles.infoCard}>
+            <Ionicons name="body-outline" size={22} color="#0d9488" />
+            <Text style={[styles.infoLabel, { color: palette.mutedText }]}>Target Muscles</Text>
+            <Text style={[styles.infoValue, { color: palette.text }]} numberOfLines={2}>
               {exercise.targetMuscles.join(', ') || 'Multiple'}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Video Demo */}
+      {/* Video Demo Section */}
       {exercise.demoVideos.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>Demo Video</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="play-circle-outline" size={20} color="#0d9488" />
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>Demo Video</Text>
+          </View>
           {exercise.demoVideos.map((video, index) => {
             const videoIdMatch = video.url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=))([^&\n?#]+)/);
             const videoId = videoIdMatch?.[1];
@@ -143,23 +154,23 @@ export const ExerciseDetail: React.FC<ExerciseDetailProps> = ({
               <Pressable
                 key={index}
                 onPress={() => Linking.openURL(video.url)}
-                style={[styles.videoContainer, { backgroundColor: palette.card }]}>
+                style={styles.videoCard}
+              >
                 {thumbnailUrl && (
-                  <Image
-                    source={{ uri: thumbnailUrl }}
-                    style={styles.videoThumbnail}
-                  />
+                  <Image source={{ uri: thumbnailUrl }} style={styles.videoThumbnail} />
                 )}
-                <View style={styles.videoOverlay}>
-                  <Ionicons name="play-circle" size={48} color={palette.tint} />
+                <LinearGradient 
+                  colors={['transparent', 'rgba(0,0,0,0.7)']} 
+                  style={styles.videoOverlay}
+                />
+                <View style={styles.videoPlayIcon}>
+                  <Ionicons name="play-circle" size={48} color="#ffffff" />
                 </View>
                 <View style={styles.videoInfo}>
-                  <Text style={[styles.videoTitle, { color: palette.text }]} numberOfLines={1}>
+                  <Text style={styles.videoTitle} numberOfLines={1}>
                     {video.title}
                   </Text>
-                  <Text style={[styles.videoUrl, { color: palette.mutedText }]}>
-                    Tap to watch on YouTube
-                  </Text>
+                  <Text style={styles.videoSubtitle}>Tap to watch on YouTube</Text>
                 </View>
               </Pressable>
             );
@@ -167,22 +178,30 @@ export const ExerciseDetail: React.FC<ExerciseDetailProps> = ({
         </View>
       )}
 
-      {/* Instructions */}
+      {/* Instructions Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: palette.text }]}>Instructions</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="list-outline" size={20} color="#0d9488" />
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>Instructions</Text>
+        </View>
         {exercise.instructions.map((instruction, index) => (
           <View key={index} style={styles.instructionItem}>
-            <View style={[styles.stepNumber, { backgroundColor: palette.tint }]}>
-              <Text style={[styles.stepText, { color: palette.background }]}>{index + 1}</Text>
+            <View style={styles.stepNumber}>
+              <Text style={styles.stepNumberText}>{index + 1}</Text>
             </View>
-            <Text style={[styles.instructionText, { color: palette.text }]}>{instruction}</Text>
+            <Text style={[styles.instructionText, { color: palette.text }]}>
+              {instruction}
+            </Text>
           </View>
         ))}
       </View>
 
-      {/* Rating */}
+      {/* Rating Section */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: palette.text }]}>Your Rating</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="star-outline" size={20} color="#0d9488" />
+          <Text style={[styles.sectionTitle, { color: palette.text }]}>Rate this exercise</Text>
+        </View>
         <RatingComponent
           currentRating={currentRating}
           onRatePress={handleRating}
@@ -190,50 +209,45 @@ export const ExerciseDetail: React.FC<ExerciseDetailProps> = ({
         />
         {exercise.ratingCount > 0 && (
           <Text style={[styles.ratingStats, { color: palette.mutedText }]}>
-            Average: {exercise.ratingAverage.toFixed(1)} ⭐ ({exercise.ratingCount} ratings)
+            ⭐ {exercise.ratingAverage.toFixed(1)} average ({exercise.ratingCount} ratings)
           </Text>
         )}
       </View>
 
-      {/* Comments */}
+      {/* Comments Section */}
       {exercise.comments.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: palette.text }]}>
-            Community Comments ({exercise.comments.length})
-          </Text>
-          <FlatList
-            data={exercise.comments.slice(0, 3)}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={[styles.comment, { backgroundColor: palette.card }]}>
-                <View style={styles.commentHeader}>
-                  <Text style={[styles.commentUser, { color: palette.text }]}>{item.userName}</Text>
-                  <Text style={[styles.commentDate, { color: palette.mutedText }]}>
-                    {new Date(item.createdAt).toLocaleDateString()}
-                  </Text>
-                </View>
-                <Text style={[styles.commentContent, { color: palette.text }]}>{item.content}</Text>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="chatbubbles-outline" size={20} color="#0d9488" />
+            <Text style={[styles.sectionTitle, { color: palette.text }]}>
+              Community feedback ({exercise.comments.length})
+            </Text>
+          </View>
+          {exercise.comments.slice(0, 3).map((comment) => (
+            <View key={comment.id} style={[styles.commentCard, { backgroundColor: palette.card }]}>
+              <View style={styles.commentHeader}>
+                <Text style={[styles.commentUser, { color: palette.text }]}>{comment.userName}</Text>
+                <Text style={[styles.commentDate, { color: palette.mutedText }]}>
+                  {new Date(comment.createdAt).toLocaleDateString()}
+                </Text>
               </View>
-            )}
-            scrollEnabled={false}
-          />
+              <Text style={[styles.commentContent, { color: palette.mutedText }]}>
+                {comment.content}
+              </Text>
+            </View>
+          ))}
         </View>
       )}
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
-        <Pressable
-          style={[styles.button, { backgroundColor: palette.tint }]}
-          onPress={onAddToWorkout}>
-          <Ionicons name="add-circle" size={20} color={palette.background} />
-          <Text style={[styles.buttonText, { color: palette.background }]}>Add to Workout</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.button, { backgroundColor: palette.card }]}
-          onPress={onClose}>
-          <Text style={[styles.buttonText, { color: palette.text }]}>Close</Text>
+        <Pressable style={styles.primaryButton} onPress={onAddToWorkout}>
+          <Ionicons name="add-circle-outline" size={20} color="#ffffff" />
+          <Text style={styles.primaryButtonText}>Add to Workout</Text>
         </Pressable>
       </View>
+
+      <View style={{ height: 24 }} />
     </ScrollView>
   );
 };
@@ -242,73 +256,96 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
+  heroSection: {
+    paddingTop: 60,
+    paddingBottom: 32,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    zIndex: 10,
+    padding: 8,
+  },
+  heroFavorite: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    padding: 8,
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 16,
+    letterSpacing: -0.5,
+  },
+  heroBadges: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: 16,
+    justifyContent: 'center',
+    gap: 10,
   },
-  titleContainer: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  badgeContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  badge: {
-    paddingHorizontal: 12,
+  heroBadge: {
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#fff',
+  heroBadgeText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#ffffff',
   },
   section: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 12,
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: -0.3,
   },
   description: {
     fontSize: 14,
+    fontWeight: '400',
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   infoGrid: {
     flexDirection: 'row',
     gap: 12,
   },
-  infoItem: {
+  infoCard: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 14,
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    gap: 6,
   },
   infoLabel: {
     fontSize: 12,
-    marginTop: 4,
+    fontWeight: '400',
   },
   infoValue: {
     fontSize: 13,
-    fontWeight: '600',
-    marginTop: 4,
+    fontWeight: '500',
+    textAlign: 'center',
   },
-  videoContainer: {
-    marginBottom: 12,
-    borderRadius: 8,
+  videoCard: {
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#000',
-    height: 240,
+    height: 220,
     position: 'relative',
   },
   videoThumbnail: {
@@ -319,90 +356,101 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
+  },
+  videoPlayIcon: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   videoInfo: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 12,
+    padding: 14,
   },
   videoTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#fff',
-    marginBottom: 4,
+    color: '#ffffff',
+    marginBottom: 2,
   },
-  videoUrl: {
-    fontSize: 12,
+  videoSubtitle: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: 'rgba(255,255,255,0.7)',
   },
   instructionItem: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginBottom: 14,
     gap: 12,
   },
   stepNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#0d9488',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  stepText: {
-    fontSize: 14,
+  stepNumberText: {
+    fontSize: 13,
     fontWeight: '600',
+    color: '#ffffff',
   },
   instructionText: {
     flex: 1,
     fontSize: 14,
+    fontWeight: '400',
     lineHeight: 20,
-    paddingTop: 4,
   },
   ratingStats: {
     marginTop: 12,
     fontSize: 13,
+    fontWeight: '400',
     textAlign: 'center',
   },
-  comment: {
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
+  commentCard: {
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
   },
   commentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   commentUser: {
-    fontWeight: '600',
     fontSize: 13,
+    fontWeight: '600',
   },
   commentDate: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '400',
   },
   commentContent: {
     fontSize: 13,
+    fontWeight: '400',
     lineHeight: 18,
   },
   actionButtons: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
-  button: {
+  primaryButton: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
     gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#0d9488',
   },
-  buttonText: {
+  primaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#ffffff',
   },
 });

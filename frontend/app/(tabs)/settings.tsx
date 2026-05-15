@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Button } from '@/components/ui/Button';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/store/authStore';
 import { useNutritionStore } from '@/store/nutritionStore';
 import { useWorkoutStore } from '@/store/workoutStore';
@@ -13,54 +13,80 @@ import { DailyReminder } from '@/types/notifications';
 import { parseVoiceRoute, speakText, startVoiceRecognition } from '@/services/voice';
 import { AppHeader } from '@/components/common/AppHeader';
 
-function PreferenceRow({
-  label,
-  description,
-  value,
-  onValueChange,
-  palette,
-  fontScale,
-  align,
-}: {
-  label: string;
-  description: string;
-  value: boolean;
-  onValueChange: (value: boolean) => void;
-  palette: ReturnType<typeof useAppPalette>;
-  fontScale: number;
-  align: 'left' | 'right';
-}) {
+// Section Header Component
+function SettingsSection({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
-    <View style={styles.preferenceRow}>
-      <View style={styles.preferenceCopy}>
-        <Text style={[styles.preferenceLabel, { color: palette.text, fontSize: 16 * fontScale, textAlign: align }]}>
-          {label}
-        </Text>
-        <Text
-          style={[
-            styles.preferenceDescription,
-            { color: palette.mutedText, fontSize: 14 * fontScale, textAlign: align },
-          ]}
-        >
-          {description}
-        </Text>
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        <Ionicons name={icon as any} size={22} color="#0d9488" />
+        <Text style={styles.sectionTitle}>{title}</Text>
       </View>
-      <Switch onValueChange={onValueChange} value={value} />
+      <View style={styles.sectionContent}>
+        {children}
+      </View>
     </View>
   );
 }
 
-function ReminderTimeControls({
-  onAdjust,
+// Setting Row Component
+function SettingRow({
+  icon,
+  label,
+  description,
+  value,
+  onValueChange,
+  rightElement,
 }: {
-  onAdjust: (patch: Partial<DailyReminder>) => void;
+  icon?: string;
+  label: string;
+  description?: string;
+  value?: boolean;
+  onValueChange?: (value: boolean) => void;
+  rightElement?: React.ReactNode;
 }) {
   return (
-    <View style={styles.timeButtons}>
-      <Button label="-1h" onPress={() => onAdjust({ hour: -1 })} tone="secondary" />
-      <Button label="+1h" onPress={() => onAdjust({ hour: 1 })} tone="secondary" />
-      <Button label="-15m" onPress={() => onAdjust({ minute: -15 })} tone="secondary" />
-      <Button label="+15m" onPress={() => onAdjust({ minute: 15 })} tone="secondary" />
+    <View style={styles.settingRow}>
+      <View style={styles.settingLeft}>
+        {icon && (
+          <View style={styles.settingIcon}>
+            <Ionicons name={icon as any} size={20} color="#0d9488" />
+          </View>
+        )}
+        <View style={styles.settingContent}>
+          <Text style={styles.settingLabel}>{label}</Text>
+          {description && <Text style={styles.settingDescription}>{description}</Text>}
+        </View>
+      </View>
+      <View style={styles.settingRight}>
+        {rightElement ? rightElement : onValueChange && (
+          <Switch
+            value={value}
+            onValueChange={onValueChange}
+            trackColor={{ false: '#e2e8f0', true: '#0d9488' }}
+            thumbColor="#ffffff"
+          />
+        )}
+      </View>
+    </View>
+  );
+}
+
+// Time Adjustment Buttons
+function TimeAdjustButtons({ onAdjust }: { onAdjust: (patch: Partial<DailyReminder>) => void }) {
+  return (
+    <View style={styles.timeButtonGroup}>
+      <TouchableOpacity style={styles.timeButton} onPress={() => onAdjust({ hour: -1 })}>
+        <Text style={styles.timeButtonText}>-1h</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.timeButton} onPress={() => onAdjust({ hour: 1 })}>
+        <Text style={styles.timeButtonText}>+1h</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.timeButton} onPress={() => onAdjust({ minute: -15 })}>
+        <Text style={styles.timeButtonText}>-15m</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.timeButton} onPress={() => onAdjust({ minute: 15 })}>
+        <Text style={styles.timeButtonText}>+15m</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -72,14 +98,10 @@ export default function SettingsScreen() {
   const { t, isRTL, language } = useTranslation();
   const {
     user,
-    imageConsent,
     updatePreferences,
     deactivateAccount,
     deleteAccount,
     loadImageConsent,
-    saveImageConsent,
-    revokeImageConsent,
-    deleteStoredImages,
     isLoading,
     touchActivity,
   } = useAuthStore();
@@ -151,7 +173,6 @@ export default function SettingsScreen() {
       Alert.alert('Text to speech is off', 'Enable text to speech first to preview spoken guidance.');
       return;
     }
-
     await speakText(t('voice_preview_message'));
   };
 
@@ -183,401 +204,184 @@ export default function SettingsScreen() {
   return (
     <View style={styles.page}>
       <AppHeader title={t('settings_title')} />
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: palette.background }]} showsVerticalScrollIndicator={false}>
-        <Text style={[styles.subtitle, { color: palette.mutedText, fontSize: 15 * fontScale, textAlign: align }]}>
+      <ScrollView 
+        contentContainerStyle={styles.container} 
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.pageSubtitle}>
           {t('settings_subtitle')}
         </Text>
 
-      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-        <Text style={[styles.sectionTitle, { color: palette.text, fontSize: 18 * fontScale, textAlign: align }]}>
-          {t('settings_accessibility')}
-        </Text>
-        <Button
-          label={`${t('settings_language')}: ${
-            preferences.autoDetectLanguage
-              ? `${t('settings_language_auto')}`
-              : preferences.language === 'en'
-                ? t('settings_english')
-                : t('settings_urdu')
-          }`}
-          onPress={() =>
-            void handlePreferenceUpdate({
-              language: preferences.language === 'en' ? 'ur' : 'en',
-              autoDetectLanguage: false,
-            })
-          }
-          tone="secondary"
-        />
-        <PreferenceRow
-          align={align}
-          description={t('settings_language_desc')}
-          fontScale={fontScale}
-          label={t('settings_language_auto')}
-          onValueChange={(value) => void handlePreferenceUpdate({ autoDetectLanguage: value })}
-          palette={palette}
-          value={preferences.autoDetectLanguage}
-        />
-        <PreferenceRow
-          align={align}
-          description={t('settings_dark_mode_desc')}
-          fontScale={fontScale}
-          label={t('settings_dark_mode')}
-          onValueChange={(value) => void handlePreferenceUpdate({ darkMode: value })}
-          palette={palette}
-          value={preferences.darkMode}
-        />
-        <PreferenceRow
-          align={align}
-          description={t('settings_high_contrast_desc')}
-          fontScale={fontScale}
-          label={t('settings_high_contrast')}
-          onValueChange={(value) => void handlePreferenceUpdate({ highContrastMode: value })}
-          palette={palette}
-          value={preferences.highContrastMode}
-        />
-        <PreferenceRow
-          align={align}
-          description={`${t('settings_large_text_desc')} (${preferences.fontScale.toFixed(1)}x)`}
-          fontScale={fontScale}
-          label={t('settings_large_text')}
-          onValueChange={(value) =>
-            void handlePreferenceUpdate({ fontScale: value ? Math.max(1.2, preferences.fontScale) : 1 })
-          }
-          palette={palette}
-          value={preferences.fontScale > 1}
-        />
-        <View style={styles.timeButtons}>
-          <Button
-            label={`${t('settings_font_scale')} -`}
-            onPress={() => void handlePreferenceUpdate({ fontScale: Math.max(1, preferences.fontScale - 0.1) })}
-            tone="secondary"
+        {/* Accessibility Section */}
+        <SettingsSection icon="accessibility-outline" title="Accessibility">
+          
+          
+          <SettingRow
+            icon="moon-outline"
+            label="Dark Mode"
+            description="Switch between light and dark theme"
+            value={preferences.darkMode}
+            onValueChange={(value) => handlePreferenceUpdate({ darkMode: value })}
           />
-          <Button
-            label={`${t('settings_font_scale')} +`}
-            onPress={() => void handlePreferenceUpdate({ fontScale: Math.min(1.4, preferences.fontScale + 0.1) })}
-            tone="secondary"
+          
+        </SettingsSection>
+
+        {/* Voice Section */}
+        <SettingsSection icon="mic-outline" title="Voice Control">
+          <SettingRow
+            icon="mic-circle-outline"
+            label="Voice Commands"
+            description="Control the app with your voice"
+            value={preferences.voiceCommandsEnabled}
+            onValueChange={(value) => handlePreferenceUpdate({ voiceCommandsEnabled: value })}
           />
-        </View>
-      </View>
-
-      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-        <Text style={[styles.sectionTitle, { color: palette.text, fontSize: 18 * fontScale, textAlign: align }]}>
-          {t('settings_voice')}
-        </Text>
-        <PreferenceRow
-          align={align}
-          description={t('settings_voice_commands_desc')}
-          fontScale={fontScale}
-          label={t('settings_voice_commands')}
-          onValueChange={(value) => void handlePreferenceUpdate({ voiceCommandsEnabled: value })}
-          palette={palette}
-          value={preferences.voiceCommandsEnabled}
-        />
-        <PreferenceRow
-          align={align}
-          description={t('settings_tts_desc')}
-          fontScale={fontScale}
-          label={t('settings_tts')}
-          onValueChange={(value) => void handlePreferenceUpdate({ textToSpeechEnabled: value })}
-          palette={palette}
-          value={preferences.textToSpeechEnabled}
-        />
-        <View style={styles.timeButtons}>
-          <Button label={t('settings_preview_voice')} onPress={() => void handleVoicePreview()} tone="secondary" />
-          <Button
-            label={t('settings_try_voice')}
-            onPress={() => void handleTryVoiceCommand()}
-            tone="secondary"
+          
+          <SettingRow
+            icon="volume-high-outline"
+            label="Text to Speech"
+            description="Enable spoken feedback and guidance"
+            value={preferences.textToSpeechEnabled}
+            onValueChange={(value) => handlePreferenceUpdate({ textToSpeechEnabled: value })}
           />
-        </View>
-        <Text style={[styles.voiceStatus, { color: palette.mutedText, fontSize: 14 * fontScale, textAlign: align }]}>
-          {t('settings_voice_status')}: {voiceStatus || t('voice_not_supported')}
-        </Text>
-      </View>
+          
+          <View style={styles.voiceButtonGroup}>
+            <TouchableOpacity style={styles.voiceButton} onPress={handleVoicePreview}>
+              <Ionicons name="play-outline" size={18} color="#0d9488" />
+              <Text style={styles.voiceButtonText}>Preview Voice</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.voiceButton, styles.voiceButtonPrimary]} onPress={handleTryVoiceCommand}>
+              <Ionicons name="mic-outline" size={18} color="#fff" />
+              <Text style={[styles.voiceButtonText, styles.voiceButtonTextPrimary]}>Try Voice Command</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {voiceStatus && (
+            <View style={styles.voiceStatusContainer}>
+              <Ionicons name="chatbubble-outline" size={16} color="#64748b" />
+              <Text style={styles.voiceStatusText}>{voiceStatus}</Text>
+            </View>
+          )}
+        </SettingsSection>
 
-      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-        <Text style={[styles.sectionTitle, { color: palette.text, fontSize: 18 * fontScale, textAlign: align }]}>
-          {t('settings_preferences')}
-        </Text>
-        <Button
-          label={`${t('settings_unit_system')}: ${
-            preferences.unitSystem === 'metric' ? t('settings_metric') : t('settings_imperial')
-          }`}
-          onPress={() =>
-            void handlePreferenceUpdate({
-              unitSystem: preferences.unitSystem === 'metric' ? 'imperial' : 'metric',
-            })
-          }
-          tone="secondary"
-        />
-        <PreferenceRow
-          align={align}
-          description={t('settings_notifications_desc')}
-          fontScale={fontScale}
-          label={t('settings_notifications')}
-          onValueChange={(value) => void handlePreferenceUpdate({ notificationsEnabled: value })}
-          palette={palette}
-          value={preferences.notificationsEnabled}
-        />
-      </View>
+        {/* Preferences Section */}
+        <SettingsSection icon="options-outline" title="Preferences">
+          <SettingRow
+            icon="scale-outline"
+            label="Unit System"
+            description={`Currently using ${preferences.unitSystem === 'metric' ? 'Metric (kg, cm)' : 'Imperial (lbs, ft)'}`}
+            rightElement={
+              <TouchableOpacity 
+                style={styles.textButton}
+                onPress={() => handlePreferenceUpdate({
+                  unitSystem: preferences.unitSystem === 'metric' ? 'imperial' : 'metric',
+                })}
+              >
+                <Text style={styles.textButtonLabel}>Switch</Text>
+              </TouchableOpacity>
+            }
+          />
+          
+          <SettingRow
+            icon="notifications-outline"
+            label="Push Notifications"
+            description="Receive alerts and reminders"
+            value={preferences.notificationsEnabled}
+            onValueChange={(value) => handlePreferenceUpdate({ notificationsEnabled: value })}
+          />
+        </SettingsSection>
 
-      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-        <Text style={[styles.sectionTitle, { color: palette.text, fontSize: 18 * fontScale, textAlign: align }]}>
-          Reminders & Notifications
-        </Text>
-        <Text style={[styles.securityNote, { color: palette.mutedText, fontSize: 15 * fontScale, textAlign: align }]}>
-          Expo notifications are scheduled on-device for workouts, meals, hydration, and missed workout check-ins.
-        </Text>
-        <Text style={[styles.imageSummary, { color: palette.text, fontSize: 14 * fontScale, textAlign: align }]}>
-          Permission: {notificationStatus.permissionStatus} | Scheduled alerts: {notificationStatus.scheduledCount}
-        </Text>
-        <Text
-          style={[styles.preferenceDescription, { color: palette.mutedText, fontSize: 14 * fontScale, textAlign: align }]}
-        >
-          Expo push token: {notificationStatus.expoPushToken ?? 'Unavailable in this build or not yet configured.'}
-        </Text>
+        {/* Reminders Section */}
+        <SettingsSection icon="alarm-outline" title="Reminders">
+          <Text style={styles.reminderInfo}>
+            Scheduled reminders for workouts, meals, and hydration
+          </Text>
+          
+          <View style={styles.statusBadge}>
+            <View style={[styles.statusDot, { backgroundColor: notificationStatus.permissionStatus === 'granted' ? '#10b981' : '#ef4444' }]} />
+            <Text style={styles.statusText}>
+              Permission: {notificationStatus.permissionStatus === 'granted' ? 'Enabled' : 'Disabled'}
+            </Text>
+          </View>
 
-        <PreferenceRow
-          align={align}
-          description={`Daily workout prompt at ${String(reminderSettings.workoutReminder.hour).padStart(2, '0')}:${String(reminderSettings.workoutReminder.minute).padStart(2, '0')}.`}
-          fontScale={fontScale}
-          label="Workout reminders"
-          onValueChange={(value) =>
-            void handleDailyReminderUpdate(
-              (patch) => updateWorkoutReminder(patch, reminderContext),
-              { enabled: value }
-            )
-          }
-          palette={palette}
-          value={reminderSettings.workoutReminder.enabled}
-        />
-        <ReminderTimeControls
-          onAdjust={(delta) =>
-            void handleDailyReminderUpdate(
+          {/* Workout Reminder */}
+          <View style={styles.reminderGroup}>
+            <SettingRow
+              label="Workout Reminder"
+              description={`Daily at ${String(reminderSettings.workoutReminder.hour).padStart(2, '0')}:${String(reminderSettings.workoutReminder.minute).padStart(2, '0')}`}
+              value={reminderSettings.workoutReminder.enabled}
+              onValueChange={(value) => handleDailyReminderUpdate(
+                (patch) => updateWorkoutReminder(patch, reminderContext),
+                { enabled: value }
+              )}
+            />
+            <TimeAdjustButtons onAdjust={(delta) => handleDailyReminderUpdate(
               (patch) => updateWorkoutReminder(patch, reminderContext),
               buildAdjustedReminderPatch(reminderSettings.workoutReminder, delta)
-            )
-          }
-        />
+            )} />
+          </View>
 
-        <PreferenceRow
-          align={align}
-          description={`Evening missed-workout check at ${String(reminderSettings.missedWorkoutAlert.hour).padStart(2, '0')}:${String(reminderSettings.missedWorkoutAlert.minute).padStart(2, '0')}.`}
-          fontScale={fontScale}
-          label="Missed workout alerts"
-          onValueChange={(value) =>
-            void handleDailyReminderUpdate(
-              (patch) => updateMissedWorkoutAlert(patch, reminderContext),
-              { enabled: value }
-            )
-          }
-          palette={palette}
-          value={reminderSettings.missedWorkoutAlert.enabled}
-        />
-        <ReminderTimeControls
-          onAdjust={(delta) =>
-            void handleDailyReminderUpdate(
+          {/* Missed Workout Alert */}
+          <View style={styles.reminderGroup}>
+            <SettingRow
+              label="Missed Workout Alert"
+              description={`Evening check at ${String(reminderSettings.missedWorkoutAlert.hour).padStart(2, '0')}:${String(reminderSettings.missedWorkoutAlert.minute).padStart(2, '0')}`}
+              value={reminderSettings.missedWorkoutAlert.enabled}
+              onValueChange={(value) => handleDailyReminderUpdate(
+                (patch) => updateMissedWorkoutAlert(patch, reminderContext),
+                { enabled: value }
+              )}
+            />
+            <TimeAdjustButtons onAdjust={(delta) => handleDailyReminderUpdate(
               (patch) => updateMissedWorkoutAlert(patch, reminderContext),
               buildAdjustedReminderPatch(reminderSettings.missedWorkoutAlert, delta)
-            )
-          }
-        />
+            )} />
+          </View>
 
-        <PreferenceRow
-          align={align}
-          description={`Scheduled for ${String(reminderSettings.mealReminders.breakfast.hour).padStart(2, '0')}:${String(reminderSettings.mealReminders.breakfast.minute).padStart(2, '0')}.`}
-          fontScale={fontScale}
-          label="Breakfast reminder"
-          onValueChange={(value) => void updateMealReminder('breakfast', { enabled: value }, reminderContext)}
-          palette={palette}
-          value={reminderSettings.mealReminders.breakfast.enabled}
-        />
-        <ReminderTimeControls
-          onAdjust={(delta) =>
-            void updateMealReminder(
-              'breakfast',
-              buildAdjustedReminderPatch(reminderSettings.mealReminders.breakfast, delta),
-              reminderContext
-            )
-          }
-        />
-        <PreferenceRow
-          align={align}
-          description={`Scheduled for ${String(reminderSettings.mealReminders.lunch.hour).padStart(2, '0')}:${String(reminderSettings.mealReminders.lunch.minute).padStart(2, '0')}.`}
-          fontScale={fontScale}
-          label="Lunch reminder"
-          onValueChange={(value) => void updateMealReminder('lunch', { enabled: value }, reminderContext)}
-          palette={palette}
-          value={reminderSettings.mealReminders.lunch.enabled}
-        />
-        <ReminderTimeControls
-          onAdjust={(delta) =>
-            void updateMealReminder(
-              'lunch',
-              buildAdjustedReminderPatch(reminderSettings.mealReminders.lunch, delta),
-              reminderContext
-            )
-          }
-        />
-        <PreferenceRow
-          align={align}
-          description={`Scheduled for ${String(reminderSettings.mealReminders.dinner.hour).padStart(2, '0')}:${String(reminderSettings.mealReminders.dinner.minute).padStart(2, '0')}.`}
-          fontScale={fontScale}
-          label="Dinner reminder"
-          onValueChange={(value) => void updateMealReminder('dinner', { enabled: value }, reminderContext)}
-          palette={palette}
-          value={reminderSettings.mealReminders.dinner.enabled}
-        />
-        <ReminderTimeControls
-          onAdjust={(delta) =>
-            void updateMealReminder(
-              'dinner',
-              buildAdjustedReminderPatch(reminderSettings.mealReminders.dinner, delta),
-              reminderContext
-            )
-          }
-        />
-        <PreferenceRow
-          align={align}
-          description={`Every ${hydrationReminder.intervalMinutes} min from ${String(hydrationReminder.startHour).padStart(2, '0')}:00 to ${String(hydrationReminder.endHour).padStart(2, '0')}:00.`}
-          fontScale={fontScale}
-          label="Hydration alerts"
-          onValueChange={(value) =>
-            void saveGoals({
-              hydrationReminder: { ...hydrationReminder, enabled: value },
-            })
-          }
-          palette={palette}
-          value={hydrationReminder.enabled}
-        />
-        {remindersSyncing ? (
-          <Text style={[styles.voiceStatus, { color: palette.mutedText, fontSize: 14 * fontScale, textAlign: align }]}>
-            Updating scheduled reminders...
-          </Text>
-        ) : null}
-      </View>
+          
 
-      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-        <Text style={[styles.sectionTitle, { color: palette.text, fontSize: 18 * fontScale, textAlign: align }]}>
-          Security
-        </Text>
-        <Text style={[styles.securityNote, { color: palette.mutedText, fontSize: 15 * fontScale, textAlign: align }]}>
-          Sessions auto-expire after inactivity, tokens are stored in secure storage, and password resets use OTP verification.
-        </Text>
-      </View>
+          {/* Hydration Reminder */}
+          <View style={styles.reminderGroup}>
+            <SettingRow
+              label="Hydration Reminder"
+              description={`Every ${hydrationReminder.intervalMinutes} min, ${hydrationReminder.startHour}:00 - ${hydrationReminder.endHour}:00`}
+              value={hydrationReminder.enabled}
+              onValueChange={(value) => saveGoals({
+                hydrationReminder: { ...hydrationReminder, enabled: value },
+              })}
+            />
+          </View>
 
-      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-        <Text style={[styles.sectionTitle, { color: palette.text, fontSize: 18 * fontScale, textAlign: align }]}>
-          Image Upload Consent
-        </Text>
-        <Text style={[styles.securityNote, { color: palette.mutedText, fontSize: 15 * fontScale, textAlign: align }]}>
-          Before any image upload, FITRACK explains how images are used and lets you choose local or cloud processing.
-          Images are not stored unless you explicitly allow storage.
-        </Text>
-        <PreferenceRow
-          align={align}
-          description="Turn this on before upload-based features can process body, wrist, or profile images."
-          fontScale={fontScale}
-          label="I consent to image processing"
-          onValueChange={(value) =>
-            void saveImageConsent({
-              consentGiven: value,
-              usageExplanationAccepted: value || imageConsent?.usageExplanationAccepted,
-            })
-          }
-          palette={palette}
-          value={Boolean(imageConsent?.consentGiven)}
-        />
-        <PreferenceRow
-          align={align}
-          description="Acknowledges the explanation that images may be processed locally or in the cloud depending on your choice."
-          fontScale={fontScale}
-          label="I understand image usage"
-          onValueChange={(value) => void saveImageConsent({ usageExplanationAccepted: value })}
-          palette={palette}
-          value={Boolean(imageConsent?.usageExplanationAccepted)}
-        />
-        <PreferenceRow
-          align={align}
-          description="Leave this off to prevent retention. Turning it off deletes any stored image records immediately."
-          fontScale={fontScale}
-          label="Allow image storage"
-          onValueChange={(value) => void saveImageConsent({ storageAllowed: value })}
-          palette={palette}
-          value={Boolean(imageConsent?.storageAllowed)}
-        />
-        <Text style={[styles.imageSummary, { color: palette.text, fontSize: 14 * fontScale, textAlign: align }]}>
-          Stored image records: {imageConsent?.storedImages.length ?? 0}
-        </Text>
-        <Button
-          label="Withdraw Consent"
-          loading={isLoading}
-          onPress={() =>
-            Alert.alert('Withdraw consent', 'This disables image processing consent and deletes stored image records immediately.', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Withdraw', style: 'destructive', onPress: () => void revokeImageConsent() },
-            ])
-          }
-          tone="secondary"
-        />
-        <View style={styles.buttonGap} />
-        <Button
-          label="Delete Stored Images Now"
-          loading={isLoading}
-          onPress={() =>
-            Alert.alert('Delete stored images', 'This removes stored image records immediately.', [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Delete', style: 'destructive', onPress: () => void deleteStoredImages() },
-            ])
-          }
-          tone="danger"
-        />
-      </View>
+          {remindersSyncing && (
+            <Text style={styles.syncingText}>Updating reminders...</Text>
+          )}
+        </SettingsSection>
 
-      <View style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}>
-        <Text style={[styles.sectionTitle, { color: palette.text, fontSize: 18 * fontScale, textAlign: align }]}>
-          Account control
-        </Text>
-        <Button
-          label="Deactivate Account"
-          loading={isLoading}
-          onPress={() =>
-            Alert.alert('Deactivate account', 'You can log back in later to restore access.', [
+        {/* Account Section */}
+        <SettingsSection icon="person-outline" title="Account Management">
+          <TouchableOpacity 
+            style={styles.accountButton}
+            onPress={() => Alert.alert('Deactivate account', 'You can log back in later to restore access.', [
               { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Deactivate',
-                style: 'destructive',
-                onPress: () =>
-                  void (async () => {
-                    await deactivateAccount();
-                    router.replace('/login');
-                  })(),
-              },
-            ])
-          }
-          tone="secondary"
-        />
-        <View style={styles.buttonGap} />
-        <Button
-          label="Delete Account Permanently"
-          loading={isLoading}
-          onPress={() =>
-            Alert.alert('Delete account', 'This permanently removes FITRACK user data. Tap Delete to continue.', [
+              { text: 'Deactivate', style: 'destructive', onPress: () => deactivateAccount().then(() => router.replace('/login')) },
+            ])}
+          >
+            <Ionicons name="pause-circle-outline" size={20} color="#f59e0b" />
+            <Text style={[styles.accountButtonText, { color: '#f59e0b' }]}>Deactivate Account</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.accountButton, styles.accountButtonDanger]}
+            onPress={() => Alert.alert('Delete account', 'This permanently deletes all your data.', [
               { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: () =>
-                  void (async () => {
-                    await deleteAccount('DELETE');
-                    router.replace('/login');
-                  })(),
-              },
-            ])
-          }
-          tone="danger"
-        />
-      </View>
+              { text: 'Delete', style: 'destructive', onPress: () => deleteAccount('DELETE').then(() => router.replace('/login')) },
+            ])}
+          >
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+            <Text style={[styles.accountButtonText, { color: '#ef4444' }]}>Delete Account Permanently</Text>
+          </TouchableOpacity>
+        </SettingsSection>
+
+        <View style={styles.footer} />
       </ScrollView>
     </View>
   );
@@ -586,63 +390,263 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8fafc',
   },
   container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 40,
   },
-  subtitle: {
-    lineHeight: 22,
-    marginBottom: 18,
+  pageSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#64748b',
+    marginBottom: 20,
+    lineHeight: 20,
   },
-  card: {
-    borderRadius: 24,
-    borderWidth: 1,
+  sectionCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
     marginBottom: 16,
-    padding: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
   },
   sectionTitle: {
-    fontWeight: '800',
-    marginBottom: 14,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
   },
-  preferenceRow: {
-    alignItems: 'center',
+  sectionContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  settingRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 16,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f8fafc',
   },
-  preferenceCopy: {
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     flex: 1,
-    paddingRight: 16,
+    gap: 12,
   },
-  preferenceLabel: {
-    fontWeight: '700',
-    marginBottom: 4,
+  settingIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#f0fdfa',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  preferenceDescription: {
-    lineHeight: 20,
+  settingContent: {
+    flex: 1,
   },
-  securityNote: {
-    lineHeight: 22,
+  settingLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#1e293b',
+    marginBottom: 2,
   },
-  timeButtons: {
+  settingDescription: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#64748b',
+    lineHeight: 16,
+  },
+  settingRight: {
+    marginLeft: 12,
+  },
+  textButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#f0fdfa',
+  },
+  textButtonLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0d9488',
+  },
+  fontScaleButtons: {
+    flexDirection: 'row',
     gap: 10,
     marginTop: 12,
+    marginBottom: 8,
   },
-  imageSummary: {
-    fontWeight: '700',
-    marginTop: 16,
-    marginBottom: 12,
+  fontScaleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
   },
-  voiceStatus: {
-    lineHeight: 20,
+  fontScaleButtonPrimary: {
+    backgroundColor: '#0d9488',
+  },
+  fontScaleButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#475569',
+  },
+  fontScaleButtonTextPrimary: {
+    color: '#ffffff',
+  },
+  voiceButtonGroup: {
+    flexDirection: 'row',
+    gap: 10,
     marginTop: 12,
+    marginBottom: 8,
   },
-  buttonGap: {
-    height: 12,
+  voiceButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+  },
+  voiceButtonPrimary: {
+    backgroundColor: '#0d9488',
+  },
+  voiceButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#475569',
+  },
+  voiceButtonTextPrimary: {
+    color: '#ffffff',
+  },
+  voiceStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+  },
+  voiceStatusText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#64748b',
+    lineHeight: 18,
+  },
+  reminderInfo: {
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#64748b',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#f8fafc',
+    borderRadius: 20,
+    alignSelf: 'flex-start',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#475569',
+  },
+  reminderGroup: {
+    marginBottom: 16,
+  },
+  timeButtonGroup: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    marginLeft: 44,
+  },
+  timeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+  },
+  timeButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#475569',
+  },
+  syncingText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#0d9488',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  privacyActions: {
+    gap: 10,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  privacyButton: {
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+  },
+  privacyButtonDanger: {
+    backgroundColor: '#fef2f2',
+  },
+  privacyButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#475569',
+  },
+  privacyButtonTextDanger: {
+    color: '#ef4444',
+  },
+  accountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  accountButtonDanger: {
+    borderBottomWidth: 0,
+  },
+  accountButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#f59e0b',
+  },
+  footer: {
+    height: 20,
   },
 });
-
