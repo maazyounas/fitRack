@@ -55,6 +55,7 @@ export type CommunityChallenge = {
   description: string;
   metricLabel: string;
   unitLabel: string;
+  targetValue: number;
   startDate: string;
   endDate: string;
   joined: boolean;

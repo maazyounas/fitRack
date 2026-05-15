@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, Modal, TextInput, Pressable, Image, ActivityIndicator, Alert } from 'react-native';
+import { StyleSheet, Text, View, Modal, TextInput, Pressable, Image, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useCommunityStore } from '@/store/communityStore';
-import { Button } from '../ui/Button';
 
 export function CreatePostModal({ visible, onClose }: { visible: boolean, onClose: () => void }) {
   const { createPost } = useCommunityStore();
@@ -12,6 +12,12 @@ export function CreatePostModal({ visible, onClose }: { visible: boolean, onClos
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const pickImage = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permission needed', 'Please allow access to your photos to share images.');
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -26,75 +32,102 @@ export function CreatePostModal({ visible, onClose }: { visible: boolean, onClos
 
   const handleSubmit = async () => {
     if (!content.trim()) {
-      Alert.alert('Error', 'Please enter some text for your post.');
+      Alert.alert('Cannot post', 'Please enter some text for your post.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // In a real app, we would upload the image to S3/Cloudinary first
-      // and then send the URL to the backend. 
-      // For now, we pass the local URI (placeholder logic)
       await createPost(content, image || undefined);
       setContent('');
       setImage(null);
       onClose();
-    } catch (error) {
-      Alert.alert('Post Failed', 'Unable to share your post. Please try again.');
+    } catch {
+      Alert.alert('Post failed', 'Unable to share your post. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleClose = () => {
+    if (content.trim() || image) {
+      Alert.alert('Discard post?', 'Your draft will be lost if you close.', [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: onClose },
+      ]);
+    } else {
+      onClose();
+    }
+  };
+
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.overlay}
+      >
         <View style={styles.container}>
+          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>Share Update</Text>
-            <Pressable onPress={onClose} style={styles.closeButton}>
+            <Text style={styles.title}>Share update</Text>
+            <Pressable onPress={handleClose} style={styles.closeButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={24} color="#64748b" />
             </Pressable>
           </View>
 
+          {/* Input */}
           <TextInput
             style={styles.input}
-            placeholder="What's on your mind? (Bad words will be filtered)"
+            placeholder="What's on your mind?"
             placeholderTextColor="#94a3b8"
             multiline
             value={content}
             onChangeText={setContent}
             maxLength={500}
+            autoFocus
           />
 
+          {/* Image Preview */}
           {image && (
             <View style={styles.imagePreviewContainer}>
               <Image source={{ uri: image }} style={styles.imagePreview} />
               <Pressable style={styles.removeImage} onPress={() => setImage(null)}>
-                <Ionicons name="close-circle" size={24} color="#fff" />
+                <LinearGradient colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0.6)']} style={styles.removeImageBg}>
+                  <Ionicons name="close" size={18} color="#ffffff" />
+                </LinearGradient>
               </Pressable>
             </View>
           )}
 
+          {/* Actions */}
           <View style={styles.actions}>
             <Pressable style={styles.actionButton} onPress={pickImage}>
-              <Ionicons name="image-outline" size={24} color="#0f766e" />
-              <Text style={styles.actionText}>Photo</Text>
+              <Ionicons name="image-outline" size={22} color="#0d9488" />
+              <Text style={styles.actionText}>Add photo</Text>
             </Pressable>
             
-            <View style={{ flex: 1 }} />
-            
-            <Text style={styles.counter}>{content.length}/500</Text>
+            <View style={styles.rightActions}>
+              <Text style={styles.counter}>{content.length}/500</Text>
+            </View>
           </View>
 
-          <Button 
-            label="Post to Community" 
-            onPress={handleSubmit} 
-            loading={isSubmitting}
-            disabled={!content.trim()}
-          />
+          {/* Submit Button */}
+          <Pressable 
+            style={[styles.submitButton, (!content.trim() || isSubmitting) && styles.submitButtonDisabled]} 
+            onPress={handleSubmit}
+            disabled={!content.trim() || isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <>
+                <Text style={styles.submitButtonText}>Post to community</Text>
+                <Ionicons name="send-outline" size={18} color="#ffffff" />
+              </>
+            )}
+          </Pressable>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -106,71 +139,103 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   container: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    padding: 24,
-    paddingBottom: 40,
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0f172a',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    letterSpacing: -0.3,
   },
   closeButton: {
     padding: 4,
   },
   input: {
-    fontSize: 16,
-    color: '#334155',
-    minHeight: 120,
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#1e293b',
+    minHeight: 100,
     textAlignVertical: 'top',
-    marginBottom: 20,
+    marginBottom: 16,
+    lineHeight: 20,
   },
   imagePreviewContainer: {
     position: 'relative',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   imagePreview: {
     width: '100%',
     height: 200,
-    borderRadius: 16,
+    borderRadius: 14,
+    backgroundColor: '#f1f5f9',
   },
   removeImage: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 12,
+  },
+  removeImageBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
     backgroundColor: '#f0fdfa',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 12,
-    gap: 8,
   },
   actionText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0d9488',
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   counter: {
     fontSize: 12,
+    fontWeight: '400',
     color: '#94a3b8',
+  },
+  submitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0d9488',
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#cbd5e1',
+  },
+  submitButtonText: {
+    fontSize: 15,
     fontWeight: '600',
+    color: '#ffffff',
   },
 });

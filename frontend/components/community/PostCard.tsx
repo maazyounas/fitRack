@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, Image, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CommunityPost } from '@/types/community';
 import { useCommunityStore } from '@/store/communityStore';
 import { useAuthStore } from '@/store/authStore';
-// @ts-ignore
 import { formatDistanceToNow } from 'date-fns';
 
 export function PostCard({ post }: { post: CommunityPost }) {
@@ -12,6 +12,7 @@ export function PostCard({ post }: { post: CommunityPost }) {
   const currentUser = useAuthStore((state) => state.user);
   const [isLiked, setIsLiked] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [showOptions, setShowOptions] = useState(false);
 
   const isOwner = currentUser?.id === post.author.id;
   const isAdmin = (currentUser as any)?.role === 'admin';
@@ -24,8 +25,8 @@ export function PostCard({ post }: { post: CommunityPost }) {
 
   const handleReport = () => {
     Alert.alert(
-      'Report Post',
-      'Are you sure you want to report this post for inappropriate content?',
+      'Report post',
+      'This post will be reviewed by our moderation team.',
       [
         { text: 'Cancel', style: 'cancel' },
         { 
@@ -39,7 +40,7 @@ export function PostCard({ post }: { post: CommunityPost }) {
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Post',
+      'Delete post',
       'This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -54,50 +55,76 @@ export function PostCard({ post }: { post: CommunityPost }) {
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Image source={{ uri: post.author.profilePictureUrl || 'https://via.placeholder.com/150' }} style={styles.avatar} />
-        <View style={styles.headerText}>
+        <Image 
+          source={{ uri: post.author.profilePictureUrl || 'https://via.placeholder.com/150' }} 
+          style={styles.avatar} 
+        />
+        <View style={styles.headerContent}>
           <Text style={styles.name}>{post.author.name}</Text>
-          <Text style={styles.time}>{formatDistanceToNow(new Date(post.createdAt))} ago</Text>
+          <View style={styles.timeRow}>
+            <Ionicons name="time-outline" size={10} color="#94a3b8" />
+            <Text style={styles.time}>{formatDistanceToNow(new Date(post.createdAt))} ago</Text>
+          </View>
         </View>
-        {(isOwner || isAdmin) ? (
-          <Pressable onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={20} color="#ef4444" />
-          </Pressable>
-        ) : (
-          <Pressable onPress={handleReport}>
-            <Ionicons name="alert-circle-outline" size={20} color="#94a3b8" />
-          </Pressable>
-        )}
+        
+        {/* Options Menu */}
+        <Pressable onPress={() => setShowOptions(!showOptions)} style={styles.menuButton}>
+          <Ionicons name="ellipsis-horizontal" size={20} color="#94a3b8" />
+        </Pressable>
       </View>
 
+      {/* Options Dropdown */}
+      {showOptions && (
+        <View style={styles.optionsMenu}>
+          {(isOwner || isAdmin) ? (
+            <Pressable onPress={handleDelete} style={styles.optionItem}>
+              <Ionicons name="trash-outline" size={18} color="#ef4444" />
+              <Text style={[styles.optionText, { color: '#ef4444' }]}>Delete post</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={handleReport} style={styles.optionItem}>
+              <Ionicons name="flag-outline" size={18} color="#64748b" />
+              <Text style={styles.optionText}>Report post</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {/* Content */}
       <Text style={styles.content}>{post.content}</Text>
 
+      {/* Image */}
       {post.imageUrl && (
         <Image source={{ uri: post.imageUrl }} style={styles.postImage} resizeMode="cover" />
       )}
 
+      {/* Footer Actions */}
       <View style={styles.footer}>
-        <Pressable style={styles.action} onPress={handleLike}>
+        <Pressable style={styles.actionButton} onPress={handleLike}>
           <Ionicons 
             name={isLiked ? 'heart' : 'heart-outline'} 
-            size={22} 
+            size={20} 
             color={isLiked ? '#ef4444' : '#64748b'} 
           />
           <Text style={[styles.actionText, isLiked && styles.likedText]}>{likeCount}</Text>
         </Pressable>
 
-        <Pressable style={styles.action}>
-          <Ionicons name="chatbubble-outline" size={20} color="#64748b" />
+        <Pressable style={styles.actionButton}>
+          <Ionicons name="chatbubble-outline" size={18} color="#64748b" />
           <Text style={styles.actionText}>{post.commentCount}</Text>
         </Pressable>
 
-        <View style={{ flex: 1 }} />
+        <View style={styles.flex} />
 
+        {/* Challenge Badge */}
         {post.challengeId && (
           <View style={styles.challengeBadge}>
-            <Ionicons name="trophy" size={14} color="#0f766e" />
-            <Text style={styles.challengeText}>Challenge Post</Text>
+            <LinearGradient colors={['#f0fdfa', '#ccfbf1']} style={styles.challengeBadgeInner}>
+              <Ionicons name="trophy" size={12} color="#0d9488" />
+              <Text style={styles.challengeText}>Challenge</Text>
+            </LinearGradient>
           </View>
         )}
       </View>
@@ -107,88 +134,131 @@ export function PostCard({ post }: { post: CommunityPost }) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 12,
+    marginHorizontal: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.04,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    position: 'relative',
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#f1f5f9',
   },
-  headerText: {
+  headerContent: {
     flex: 1,
     marginLeft: 12,
   },
   name: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#0f172a',
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 2,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   time: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '400',
+    color: '#94a3b8',
+  },
+  menuButton: {
+    padding: 4,
+  },
+  optionsMenu: {
+    position: 'absolute',
+    top: 44,
+    right: 0,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+    zIndex: 10,
+    overflow: 'hidden',
+  },
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  optionText: {
+    fontSize: 13,
+    fontWeight: '500',
     color: '#64748b',
-    marginTop: 2,
   },
   content: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    fontWeight: '400',
+    lineHeight: 20,
     color: '#334155',
     marginBottom: 12,
   },
   postImage: {
     width: '100%',
-    height: 250,
-    borderRadius: 16,
+    height: 220,
+    borderRadius: 14,
     marginBottom: 12,
     backgroundColor: '#f8fafc',
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 8,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
   },
-  action: {
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     marginRight: 20,
+    gap: 6,
     paddingVertical: 4,
   },
   actionText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     color: '#64748b',
-    marginLeft: 6,
   },
   likedText: {
     color: '#ef4444',
   },
+  flex: {
+    flex: 1,
+  },
   challengeBadge: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  challengeBadgeInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0fdfa',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
     gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   challengeText: {
     fontSize: 11,
-    fontWeight: '700',
-    color: '#0f766e',
+    fontWeight: '600',
+    color: '#0d9488',
   },
 });
