@@ -173,206 +173,322 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f1f5f9',
   },
+
   listContent: {
-    padding: 16,
-    paddingBottom: 100,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 120,
   },
+
+  // ───────────────── Header ─────────────────
   header: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
+
+  // ───────────────── Search ─────────────────
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
+
+    backgroundColor: '#ffffff',
+
+    borderRadius: 18,
+
     paddingHorizontal: 16,
-    height: 50,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
+    height: 54,
+
+    borderWidth: 1,
+    borderColor: 'rgba(226,232,240,0.8)',
+
+    shadowColor: '#0f172a',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
     elevation: 3,
   },
+
   searchIcon: {
     marginRight: 10,
   },
+
   searchInput: {
     flex: 1,
-    fontSize: 15,
+
+    fontSize: 14,
+    fontWeight: '500',
+
     color: '#0f172a',
-    fontWeight: '600',
   },
+
+  // ───────────────── Search Results ─────────────────
   searchResults: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    marginTop: 8,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    marginTop: 10,
+
+    backgroundColor: '#ffffff',
+
+    borderRadius: 20,
+
+    paddingVertical: 6,
+
+    shadowColor: '#0f172a',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
     elevation: 5,
-    zIndex: 10,
+
+    borderWidth: 1,
+    borderColor: 'rgba(226,232,240,0.7)',
+
+    overflow: 'hidden',
   },
+
   searchResultItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
   },
+
   searchAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
   },
+
   searchName: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#0f172a',
+    marginBottom: 2,
   },
+
   searchBio: {
     fontSize: 12,
     color: '#64748b',
-    marginTop: 2,
+    lineHeight: 16,
   },
+
   followButton: {
     backgroundColor: '#0f766e',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+
+    borderRadius: 12,
   },
+
   followingButton: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: '#eef2f7',
   },
+
   followButtonText: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#fff',
+    fontWeight: '600',
+    color: '#ffffff',
   },
+
   followingButtonText: {
     color: '#64748b',
   },
+
   noResults: {
     textAlign: 'center',
-    padding: 16,
-    color: '#64748b',
-    fontSize: 14,
+    paddingVertical: 20,
+
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '500',
   },
+
+  // ───────────────── Tabs ─────────────────
   tabContainer: {
     flexDirection: 'row',
-    marginTop: 24,
+
+    marginTop: 22,
+
     backgroundColor: '#e2e8f0',
-    borderRadius: 14,
-    padding: 4,
+
+    borderRadius: 18,
+
+    padding: 5,
   },
+
   tab: {
     flex: 1,
-    paddingVertical: 10,
+
+    paddingVertical: 12,
+
     alignItems: 'center',
-    borderRadius: 10,
+    justifyContent: 'center',
+
+    borderRadius: 14,
   },
+
   activeTab: {
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#64748b',
-  },
-  activeTabText: {
-    color: '#0f172a',
-  },
-  suggestionsSection: {
-    marginTop: 24,
-    marginBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0f172a',
-    marginBottom: 12,
-  },
-  suggestionsList: {
-    gap: 12,
-  },
-  suggestionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: 16,
-    alignItems: 'center',
-    width: 130,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    backgroundColor: '#ffffff',
+
+    shadowColor: '#0f172a',
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
-  suggestionAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginBottom: 10,
+
+  tabText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#64748b',
   },
+
+  activeTabText: {
+    color: '#0f172a',
+    fontWeight: '700',
+  },
+
+  // ───────────────── Suggestions ─────────────────
+  suggestionsSection: {
+    marginTop: 24,
+  },
+
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: 14,
+    letterSpacing: 0.2,
+  },
+
+  suggestionsList: {
+    paddingRight: 6,
+  },
+
+  suggestionCard: {
+    width: 132,
+
+    backgroundColor: '#ffffff',
+
+    borderRadius: 24,
+
+    paddingVertical: 18,
+    paddingHorizontal: 14,
+
+    alignItems: 'center',
+
+    marginRight: 14,
+
+    borderWidth: 1,
+    borderColor: 'rgba(226,232,240,0.7)',
+
+    shadowColor: '#0f172a',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+
+  suggestionAvatar: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+
+    marginBottom: 12,
+  },
+
   suggestionName: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#0f172a',
+
     textAlign: 'center',
-    marginBottom: 10,
+
+    marginBottom: 12,
   },
+
   suggestionFollow: {
     backgroundColor: '#f0fdfa',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 10,
+
+    paddingVertical: 8,
+    borderRadius: 12,
+
     width: '100%',
     alignItems: 'center',
   },
+
   suggestionFollowText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#0f766e',
   },
+
+  // ───────────────── Empty State ─────────────────
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 100,
+
+    marginTop: 110,
+
     paddingHorizontal: 40,
   },
+
   emptyText: {
+    marginTop: 18,
+
     textAlign: 'center',
+
     color: '#94a3b8',
-    fontSize: 15,
-    marginTop: 16,
+
+    fontSize: 14,
+    fontWeight: '500',
+
     lineHeight: 22,
-    fontWeight: '600',
   },
+
+  // ───────────────── Floating Action Button ─────────────────
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+
+    bottom: 26,
+    right: 22,
+
+    width: 62,
+    height: 62,
+
+    borderRadius: 31,
+
     shadowColor: '#0f766e',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
     elevation: 8,
   },
+
   fabGradient: {
     flex: 1,
-    borderRadius: 32,
+
+    borderRadius: 31,
+
     justifyContent: 'center',
     alignItems: 'center',
   },
 });
-

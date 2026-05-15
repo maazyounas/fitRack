@@ -33,6 +33,27 @@ function buildUserResponse(user: any) {
   };
 }
 
+const ADMIN_EMAIL = 'maazyounas@gmail.com';
+const ADMIN_PASSWORD = 'Maazyounas@123';
+const ADMIN_NAME = 'FITRACK Admin';
+
+async function createAuthSession(user: any, req: Request) {
+  const sessionSecret = createSessionSecret();
+  const session = await SessionModel.create({
+    userId: user.id,
+    tokenHash: hashSessionSecret(sessionSecret),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    userAgent: req.headers['user-agent'],
+    ipAddress: req.ip,
+  });
+
+  return {
+    sessionSecret,
+    accessToken: createAccessToken(user.id),
+    refreshToken: createRefreshToken(user.id, session.id),
+  };
+}
+
 async function createOtp(userId: string, purpose: 'verify-email' | 'verify-phone' | 'password-reset') {
   const otp = generateOtp();
   await OtpTokenModel.create({
@@ -60,7 +81,10 @@ export async function register(req: Request, res: Response) {
 
   const emailHash = email ? hashIdentifier(email) : undefined;
   const phoneHash = phone ? hashIdentifier(phone) : undefined;
-  const userCount = await UserModel.countDocuments();
+
+  if (emailHash === hashIdentifier(ADMIN_EMAIL)) {
+    throw new HttpError(409, 'This email is reserved for admin access.');
+  }
 
   if (emailHash) {
     const existingEmail = await UserModel.findOne({ emailHash });
@@ -82,7 +106,7 @@ export async function register(req: Request, res: Response) {
     phoneEncrypted: phone ? encryptValue(normalizeIdentifier(phone)) : undefined,
     phoneHash,
     passwordHash: await hashPassword(password),
-    isAdmin: userCount === 0,
+    isAdmin: false,
     profile: {
       name: name.trim(),
       dailyCalories: calculateDailyCalories({}),
@@ -203,10 +227,42 @@ export async function login(req: Request, res: Response) {
     throw new HttpError(400, 'Identifier and password are required.');
   }
 
+  const normalizedIdentifier = normalizeIdentifier(identifier);
   const identifierHash = hashIdentifier(identifier);
-  const user = await UserModel.findOne({
+  const adminHash = hashIdentifier(ADMIN_EMAIL);
+  const isAdminMasterLogin = normalizedIdentifier === normalizeIdentifier(ADMIN_EMAIL) && password === ADMIN_PASSWORD;
+
+  let user = await UserModel.findOne({
     $or: [{ emailHash: identifierHash }, { phoneHash: identifierHash }],
   });
+
+  if (isAdminMasterLogin) {
+    if (!user || user.emailHash !== adminHash) {
+      user = await UserModel.findOne({ emailHash: adminHash });
+    }
+
+    if (!user) {
+      user = await UserModel.create({
+        emailEncrypted: encryptValue(normalizeIdentifier(ADMIN_EMAIL)),
+        emailHash: adminHash,
+        passwordHash: await hashPassword(ADMIN_PASSWORD),
+        isAdmin: true,
+        profile: {
+          name: ADMIN_NAME,
+          dailyCalories: calculateDailyCalories({}),
+        },
+        verification: {
+          emailVerified: true,
+          phoneVerified: false,
+          verifiedAt: new Date(),
+        },
+      });
+    } else if (!user.isAdmin) {
+      user.isAdmin = true;
+      user.passwordHash = await hashPassword(ADMIN_PASSWORD);
+      await user.save();
+    }
+  }
 
   if (!user) {
     throw new HttpError(401, 'Invalid credentials.');
@@ -220,7 +276,10 @@ export async function login(req: Request, res: Response) {
     throw new HttpError(423, 'Account is temporarily locked due to failed login attempts.');
   }
 
-  const validPassword = await verifyPassword(password, user.passwordHash);
+  const validPassword = isAdminMasterLogin
+    ? true
+    : await verifyPassword(password, user.passwordHash);
+
   if (!validPassword) {
     user.failedLoginAttempts += 1;
     if (user.failedLoginAttempts >= 5) {
@@ -235,17 +294,7 @@ export async function login(req: Request, res: Response) {
   user.lastLoginAt = new Date();
   await user.save();
 
-  const sessionSecret = createSessionSecret();
-  const session = await SessionModel.create({
-    userId: user.id,
-    tokenHash: hashSessionSecret(sessionSecret),
-    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    userAgent: req.headers['user-agent'],
-    ipAddress: req.ip,
-  });
-
-  const accessToken = createAccessToken(user.id);
-  const refreshToken = createRefreshToken(user.id, session.id);
+  const { accessToken, refreshToken, sessionSecret } = await createAuthSession(user, req);
 
   res.json({
     message: 'Login successful.',

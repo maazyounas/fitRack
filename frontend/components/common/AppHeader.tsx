@@ -6,6 +6,8 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,21 +21,29 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useAuthStore } from '@/store/authStore';
 
-// ─── Pulse Dot Component ──────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// Pulse Notification Dot
+// ─────────────────────────────────────────────────────────────
 function PulseDot() {
   const scale = useSharedValue(1);
+
   useEffect(() => {
     scale.value = withRepeat(
-      withSequence(withTiming(1.5, { duration: 700 }), withTiming(1, { duration: 700 })),
+      withSequence(
+        withTiming(1.7, { duration: 700 }),
+        withTiming(1, { duration: 700 })
+      ),
       -1,
       false
     );
   }, []);
-  const style = useAnimatedStyle(() => ({
+
+  const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
     opacity: 1 / scale.value,
   }));
-  return <Animated.View style={[styles.pulseDot, style]} />;
+
+  return <Animated.View style={[styles.pulseDot, animatedStyle]} />;
 }
 
 interface AppHeaderProps {
@@ -41,57 +51,65 @@ interface AppHeaderProps {
   showGreeting?: boolean;
 }
 
-export const AppHeader: React.FC<AppHeaderProps> = ({ title, showGreeting }) => {
+export const AppHeader: React.FC<AppHeaderProps> = ({
+  title,
+  showGreeting = true,
+}) => {
   const router = useRouter();
   const { user } = useAuthStore();
 
-  const firstName = user?.profile.name?.split(' ')[0] || 'Athlete';
-  const avatarUrl = user?.profile.profilePictureUrl;
-
-  const getGreeting = () => {
-    const h = new Date().getHours();
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
-  };
+  const avatarUrl = user?.profile?.profilePictureUrl;
 
   return (
-    <LinearGradient colors={['#0d9488', '#0f766e', '#115e59']} style={styles.headerGradient}>
+    <LinearGradient
+      colors={['#0f766e', '#115e59', '#134e4a']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.headerContainer}
+    >
+      {/* Top Row */}
       <View style={styles.headerRow}>
-        {/* Left: App Icon & Branding */}
+        {/* Left Side */}
         <View style={styles.leftSection}>
-          <View style={styles.logoRing}>
-            <Ionicons name="fitness" size={20} color="#fff" />
+          <View style={styles.logoContainer}>
+            <Ionicons name="fitness" size={22} color="#fff" />
           </View>
+
           <View>
             <Text style={styles.brandText}>FITRACK</Text>
-            {showGreeting ? (
-              <Text style={styles.subText}>{getGreeting()}, {firstName} 👋</Text>
-            ) : title ? (
-              <Text style={styles.subText}>{title}</Text>
-            ) : null}
           </View>
         </View>
 
-        {/* Right: Actions */}
-        <View style={styles.headerActions}>
+        {/* Right Side */}
+        <View style={styles.rightSection}>
+          {/* Notification */}
           <TouchableOpacity
+            activeOpacity={0.7}
             onPress={() => router.push('/notifications' as any)}
-            style={styles.iconBtn}
+            style={styles.iconWrapper}
           >
-            <Ionicons name="notifications-outline" size={22} color="#fff" />
-            <View style={styles.notifDot}>
+            <Ionicons
+              name="notifications-outline"
+              size={25}
+              color="#ffffff"
+            />
+
+            <View style={styles.notificationBadge}>
               <PulseDot />
             </View>
           </TouchableOpacity>
 
-          <Pressable onPress={() => router.push('/profile' as any)}>
+          {/* Profile */}
+          <Pressable
+            onPress={() => router.push('/profile' as any)}
+            style={styles.profileWrapper}
+          >
             {avatarUrl ? (
               <Image source={{ uri: avatarUrl }} style={styles.avatar} />
             ) : (
-              <LinearGradient colors={['#0d9488', '#14b8a6']} style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarLetter}>{firstName.charAt(0)}</Text>
-              </LinearGradient>
+              <View style={styles.profileIconContainer}>
+                <Ionicons name="person" size={20} color="#ffffff" />
+              </View>
             )}
           </Pressable>
         </View>
@@ -101,88 +119,123 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ title, showGreeting }) => 
 };
 
 const styles = StyleSheet.create({
-  headerGradient: {
-    paddingTop: 56,
-    paddingBottom: 20,
+  headerContainer: {
+    paddingTop:
+      Platform.OS === 'android'
+        ? (StatusBar.currentHeight || 0) + 14
+        : 16,
+    paddingBottom: 18,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 6,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 8,
   },
+
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
+
+  // ───────────────── Left Section ─────────────────
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
+    flex: 1,
   },
-  logoRing: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+
+  logoContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
+
   brandText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: 1.5,
+    color: '#ffffff',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.8,
   },
-  subText: {
-    color: 'rgba(255,255,255,0.6)',
+
+  greetingText: {
+    color: 'rgba(255,255,255,0.72)',
     fontSize: 12,
-    fontWeight: '600',
-    marginTop: -2,
+    marginTop: 2,
+    fontWeight: '400',
   },
-  headerActions: {
+
+  nameText: {
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+
+  // ───────────────── Right Section ─────────────────
+  rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginLeft: 8,
   },
-  iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
+
+  iconWrapper: {
+    position: 'relative',
+    padding: 2,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  notifDot: {
+
+  notificationBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
+    top: 2,
+    right: -1,
+    width: 9,
+    height: 9,
   },
+
   pulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
     backgroundColor: '#ef4444',
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 2,
-    borderColor: '#0d9488',
-  },
-  avatarPlaceholder: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
+
+  // ───────────────── Profile ─────────────────
+  profileWrapper: {
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  avatarLetter: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '800',
+
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.8)',
+  },
+
+  profileIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
 });

@@ -327,43 +327,269 @@ function CollapsibleSection({ title, children }: { title: string, children: Reac
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#f8fafc' },
-  screen: { flex: 1 },
-  content: { padding: 20, paddingTop: 16, paddingBottom: 40 },
-  subHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  subtitle: { color: '#64748b', fontSize: 16, fontWeight: '600' },
-  plateauBox: { borderRadius: 20, padding: 16, marginBottom: 20, flexDirection: 'row', alignItems: 'center' },
-  plateauIcon: { marginRight: 12 },
-  plateauContent: { flex: 1 },
-  plateauTitle: { color: '#9a3412', fontSize: 14, fontWeight: '800', marginBottom: 2 },
-  plateauText: { color: '#c2410c', fontSize: 13, lineHeight: 18 },
-  hero: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  metricCard: { borderRadius: 24, flex: 1, padding: 16, minHeight: 120, justifyContent: 'center' },
-  metricLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '700', marginBottom: 4, textTransform: 'uppercase' },
-  metricValue: { color: '#fff', fontSize: 26, fontWeight: '900' },
-  metricMini: { color: 'rgba(255,255,255,0.5)', fontSize: 12, marginTop: 4 },
-  metricMiniHigh: { color: '#38bdf8', fontSize: 14, fontWeight: '800' },
-  segmentedContainer: { flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 16, padding: 4, marginBottom: 20 },
-  segment: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12 },
-  segmentActive: { backgroundColor: '#0f172a' },
-  segmentText: { color: '#64748b', fontSize: 13, fontWeight: '700' },
-  segmentTextActive: { color: '#fff' },
-  card: { backgroundColor: '#fff', borderRadius: 28, marginBottom: 20, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 15, elevation: 4 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  sectionTitle: { color: '#0f172a', fontSize: 20, fontWeight: '900' },
-  sectionSubtitle: { color: '#64748b', fontSize: 14, marginBottom: 20, marginTop: -16 },
-  formGroup: { marginTop: 12 },
-  formLabel: { color: '#0f172a', fontSize: 15, fontWeight: '800', marginBottom: 12 },
-  inline: { flexDirection: 'row', gap: 12 },
-  inlineItem: { flex: 1 },
-  subheading: { color: '#0f172a', fontSize: 16, fontWeight: '800', marginBottom: 16, marginTop: 24 },
-  performanceCard: { backgroundColor: '#f8fafc', borderRadius: 20, marginBottom: 16, padding: 16, borderWidth: 1, borderColor: '#f1f5f9' },
-  addButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ecfeff', borderRadius: 16, marginBottom: 24, padding: 16, gap: 8 },
-  addButtonText: { color: '#155e75', fontSize: 14, fontWeight: '800' },
-  collapsible: { borderTopWidth: 1, borderTopColor: '#f1f5f9', marginTop: 12 },
-  collapsibleHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16 },
-  collapsibleTitle: { color: '#64748b', fontSize: 14, fontWeight: '700' },
-  collapsibleContent: { paddingBottom: 16 },
-  badgesGrid: { marginTop: 8 },
-});
+  page: {
+    flex: 1,
+    backgroundColor: '#f1f5f9',
+  },
 
+  screen: {
+    flex: 1,
+  },
+
+  content: {
+    padding: 18,
+    paddingBottom: 40,
+  },
+
+  // ───────────────── Header Area ─────────────────
+  subHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+
+  subtitle: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // ───────────────── Plateau Insight ─────────────────
+  plateauBox: {
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 18,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+
+  plateauIcon: {
+    marginRight: 10,
+  },
+
+  plateauContent: {
+    flex: 1,
+  },
+
+  plateauTitle: {
+    color: '#9a3412',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+
+  plateauText: {
+    color: '#c2410c',
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+
+  // ───────────────── Hero Cards ─────────────────
+  hero: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 18,
+  },
+
+  metricCard: {
+    borderRadius: 20,
+    flex: 1,
+    padding: 16,
+    minHeight: 110,
+    justifyContent: 'center',
+  },
+
+  metricLabel: {
+    color: 'rgba(255,255,255,0.65)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+
+  metricValue: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+
+  metricMini: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    marginTop: 6,
+    fontWeight: '400',
+  },
+
+  metricMiniHigh: {
+    color: '#38bdf8',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // ───────────────── Segmented Control ─────────────────
+  segmentedContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#e2e8f0',
+    borderRadius: 14,
+    padding: 4,
+    marginBottom: 18,
+  },
+
+  segment: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+
+  segmentActive: {
+    backgroundColor: '#0f172a',
+  },
+
+  segmentText: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  segmentTextActive: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+
+  // ───────────────── Main Card ─────────────────
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+
+    marginBottom: 18,
+    padding: 20,
+
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  sectionTitle: {
+    color: '#0f172a',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+
+  sectionSubtitle: {
+    color: '#64748b',
+    fontSize: 13,
+    marginTop: -10,
+    marginBottom: 14,
+  },
+
+  // ───────────────── Form ─────────────────
+  formGroup: {
+    marginTop: 10,
+  },
+
+  formLabel: {
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+
+  inline: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  inlineItem: {
+    flex: 1,
+  },
+
+  subheading: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 14,
+    marginTop: 18,
+  },
+
+  // ───────────────── Performance ─────────────────
+  performanceCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    marginBottom: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#eef2f7',
+  },
+
+  // ───────────────── Buttons ─────────────────
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: '#ecfeff',
+
+    borderRadius: 14,
+
+    marginBottom: 20,
+    padding: 14,
+
+    gap: 6,
+  },
+
+  addButtonText: {
+    color: '#155e75',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // ───────────────── Collapsible ─────────────────
+  collapsible: {
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    marginTop: 10,
+  },
+
+  collapsibleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+
+  collapsibleTitle: {
+    color: '#64748b',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  collapsibleContent: {
+    paddingBottom: 14,
+  },
+
+  // ───────────────── Badges ─────────────────
+  badgesGrid: {
+    marginTop: 10,
+  },
+});

@@ -9,8 +9,8 @@ async function seed() {
   await connectDatabase();
   console.log('Seeding database...');
 
-  const adminEmail = 'admin@fitrack.com';
-  const adminPassword = 'AdminPassword123!';
+  const adminEmail = 'maazyounas@gmail.com';
+  const adminPassword = 'Maazyounas@123';
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash(adminPassword, salt);
 

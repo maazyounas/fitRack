@@ -181,6 +181,14 @@ export default function AdminScreen() {
     void loadDashboard();
   }, [router, tokens?.accessToken, user]);
 
+  if (user && !user.isAdmin) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.unauthorizedText}>Admin access is restricted to administrators only.</Text>
+      </View>
+    );
+  }
+
   useEffect(() => {
     if (!selectedExercise && dashboard?.exercises?.length) {
       const nextExercise = dashboard.exercises[0];
@@ -1001,5 +1009,17 @@ const styles = StyleSheet.create({
   logCode: {
     fontFamily: Fonts.mono,
     lineHeight: 18,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  unauthorizedText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#334155',
+    textAlign: 'center',
   },
 });

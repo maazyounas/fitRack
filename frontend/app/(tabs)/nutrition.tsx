@@ -101,110 +101,145 @@ export default function NutritionScreen() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: '#eef6f2',
+    backgroundColor: '#f4fbf8',
   },
+
   screen: {
     flex: 1,
   },
+
   content: {
     padding: 16,
-    paddingTop: 16,
     paddingBottom: 40,
   },
+
   header: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
+
   subtitle: {
-    color: '#475569',
-    fontSize: 14,
-    lineHeight: 20,
+    color: '#64748b',
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '400',
   },
+
+  /* ───── ACTION CARDS ───── */
   actionRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 14,
-    marginTop: 14,
+    marginVertical: 14,
   },
+
   action: {
-    borderRadius: 24,
+    borderRadius: 20,
     flex: 1,
-    minHeight: 122,
-    padding: 16,
-  },
-  primaryAction: {
-    backgroundColor: '#115e59',
-  },
-  secondaryAction: {
-    backgroundColor: '#cffafe',
-  },
-  primaryActionTitle: {
-    color: '#f8fafc',
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  primaryActionText: {
-    color: '#d1fae5',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  secondaryActionTitle: {
-    color: '#0f172a',
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  secondaryActionText: {
-    color: '#155e75',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  loadingBox: {
-    alignItems: 'center',
-    marginBottom: 14,
-    paddingVertical: 12,
-  },
-  errorBox: {
-    backgroundColor: '#fee2e2',
-    borderRadius: 16,
-    marginBottom: 14,
+    minHeight: 110,
     padding: 14,
   },
+
+  primaryAction: {
+    backgroundColor: '#0f766e',
+  },
+
+  secondaryAction: {
+    backgroundColor: '#e6fffb',
+  },
+
+  primaryActionTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+
+  primaryActionText: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '400',
+  },
+
+  secondaryActionTitle: {
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+
+  secondaryActionText: {
+    color: '#334155',
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '400',
+  },
+
+  /* ───── STATES ───── */
+  loadingBox: {
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+
+  errorBox: {
+    backgroundColor: '#fff1f2',
+    borderRadius: 14,
+    marginBottom: 12,
+    padding: 12,
+  },
+
   errorText: {
-    color: '#991b1b',
+    color: '#b91c1c',
     fontSize: 13,
+    fontWeight: '400',
   },
+
+  /* ───── CARDS ───── */
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
     marginBottom: 14,
-    padding: 18,
+    padding: 16,
+
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
+
   sectionTitle: {
     color: '#0f172a',
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
   },
+
+  /* ───── AI RECOMMENDATIONS ───── */
   recommendation: {
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#f1f5f9',
     borderBottomWidth: 1,
     paddingVertical: 10,
   },
+
   recommendationTitle: {
     color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 3,
   },
+
   recommendationText: {
-    color: '#475569',
+    color: '#64748b',
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '400',
+  },
+
+  /* ───── EMPTY ───── */
+  emptyText: {
+    color: '#94a3b8',
     fontSize: 13,
     lineHeight: 18,
-  },
-  emptyText: {
-    color: '#64748b',
-    fontSize: 14,
+    fontWeight: '400',
   },
 });
-
