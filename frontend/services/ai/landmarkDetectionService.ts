@@ -4,7 +4,6 @@
  */
 
 import * as tf from '@tensorflow/tfjs-core';
-import '@tensorflow/tfjs-react-native';
 import '@tensorflow/tfjs-backend-webgl';
 import '@tensorflow/tfjs-backend-cpu';
 import * as poseDetection from '@tensorflow-models/pose-detection';

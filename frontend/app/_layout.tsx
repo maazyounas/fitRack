@@ -7,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  View,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect, useRef } from 'react';
@@ -19,13 +18,13 @@ import { useNutritionStore } from '@/store/nutritionStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
-import { SESSION_TIMEOUT_MS, SESSION_WARNING_MS } from '@/constants/config';
+import { SESSION_TIMEOUT_MS } from '@/constants/config';
 import { AnimatedSplashScreen } from '@/components/AnimatedSplashScreen';
 
 // ─── Session Warning Banner ───────────────────────────────────────────────────
 
 function SessionWarningBanner() {
-  const { sessionWarning, dismissSessionWarning, logout, lastActivityAt, touchActivity } = useAuthStore();
+  const { sessionWarning, logout, lastActivityAt, touchActivity } = useAuthStore();
   const opacity = useRef(new Animated.Value(0)).current;
   const secondsLeft = Math.ceil(
     Math.max(0, SESSION_TIMEOUT_MS - (Date.now() - lastActivityAt)) / 1000
@@ -37,7 +36,7 @@ function SessionWarningBanner() {
       duration: 300,
       useNativeDriver: true,
     }).start();
-  }, [sessionWarning]);
+  }, [sessionWarning, opacity]);
 
   if (!sessionWarning) return null;
 
@@ -70,7 +69,6 @@ export default function RootLayout() {
     user,
     checkInactivity,
     touchActivity,
-    sessionWarning,
   } = useAuthStore();
   const {
     initialize: initOnboarding,

@@ -24,18 +24,13 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { CameraOverlay, type GuidanceMessage } from '@/components/CameraOverlay';
 import { runBodyAnalysis } from '@/services/ai/bodyAnalysis';
 import { saveBodyAnalysis } from '@/services/api/bodyAnalysisApi';
 import { useAuthStore } from '@/store/authStore';
 import type { AnalysisCaptureMode, AnalysisImage } from '@/types/bodyAnalysis';
-
-const { width, height } = Dimensions.get('window');
 
 type ScanMode = 'camera' | 'gallery';
 type CaptureMode = AnalysisCaptureMode;
@@ -52,8 +47,6 @@ export default function ScanScreen() {
   const router = useRouter();
   const { imageConsent, loadImageConsent } = useAuthStore();
   const [permission, requestPermission] = useCameraPermissions();
-
-  const [scanMode, setScanMode] = useState<ScanMode>('camera');
   const [captureMode, setCaptureMode] = useState<CaptureMode>('body');
   const [preview, setPreview] = useState<AnalysisImage | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -100,7 +93,6 @@ export default function ScanScreen() {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
       if (photo) {
         setPreview({ uri: photo.uri, width: photo.width, height: photo.height });
-        setScanMode('gallery'); // Switch to preview mode
       }
     } catch {
       Alert.alert('Capture failed', 'Please try again.');
@@ -231,7 +223,7 @@ export default function ScanScreen() {
         {preview ? (
           // Preview mode: Retake or Analyze
           <View style={styles.previewControls}>
-            <Pressable style={styles.retakeBtn} onPress={() => { setPreview(null); setScanMode('camera'); }}>
+            <Pressable style={styles.retakeBtn} onPress={() => { setPreview(null); }}>
               <Ionicons name="refresh-outline" size={20} color="#fff" />
               <Text style={styles.retakeBtnText}>Retake</Text>
             </Pressable>

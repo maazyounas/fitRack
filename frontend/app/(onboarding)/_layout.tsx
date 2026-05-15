@@ -17,7 +17,7 @@ function OnboardingProgressBar({ step }: { step: number }) {
 
   useEffect(() => {
     fillWidth.value = withTiming((step / STEPS.length) * (width - 48), { duration: 400 });
-  }, [step]);
+  }, [step, fillWidth]);
 
   const fillStyle = useAnimatedStyle(() => ({ width: fillWidth.value }));
 

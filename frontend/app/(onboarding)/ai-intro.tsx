@@ -4,8 +4,8 @@
  */
 
 import { useEffect } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -53,7 +53,7 @@ function ScanAnimation() {
       -1,
       false
     );
-  }, []);
+  }, [cornerScale, opacity, scanY]);
 
   const scanStyle = useAnimatedStyle(() => ({ transform: [{ translateY: scanY.value }], opacity: opacity.value }));
   const cornerStyle = useAnimatedStyle(() => ({ transform: [{ scale: cornerScale.value }] }));

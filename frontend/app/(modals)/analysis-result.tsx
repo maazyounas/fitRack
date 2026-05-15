@@ -66,7 +66,7 @@ function MacroBar({ label, value, max, color }: { label: string; value: number; 
   const fillW = useSharedValue(0);
   useEffect(() => {
     fillW.value = withDelay(400, withTiming((value / max) * (width - 96), { duration: 1000 }));
-  }, []);
+  }, [fillW, max, value]);
   const fillStyle = useAnimatedStyle(() => ({ width: fillW.value }));
 
   return (

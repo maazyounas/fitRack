@@ -1,5 +1,7 @@
 import { useRef } from 'react';
 import { Animated, PanResponder, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { WorkoutExercise } from '@/types/workout';
 
 type ExerciseItemProps = {
@@ -11,7 +13,7 @@ type ExerciseItemProps = {
   onReorder: (from: number, to: number) => void;
 };
 
-const ITEM_HEIGHT = 168;
+const ITEM_HEIGHT = 180;
 
 export function ExerciseItem({
   exercise,
@@ -22,37 +24,85 @@ export function ExerciseItem({
   onReorder,
 }: ExerciseItemProps) {
   const translateY = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
 
   const responder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
+    onPanResponderGrant: () => {
+      Animated.spring(scale, {
+        toValue: 1.02,
+        friction: 3,
+        useNativeDriver: true,
+      }).start();
+    },
     onPanResponderMove: Animated.event([null, { dy: translateY }], {
       useNativeDriver: false,
     }),
     onPanResponderRelease: (_event, gesture) => {
       const offset = Math.round(gesture.dy / ITEM_HEIGHT);
       const nextIndex = Math.max(0, Math.min(total - 1, index + offset));
+      
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 3,
+        useNativeDriver: true,
+      }).start();
       translateY.setValue(0);
+      
       if (nextIndex !== index) {
         onReorder(index, nextIndex);
       }
     },
   });
 
+  const incrementValue = (field: keyof WorkoutExercise, current: number, step: number = 1) => {
+    const newValue = current + step;
+    if (newValue >= 1) {
+      onEdit(index, field, String(newValue));
+    }
+  };
+
+  const decrementValue = (field: keyof WorkoutExercise, current: number, step: number = 1) => {
+    const newValue = current - step;
+    if (newValue >= 1) {
+      onEdit(index, field, String(newValue));
+    }
+  };
+
   return (
-    <Animated.View style={[styles.card, { transform: [{ translateY }] }]}>
+    <Animated.View style={[styles.card, { transform: [{ translateY }, { scale }] }]}>
+      <LinearGradient
+        colors={['#ffffff', '#f8fafc']}
+        style={styles.cardGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      />
+      
       <View style={styles.header}>
         <View style={styles.headerCopy}>
           <Text style={styles.title}>{exercise.name || `Exercise ${index + 1}`}</Text>
-          <Text style={styles.meta}>
-            {exercise.muscleGroup} | {exercise.equipment} | {exercise.intensity}
-          </Text>
+          <View style={styles.metaContainer}>
+            <View style={styles.metaPill}>
+              <Ionicons name="body-outline" size={12} color="#64748b" />
+              <Text style={styles.meta}>{exercise.muscleGroup}</Text>
+            </View>
+            <View style={styles.metaPill}>
+              <Ionicons name="fitness-outline" size={12} color="#64748b" />
+              <Text style={styles.meta}>{exercise.equipment}</Text>
+            </View>
+            <View style={styles.metaPill}>
+              <Ionicons name="flash-outline" size={12} color="#64748b" />
+              <Text style={styles.meta}>{exercise.intensity}</Text>
+            </View>
+          </View>
         </View>
+        
         <View style={styles.actions}>
           <Pressable {...responder.panHandlers} style={styles.dragHandle}>
-            <Text style={styles.dragText}>Drag</Text>
+            <Ionicons name="menu" size={20} color="#64748b" />
           </Pressable>
           <Pressable onPress={() => onRemove(index)} style={styles.removeButton}>
-            <Text style={styles.removeText}>Remove</Text>
+            <Ionicons name="trash-outline" size={18} color="#ef4444" />
           </Pressable>
         </View>
       </View>
@@ -82,21 +132,44 @@ export function ExerciseItem({
       </View>
 
       <View style={styles.quickStats}>
-        <Pressable onPress={() => onEdit(index, 'sets', String(exercise.sets + 1))} style={styles.statButton}>
+        <View style={styles.statControl}>
           <Text style={styles.statLabel}>Sets</Text>
-          <Text style={styles.statValue}>{exercise.sets}</Text>
-        </Pressable>
-        <Pressable onPress={() => onEdit(index, 'reps', String(exercise.reps + 1))} style={styles.statButton}>
+          <View style={styles.statButtons}>
+            <Pressable onPress={() => decrementValue('sets', exercise.sets)} style={styles.statBtn}>
+              <Ionicons name="remove" size={16} color="#475569" />
+            </Pressable>
+            <Text style={styles.statValue}>{exercise.sets}</Text>
+            <Pressable onPress={() => incrementValue('sets', exercise.sets)} style={styles.statBtn}>
+              <Ionicons name="add" size={16} color="#475569" />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.statControl}>
           <Text style={styles.statLabel}>Reps</Text>
-          <Text style={styles.statValue}>{exercise.reps}</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => onEdit(index, 'restSeconds', String(exercise.restSeconds + 15))}
-          style={styles.statButton}
-        >
+          <View style={styles.statButtons}>
+            <Pressable onPress={() => decrementValue('reps', exercise.reps)} style={styles.statBtn}>
+              <Ionicons name="remove" size={16} color="#475569" />
+            </Pressable>
+            <Text style={styles.statValue}>{exercise.reps}</Text>
+            <Pressable onPress={() => incrementValue('reps', exercise.reps)} style={styles.statBtn}>
+              <Ionicons name="add" size={16} color="#475569" />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.statControl}>
           <Text style={styles.statLabel}>Rest</Text>
-          <Text style={styles.statValue}>{exercise.restSeconds}s</Text>
-        </Pressable>
+          <View style={styles.statButtons}>
+            <Pressable onPress={() => decrementValue('restSeconds', exercise.restSeconds, 15)} style={styles.statBtn}>
+              <Ionicons name="remove" size={16} color="#475569" />
+            </Pressable>
+            <Text style={styles.statValue}>{exercise.restSeconds}s</Text>
+            <Pressable onPress={() => incrementValue('restSeconds', exercise.restSeconds, 15)} style={styles.statBtn}>
+              <Ionicons name="add" size={16} color="#475569" />
+            </Pressable>
+          </View>
+        </View>
       </View>
     </Animated.View>
   );
@@ -104,91 +177,131 @@ export function ExerciseItem({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    borderColor: '#dbeafe',
     borderRadius: 20,
-    borderWidth: 1,
     marginBottom: 12,
-    padding: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    padding: 16,
+    paddingBottom: 8,
   },
   headerCopy: {
     flex: 1,
     paddingRight: 12,
   },
   title: {
-    color: '#0f172a',
-    fontSize: 17,
-    fontWeight: '800',
+    color: '#1e293b',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  metaContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  metaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
   meta: {
     color: '#64748b',
-    fontSize: 13,
-    marginTop: 4,
-    textTransform: 'capitalize',
+    fontSize: 11,
+    fontWeight: '400',
   },
   actions: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   dragHandle: {
-    backgroundColor: '#dbeafe',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  dragText: {
-    color: '#1d4ed8',
-    fontSize: 12,
-    fontWeight: '700',
+    padding: 6,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 10,
   },
   removeButton: {
-    backgroundColor: '#fee2e2',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  removeText: {
-    color: '#b91c1c',
-    fontSize: 12,
-    fontWeight: '700',
+    padding: 6,
+    backgroundColor: '#fef2f2',
+    borderRadius: 10,
   },
   formGrid: {
     gap: 10,
-    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
   input: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#cbd5e1',
-    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    borderColor: '#e2e8f0',
+    borderRadius: 12,
     borderWidth: 1,
-    color: '#0f172a',
+    color: '#1e293b',
     fontSize: 14,
-    paddingHorizontal: 12,
+    fontWeight: '400',
+    paddingHorizontal: 14,
     paddingVertical: 12,
   },
   quickStats: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 16,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  statButton: {
-    backgroundColor: '#eff6ff',
-    borderRadius: 16,
+  statControl: {
     flex: 1,
-    padding: 10,
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 14,
+    paddingVertical: 10,
   },
   statLabel: {
-    color: '#475569',
-    fontSize: 12,
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '400',
+    marginBottom: 6,
+  },
+  statButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  statBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   statValue: {
-    color: '#0f172a',
+    color: '#1e293b',
     fontSize: 16,
-    fontWeight: '800',
-    marginTop: 6,
+    fontWeight: '600',
+    minWidth: 40,
+    textAlign: 'center',
   },
 });

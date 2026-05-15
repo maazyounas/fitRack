@@ -67,8 +67,6 @@ export default function HomeScreen() {
 
   const isAdmin = Boolean(user?.isAdmin);
   const quickActions = getQuickActions(isAdmin);
-  
-  const calorieGoal = user?.profile.dailyCalories || nutritionGoals.calories || 2000;
   const caloriesConsumed = Math.round(dailyReport.totals.calories || 0);
 
   return (

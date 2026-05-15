@@ -36,7 +36,7 @@ function PulseDot() {
       -1,
       false
     );
-  }, []);
+  }, [scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

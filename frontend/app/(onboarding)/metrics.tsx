@@ -7,7 +7,6 @@ import { useState } from 'react';
 import {
   Dimensions,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -15,14 +14,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useOnboardingStore, type ActivityLevel, type ExperienceLevel } from '@/store/onboardingStore';
 import { PremiumButton } from '@/components/ui/PremiumButton';
 

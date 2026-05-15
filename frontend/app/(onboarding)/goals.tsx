@@ -7,13 +7,13 @@ import { useState } from 'react';
 import {
   Dimensions,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -79,7 +79,7 @@ export default function GoalsScreen() {
   const toggle = (key: OnboardingGoal) => {
     setSelected((prev: Set<OnboardingGoal>) => {
       const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
+      if (next.has(key)) next.delete(key); else next.add(key);
       return next;
     });
   };
@@ -109,7 +109,7 @@ export default function GoalsScreen() {
           <View style={styles.heroContent}>
             <Text style={styles.eyebrow}>YOUR MISSION</Text>
             <Text style={styles.title}>Fitness Goals</Text>
-            <Text style={styles.subtitle}>Pick as many as you like — we'll build a personalised plan around all of them.</Text>
+            <Text style={styles.subtitle}>Pick as many as you like — we&apos;ll build a personalised plan around all of them.</Text>
           </View>
         </SafeAreaView>
       </LinearGradient>

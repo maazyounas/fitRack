@@ -7,12 +7,12 @@ import { useEffect } from 'react';
 import {
   Dimensions,
   Pressable,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -67,7 +67,7 @@ function GenderCard({
 
   useEffect(() => {
     borderOpacity.value = withTiming(selected ? 1 : 0, { duration: 250 });
-  }, [selected]);
+  }, [selected, borderOpacity]);
 
   const cardStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],

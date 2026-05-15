@@ -6,8 +6,6 @@ import { useAuthStore } from '@/store/authStore';
 import { useNutritionStore } from '@/store/nutritionStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useNotificationStore } from '@/store/notificationStore';
-import { useAppPalette } from '@/hooks/useAppPalette';
-import { useFontScale } from '@/hooks/useFontScale';
 import { useTranslation } from '@/hooks/useTranslation';
 import { DailyReminder } from '@/types/notifications';
 import { parseVoiceRoute, speakText, startVoiceRecognition } from '@/services/voice';
@@ -93,8 +91,6 @@ function TimeAdjustButtons({ onAdjust }: { onAdjust: (patch: Partial<DailyRemind
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const palette = useAppPalette();
-  const fontScale = useFontScale();
   const { t, isRTL, language } = useTranslation();
   const {
     user,
@@ -102,7 +98,6 @@ export default function SettingsScreen() {
     deactivateAccount,
     deleteAccount,
     loadImageConsent,
-    isLoading,
     touchActivity,
   } = useAuthStore();
   const hydrationReminder = useNutritionStore((state) => state.hydrationReminder);
@@ -114,7 +109,6 @@ export default function SettingsScreen() {
     isSyncing: remindersSyncing,
     updateWorkoutReminder,
     updateMissedWorkoutAlert,
-    updateMealReminder,
   } = useNotificationStore();
   const [voiceStatus, setVoiceStatus] = useState('');
 
@@ -125,8 +119,6 @@ export default function SettingsScreen() {
   if (!user) {
     return null;
   }
-
-  const align = isRTL ? 'right' : 'left';
   const { preferences } = user;
 
   const reminderContext = {

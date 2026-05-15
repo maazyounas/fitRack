@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View, Platform, TouchableOpacity } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 // @ts-ignore
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { BodyMeasurementChart } from '@/components/progress/BodyMeasurementChart';
@@ -52,7 +52,6 @@ const ALL_MILESTONES: Partial<ProgressAchievement>[] = [
 
 export default function ProgressScreen() {
   const {
-    entries,
     streakDays,
     achievements,
     dailyTrend,
@@ -62,7 +61,6 @@ export default function ProgressScreen() {
     plateauMessage,
     isLoading,
     isSaving,
-    error,
     initialize,
     addEntry,
     trackStreak
@@ -149,7 +147,6 @@ export default function ProgressScreen() {
         {showConfetti && <ConfettiCannon count={200} origin={{ x: -10, y: 0 }} fadeOut={true} />}
 
         <View style={styles.subHeader}>
-          <Text style={styles.subtitle}>Keep showing up to win</Text>
           <TouchableOpacity 
             onPress={() => trackStreak()}
             disabled={isLoading}

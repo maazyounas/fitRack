@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   Alert,
-  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -147,7 +146,7 @@ export default function LoginScreen() {
 
         <Pressable onPress={() => router.push('/signup')} style={styles.footerWrap}>
           <Text style={styles.footer}>
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Text style={styles.footerAccent}>Sign up</Text>
           </Text>
         </Pressable>

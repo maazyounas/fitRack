@@ -91,15 +91,11 @@ export default function SignupScreen() {
   const [errors, setErrors] = useState<FieldErrors>({});
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  const [preferredVerification, setPreferredVerification] = useState<'email' | 'phone' | null>(null);
-
   const verificationPurpose = useMemo(
     () => {
-      if (preferredVerification === 'phone') return 'verify-phone';
-      if (preferredVerification === 'email') return 'verify-email';
       return email.trim() ? 'verify-email' : 'verify-phone';
     },
-    [email, preferredVerification]
+    [email]
   );
 
   const setField = (field: keyof FieldErrors) => (value: string) => {
