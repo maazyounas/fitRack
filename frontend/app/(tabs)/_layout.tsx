@@ -1,11 +1,14 @@
 ﻿import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAppPalette } from '@/hooks/useAppPalette';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function TabLayout() {
   const palette = useAppPalette();
@@ -15,6 +18,8 @@ export default function TabLayout() {
   const user = useAuthStore((state) => state.user);
 
   const isAdmin = user?.isAdmin === true;
+
+  const tabBarHeight = 68;
 
   return (
     <Tabs
@@ -30,40 +35,46 @@ export default function TabLayout() {
           position: 'absolute',
           left: 16,
           right: 16,
-          bottom: 14,
+          bottom: 16,
 
-          height: 72,
+          height: tabBarHeight,
 
-          paddingTop: 10,
+          paddingTop: 8,
           paddingBottom: 10,
 
           backgroundColor: '#ffffff',
 
           borderTopWidth: 0,
 
-          borderRadius: 26,
+          borderRadius: 28,
 
           shadowColor: '#0f172a',
           shadowOffset: {
             width: 0,
-            height: 10,
+            height: 8,
           },
-          shadowOpacity: 0.08,
-          shadowRadius: 18,
-          elevation: 10,
+          shadowOpacity: 0.1,
+          shadowRadius: 20,
+          elevation: 12,
+
+          // For better visual separation
+          borderWidth: 1,
+          borderColor: 'rgba(0,0,0,0.03)',
         },
 
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
           paddingVertical: 4,
+          borderRadius: 24,
         },
 
         tabBarLabelStyle: {
-          fontSize: 10 * fontScale,
-          fontWeight: '600',
-          marginTop: 2,
+          fontSize: Math.min(11 * fontScale, 13),
+          fontWeight: '500',
+          marginTop: 4,
           marginBottom: 2,
+          letterSpacing: -0.2,
         },
 
         headerStyle: {
@@ -73,90 +84,139 @@ export default function TabLayout() {
         headerTintColor: palette.text,
       }}
     >
-      {/* ───────────────── Home ───────────────── */}
+      {/* Home Tab */}
       <Tabs.Screen
         name="home"
         options={{
           title: t('tabs_home'),
           tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? styles.activeIconWrap : styles.iconWrap}>
-              <Ionicons
-                name={focused ? 'home' : 'home-outline'}
-                size={22}
-                color={color}
-              />
+            <View style={focused ? styles.activeIconContainer : styles.iconContainer}>
+              <LinearGradient
+                colors={focused ? ['#0d9488', '#0f766e'] : ['transparent', 'transparent']}
+                style={styles.iconGradient}
+              >
+                <Ionicons
+                  name={focused ? 'home' : 'home-outline'}
+                  size={22}
+                  color={color}
+                />
+              </LinearGradient>
             </View>
           ),
         }}
       />
 
-      {/* ───────────────── Workouts ───────────────── */}
+      {/* Workouts Tab */}
       <Tabs.Screen
         name="workouts"
         options={{
           title: t('tabs_workouts'),
           tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? styles.activeIconWrap : styles.iconWrap}>
-              <Ionicons
-                name={focused ? 'fitness' : 'fitness-outline'}
-                size={22}
-                color={color}
-              />
+            <View style={focused ? styles.activeIconContainer : styles.iconContainer}>
+              <LinearGradient
+                colors={focused ? ['#0d9488', '#0f766e'] : ['transparent', 'transparent']}
+                style={styles.iconGradient}
+              >
+                <Ionicons
+                  name={focused ? 'fitness' : 'fitness-outline'}
+                  size={22}
+                  color={color}
+                />
+              </LinearGradient>
             </View>
           ),
         }}
       />
 
-      {/* ───────────────── Nutrition ───────────────── */}
+      {/* Nutrition Tab */}
       <Tabs.Screen
         name="nutrition"
         options={{
           title: t('tabs_nutrition'),
           tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? styles.activeIconWrap : styles.iconWrap}>
-              <Ionicons
-                name={focused ? 'restaurant' : 'restaurant-outline'}
-                size={22}
-                color={color}
-              />
+            <View style={focused ? styles.activeIconContainer : styles.iconContainer}>
+              <LinearGradient
+                colors={focused ? ['#0d9488', '#0f766e'] : ['transparent', 'transparent']}
+                style={styles.iconGradient}
+              >
+                <Ionicons
+                  name={focused ? 'restaurant' : 'restaurant-outline'}
+                  size={22}
+                  color={color}
+                />
+              </LinearGradient>
             </View>
           ),
         }}
       />
 
-      {/* ───────────────── Progress ───────────────── */}
+      {/* Progress Tab */}
       <Tabs.Screen
         name="progress"
         options={{
           title: t('tabs_progress'),
           tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? styles.activeIconWrap : styles.iconWrap}>
-              <Ionicons
-                name={focused ? 'stats-chart' : 'stats-chart-outline'}
-                size={22}
-                color={color}
-              />
+            <View style={focused ? styles.activeIconContainer : styles.iconContainer}>
+              <LinearGradient
+                colors={focused ? ['#0d9488', '#0f766e'] : ['transparent', 'transparent']}
+                style={styles.iconGradient}
+              >
+                <Ionicons
+                  name={focused ? 'stats-chart' : 'stats-chart-outline'}
+                  size={22}
+                  color={color}
+                />
+              </LinearGradient>
             </View>
           ),
         }}
       />
 
-      {/* ───────────────── Community ───────────────── */}
+      {/* Community Tab */}
       <Tabs.Screen
         name="community"
         options={{
           title: t('tabs_community'),
           tabBarIcon: ({ color, focused }) => (
-            <View style={focused ? styles.activeIconWrap : styles.iconWrap}>
-              <Ionicons
-                name={focused ? 'people' : 'people-outline'}
-                size={22}
-                color={color}
-              />
+            <View style={focused ? styles.activeIconContainer : styles.iconContainer}>
+              <LinearGradient
+                colors={focused ? ['#0d9488', '#0f766e'] : ['transparent', 'transparent']}
+                style={styles.iconGradient}
+              >
+                <Ionicons
+                  name={focused ? 'people' : 'people-outline'}
+                  size={22}
+                  color={color}
+                />
+              </LinearGradient>
             </View>
           ),
         }}
       />
+
+      {/* Admin Tab (Conditional) */}
+      {isAdmin && (
+        <Tabs.Screen
+          name="admin"
+          options={{
+            title: 'Admin',
+            tabBarIcon: ({ color, focused }) => (
+              <View style={focused ? styles.activeIconContainer : styles.iconContainer}>
+                <LinearGradient
+                  colors={focused ? ['#0d9488', '#0f766e'] : ['transparent', 'transparent']}
+                  style={styles.iconGradient}
+                >
+                  <Ionicons
+                    name={focused ? 'shield' : 'shield-outline'}
+                    size={22}
+                    color={color}
+                  />
+                </LinearGradient>
+              </View>
+            ),
+          }}
+        />
+      )}
 
       {/* Hidden Screens */}
       <Tabs.Screen
@@ -185,19 +245,25 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  iconWrap: {
+  iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    width: 36,
+    height: 36,
   },
-
-  activeIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-
+  activeIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-
-    backgroundColor: 'rgba(13,148,136,0.10)',
+    backgroundColor: 'rgba(13,148,136,0.12)',
+  },
+  iconGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
