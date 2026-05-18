@@ -124,6 +124,16 @@ async function runScheduler(settings: ReminderSettings, context: ReminderContext
     };
   }
 
+  // On web, notifications are not fully supported, return gracefully
+  if (typeof Platform !== 'undefined' && Platform.OS === 'web') {
+    return {
+      permissionGranted: false,
+      permissionStatus: 'web-not-supported',
+      expoPushToken: null,
+      scheduledCount: 0,
+    };
+  }
+
   const registration = await registerForPushNotificationsAsync();
   const scheduledCount = registration.permissionGranted
     ? await syncReminderNotifications({

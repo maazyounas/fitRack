@@ -1,5 +1,4 @@
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/services/storage/secureStore';
 import { ReminderSettings } from '@/types/notifications';
@@ -8,14 +7,13 @@ import { WorkoutPlan } from '@/types/workout';
 const scheduledIdsStorageKey = 'notification-scheduled-ids';
 const reminderChannelId = 'fitrack-reminders';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+// Use dynamic import to avoid importing expo-notifications on web
+async function getNotificationsModule() {
+  if (Platform.OS === 'web') {
+    throw new Error('Notifications not supported on web');
+  }
+  return await import('expo-notifications');
+}
 
 type PushRegistration = {
   permissionGranted: boolean;
@@ -32,7 +30,7 @@ async function ensureAndroidChannel() {
   if (Platform.OS !== 'android') {
     return;
   }
-
+  const Notifications = await getNotificationsModule();
   await Notifications.setNotificationChannelAsync(reminderChannelId, {
     name: 'FITRACK reminders',
     description: 'Workout, meal, hydration, and missed workout reminders.',
@@ -51,7 +49,8 @@ async function persistScheduledIds(ids: string[]) {
   await setSecureItem(scheduledIdsStorageKey, ids);
 }
 
-function buildDailyDate(hour: number, minute: number) {
+async function buildDailyDate(hour: number, minute: number) {
+  const Notifications = await getNotificationsModule();
   return {
     type: Notifications.SchedulableTriggerInputTypes.DAILY,
     hour,
@@ -60,7 +59,8 @@ function buildDailyDate(hour: number, minute: number) {
   } as const;
 }
 
-function buildDateForDay(dateString: string, hour: number, minute: number) {
+async function buildDateForDay(dateString: string, hour: number, minute: number) {
+  const Notifications = await getNotificationsModule();
   const base = new Date(dateString);
   const date = new Date(
     base.getFullYear(),
@@ -78,10 +78,8 @@ function buildDateForDay(dateString: string, hour: number, minute: number) {
   } as const;
 }
 
-async function scheduleNotification(
-  content: Notifications.NotificationContentInput,
-  trigger: Notifications.NotificationTriggerInput
-) {
+async function scheduleNotification(content: any, trigger: any) {
+  const Notifications = await getNotificationsModule();
   return Notifications.scheduleNotificationAsync({ content, trigger });
 }
 
@@ -99,7 +97,7 @@ async function scheduleWorkoutNotifications(settings: ReminderSettings, workouts
 
   for (const { workout, entry } of workoutEntries) {
     if (settings.workoutReminder.enabled) {
-      const reminderDate = buildDateForDay(
+      const reminderDate = await buildDateForDay(
         entry.scheduledDate,
         settings.workoutReminder.hour,
         settings.workoutReminder.minute
@@ -123,7 +121,7 @@ async function scheduleWorkoutNotifications(settings: ReminderSettings, workouts
     }
 
     if (settings.missedWorkoutAlert.enabled) {
-      const missedAlertDate = buildDateForDay(
+      const missedAlertDate = await buildDateForDay(
         entry.scheduledDate,
         settings.missedWorkoutAlert.hour,
         settings.missedWorkoutAlert.minute
@@ -164,13 +162,14 @@ async function scheduleMealNotifications(settings: ReminderSettings) {
       continue;
     }
 
+    const trigger = await buildDailyDate(reminder.hour, reminder.minute);
     const id = await scheduleNotification(
       {
         title,
         body,
         data: { type: `${key}-meal-reminder` },
       },
-      buildDailyDate(reminder.hour, reminder.minute)
+      trigger
     );
     scheduledIds.push(id);
   }
@@ -193,13 +192,14 @@ async function scheduleHydrationNotifications(settings: ReminderSettings) {
   ) {
     const hour = Math.floor(minutes / 60);
     const minute = minutes % 60;
+    const trigger = await buildDailyDate(hour, minute);
     const id = await scheduleNotification(
       {
         title: 'Hydration alert',
         body: 'Drink some water and keep your momentum going.',
         data: { type: 'hydration-alert' },
       },
-      buildDailyDate(hour, minute)
+      trigger
     );
     scheduledIds.push(id);
   }
@@ -208,13 +208,36 @@ async function scheduleHydrationNotifications(settings: ReminderSettings) {
 }
 
 export async function clearScheduledReminderNotifications() {
+  if (Platform.OS === 'web') {
+    return;
+  }
   const scheduledIds = await readScheduledIds();
+  const Notifications = await getNotificationsModule();
   await Promise.all(scheduledIds.map((id) => Notifications.cancelScheduledNotificationAsync(id)));
   await removeSecureItem(scheduledIdsStorageKey);
 }
 
 export async function registerForPushNotificationsAsync(): Promise<PushRegistration> {
+  // Skip push token registration on web (not supported)
+  if (Platform.OS === 'web') {
+    return {
+      permissionGranted: false,
+      permissionStatus: 'web-not-supported',
+      expoPushToken: null,
+    };
+  }
+
   await ensureAndroidChannel();
+  const Notifications = await getNotificationsModule();
+  // set a notification handler on native platforms
+  Notifications.setNotificationHandler?.({
+    handleNotification: async () => ({
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
 
   const permission = await Notifications.getPermissionsAsync();
   let status = permission.status;
@@ -264,6 +287,11 @@ export async function registerForPushNotificationsAsync(): Promise<PushRegistrat
 }
 
 export async function syncReminderNotifications({ settings, workouts }: ReminderSyncInput) {
+  // Skip reminder scheduling on web (not supported)
+  if (Platform.OS === 'web') {
+    return 0;
+  }
+
   await clearScheduledReminderNotifications();
   await ensureAndroidChannel();
 
