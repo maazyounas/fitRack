@@ -15,6 +15,13 @@ async function getNotificationsModule() {
   return await import('expo-notifications');
 }
 
+function isExpoGo() {
+  return (
+    Constants.executionEnvironment === 'storeClient' ||
+    Constants.appOwnership === 'expo'
+  );
+}
+
 type PushRegistration = {
   permissionGranted: boolean;
   permissionStatus: string;
@@ -208,7 +215,7 @@ async function scheduleHydrationNotifications(settings: ReminderSettings) {
 }
 
 export async function clearScheduledReminderNotifications() {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || isExpoGo()) {
     return;
   }
   const scheduledIds = await readScheduledIds();
@@ -219,10 +226,10 @@ export async function clearScheduledReminderNotifications() {
 
 export async function registerForPushNotificationsAsync(): Promise<PushRegistration> {
   // Skip push token registration on web (not supported)
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || isExpoGo()) {
     return {
       permissionGranted: false,
-      permissionStatus: 'web-not-supported',
+      permissionStatus: Platform.OS === 'web' ? 'web-not-supported' : 'expo-go-not-supported',
       expoPushToken: null,
     };
   }
@@ -288,7 +295,7 @@ export async function registerForPushNotificationsAsync(): Promise<PushRegistrat
 
 export async function syncReminderNotifications({ settings, workouts }: ReminderSyncInput) {
   // Skip reminder scheduling on web (not supported)
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || isExpoGo()) {
     return 0;
   }
 

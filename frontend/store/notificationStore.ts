@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import Constants from 'expo-constants';
 import { getSecureItem, setSecureItem } from '@/services/storage/secureStore';
 import {
   clearScheduledReminderNotifications,
@@ -104,6 +105,13 @@ function normalizeSettings(settings: ReminderSettings): ReminderSettings {
   };
 }
 
+function isExpoGo() {
+  return (
+    Constants.executionEnvironment === 'storeClient' ||
+    Constants.appOwnership === 'expo'
+  );
+}
+
 async function persistSettings(settings: ReminderSettings) {
   await setSecureItem(reminderStorageKey, settings);
 }
@@ -114,21 +122,11 @@ async function loadPersistedSettings() {
 }
 
 async function runScheduler(settings: ReminderSettings, context: ReminderContext): Promise<NotificationStatus> {
-  if (!context.notificationsEnabled) {
+  if (!context.notificationsEnabled || isExpoGo()) {
     await clearScheduledReminderNotifications();
     return {
       permissionGranted: false,
-      permissionStatus: 'disabled',
-      expoPushToken: null,
-      scheduledCount: 0,
-    };
-  }
-
-  // On web, notifications are not fully supported, return gracefully
-  if (typeof Platform !== 'undefined' && Platform.OS === 'web') {
-    return {
-      permissionGranted: false,
-      permissionStatus: 'web-not-supported',
+      permissionStatus: isExpoGo() ? 'expo-go-not-supported' : 'disabled',
       expoPushToken: null,
       scheduledCount: 0,
     };

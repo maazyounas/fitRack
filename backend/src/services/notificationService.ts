@@ -1,11 +1,23 @@
-import { Expo, ExpoPushMessage } from 'expo-server-sdk';
 import { NotificationTokenModel } from '../models/NotificationToken';
+import { sendOtpEmail, sendPasswordChangedEmail } from './emailService';
 
-const expo = new Expo();
+let expoInstance: any = null;
+let expoClass: any = null;
+
+async function getExpo() {
+  if (!expoInstance || !expoClass) {
+    const sdk: any = await import('expo-server-sdk');
+    expoClass = sdk.Expo;
+    expoInstance = new sdk.Expo();
+  }
+
+  return { expo: expoInstance, Expo: expoClass };
+}
 
 export async function sendPushNotification(userIds: string[], title: string, body: string, data?: any) {
   const tokens = await NotificationTokenModel.find({ userId: { $in: userIds } });
-  const messages: ExpoPushMessage[] = [];
+  const messages: any[] = [];
+  const { expo, Expo } = await getExpo();
 
   for (const token of tokens) {
     if (!Expo.isExpoPushToken(token.expoPushToken)) {
@@ -40,8 +52,9 @@ export async function sendPushNotification(userIds: string[], title: string, bod
 export async function broadcastNotification(title: string, body: string, data?: any) {
   const tokens = await NotificationTokenModel.find();
   const pushTokens = tokens.map(t => t.expoPushToken);
+  const { expo, Expo } = await getExpo();
   
-  const messages: ExpoPushMessage[] = pushTokens
+  const messages: any[] = pushTokens
     .filter(token => Expo.isExpoPushToken(token))
     .map(token => ({
       to: token,
@@ -61,12 +74,31 @@ export async function broadcastNotification(title: string, body: string, data?: 
   }
 }
 
-export async function sendOtpNotification(identifier: string, otp: string, purpose: string) {
-  // In a real app, this would use Twilio or SendGrid depending on identifier type (email/phone)
-  console.log(`[STUB] Sending OTP ${otp} to ${identifier} for ${purpose}`);
+export async function sendOtpNotification(identifier: string, otp: string, purpose: 'verify-email' | 'verify-phone' | 'password-reset') {
+  // Check if identifier is email or phone
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+  const isPhone = /^\+?[\d\s-()]+$/.test(identifier) && identifier.replace(/\D/g, '').length >= 10;
+
+  if (isEmail) {
+    // Send via Email using Resend
+    await sendOtpEmail(identifier, otp, purpose);
+  } else if (isPhone) {
+    // TODO: Implement SMS via Twilio
+    console.log(`[TODO] SMS service not yet implemented. Would send OTP ${otp} to phone ${identifier}`);
+  } else {
+    console.warn(`[WARNING] Invalid identifier format: ${identifier}`);
+  }
 }
 
 export async function sendPasswordChangedNotification(identifier: string) {
-  // In a real app, this would use Twilio or SendGrid depending on identifier type (email/phone)
-  console.log(`[STUB] Sending password changed alert to ${identifier}`);
+  // Check if identifier is email or phone
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+
+  if (isEmail) {
+    // Send via Email using Resend
+    await sendPasswordChangedEmail(identifier);
+  } else {
+    // TODO: Implement SMS via Twilio
+    console.log(`[TODO] SMS service not yet implemented. Would send password changed alert to ${identifier}`);
+  }
 }
