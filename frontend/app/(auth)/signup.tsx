@@ -8,14 +8,17 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/store/authStore';
+import { AUTH_THEME } from '@/utils/authTheme';
+import { getAuthResponsiveMetrics } from '@/utils/responsive';
 import {
   validateEmail,
   validateOtp,
@@ -79,6 +82,8 @@ type FieldErrors = {
 
 export default function SignupScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const metrics = getAuthResponsiveMetrics(width);
   const { register, verifyOtp, resendOtp, isLoading, touchActivity } = useAuthStore();
 
   const [step, setStep] = useState<'register' | 'verify'>('register');
@@ -122,12 +127,19 @@ export default function SignupScreen() {
 
     try {
       touchActivity();
-      await register({
+      const response = await register({
         name: name.trim(),
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
         password,
       });
+
+      const debugOtp = response.debugOtp?.email ?? response.debugOtp?.phone;
+      if (debugOtp) {
+        setOtp(debugOtp);
+        Alert.alert('Development OTP', `OTP auto-filled for local testing: ${debugOtp}`);
+      }
+
       setStep('verify');
     } catch (error) {
       Alert.alert('Signup failed', error instanceof Error ? error.message : 'Unable to sign up.');
@@ -191,23 +203,30 @@ export default function SignupScreen() {
     >
       <ScrollView
         contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <LinearGradient
-          colors={['#7c3aed', '#6d28d9', '#4c1d95']}
+          colors={AUTH_THEME.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.hero}
+          style={[
+            styles.hero,
+            {
+              paddingTop: metrics.heroPaddingTop,
+              paddingBottom: metrics.heroPaddingBottom,
+              paddingHorizontal: metrics.heroHorizontalPadding,
+            },
+          ]}
         >
-          <View style={styles.logoRing}>
-            <Ionicons name={step === 'register' ? 'person-add-outline' : 'shield-checkmark-outline'} size={28} color="#fff" />
+          <View style={[styles.logoRing, { padding: metrics.isCompact ? 14 : 16, marginBottom: metrics.isCompact ? 12 : 16 }]}>
+            <Ionicons name={step === 'register' ? 'person-add-outline' : 'shield-checkmark-outline'} size={metrics.isCompact ? 26 : 28} color="#fff" />
           </View>
-          <Text style={styles.heroTitle}>
+          <Text style={[styles.heroTitle, { fontSize: metrics.heroTitleSize - 2 }]}>
             {step === 'register' ? 'Create Account' : 'Verify Identity'}
           </Text>
-          <Text style={styles.heroSub}>
+          <Text style={[styles.heroSub, { fontSize: metrics.heroSubSize, maxWidth: metrics.heroSubMaxWidth }]}>
             {step === 'register'
               ? 'Register with email or phone — then verify with OTP.'
               : `We sent a 6-digit code to ${email.trim() || phone.trim()}.`}
@@ -215,73 +234,89 @@ export default function SignupScreen() {
         </LinearGradient>
 
         {/* Card */}
-        <View style={styles.card}>
+        <View
+          style={[
+            styles.card,
+            {
+              marginHorizontal: metrics.cardMarginHorizontal,
+              padding: metrics.cardPadding,
+              borderRadius: metrics.cardRadius,
+              maxWidth: metrics.isTablet ? 600 : 680,
+              width: '100%',
+              alignSelf: 'center',
+            },
+          ]}
+        >
           {step === 'register' ? (
             <>
               {/* Name */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Full Name</Text>
-                <View style={[styles.inputRow, errors.name ? styles.inputError : null]}>
-                  <Ionicons name="person-outline" size={18} color="#94a3b8" style={styles.icon} />
-                  <Input
+              <View style={[styles.fieldGroup, { marginBottom: metrics.fieldGroupMarginBottom }]}>
+                <Text style={[styles.label, { fontSize: metrics.labelSize }]}>Full Name</Text>
+                <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.name ? styles.inputError : null]}>
+                  <Ionicons name="person-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
+                  <TextInput
                     onChangeText={setField('name')}
-                    placeholder="Areeba Khan"
+                    placeholderTextColor="#94a3b8"
+                    placeholder="Full name"
                     value={name}
-                    style={styles.bare}
+                    style={[styles.bare, { fontSize: metrics.bareFontSize }]}
                   />
                 </View>
                 {errors.name ? <Text style={styles.errTxt}>{errors.name}</Text> : null}
               </View>
 
               {/* Email */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Email</Text>
-                <View style={[styles.inputRow, errors.email ? styles.inputError : null]}>
-                  <Ionicons name="mail-outline" size={18} color="#94a3b8" style={styles.icon} />
-                  <Input
+              <View style={[styles.fieldGroup, { marginBottom: metrics.fieldGroupMarginBottom }]}>
+                <Text style={[styles.label, { fontSize: metrics.labelSize }]}>Email</Text>
+                <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.email ? styles.inputError : null]}>
+                  <Ionicons name="mail-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
+                  <TextInput
                     autoCapitalize="none"
                     keyboardType="email-address"
                     onChangeText={setField('email')}
-                    placeholder="you@example.com"
+                    placeholderTextColor="#94a3b8"
+                    placeholder="Email"
                     value={email}
-                    style={styles.bare}
+                    style={[styles.bare, { fontSize: metrics.bareFontSize }]}
                   />
                 </View>
                 {errors.email ? <Text style={styles.errTxt}>{errors.email}</Text> : null}
               </View>
 
               {/* Phone */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Phone {email ? '(optional)' : '(required if no email)'}</Text>
-                <View style={[styles.inputRow, errors.phone ? styles.inputError : null]}>
-                  <Ionicons name="call-outline" size={18} color="#94a3b8" style={styles.icon} />
-                  <Input
+              <View style={[styles.fieldGroup, { marginBottom: metrics.fieldGroupMarginBottom }]}>
+                <Text style={[styles.label, { fontSize: metrics.labelSize }]}>Phone {email ? '(optional)' : '(required if no email)'}</Text>
+                <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.phone ? styles.inputError : null]}>
+                  <Ionicons name="call-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
+                  <TextInput
                     keyboardType="phone-pad"
                     onChangeText={setField('phone')}
-                    placeholder="+923001234567"
+                    placeholderTextColor="#94a3b8"
+                    placeholder="Phone number"
                     value={phone}
-                    style={styles.bare}
+                    style={[styles.bare, { fontSize: metrics.bareFontSize }]}
                   />
                 </View>
                 {errors.phone ? <Text style={styles.errTxt}>{errors.phone}</Text> : null}
               </View>
 
               {/* Password */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Password</Text>
-                <View style={[styles.inputRow, errors.password ? styles.inputError : null]}>
-                  <Ionicons name="lock-closed-outline" size={18} color="#94a3b8" style={styles.icon} />
-                  <Input
+              <View style={[styles.fieldGroup, { marginBottom: metrics.fieldGroupMarginBottom }]}>
+                <Text style={[styles.label, { fontSize: metrics.labelSize }]}>Password</Text>
+                <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.password ? styles.inputError : null]}>
+                  <Ionicons name="lock-closed-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
+                  <TextInput
                     onChangeText={setField('password')}
-                    placeholder="8+ chars, upper, lower, number, symbol"
+                    placeholderTextColor="#94a3b8"
+                    placeholder="Create password"
                     secureTextEntry={!showPassword}
                     value={password}
-                    style={styles.bare}
+                    style={[styles.bare, { fontSize: metrics.bareFontSize }]}
                   />
-                  <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
+                  <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={[styles.eyeBtn, { padding: metrics.eyePadding }]}>
                     <Ionicons
                       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
+                      size={metrics.isCompact ? 18 : 20}
                       color="#64748b"
                     />
                   </TouchableOpacity>
@@ -296,24 +331,25 @@ export default function SignupScreen() {
             <>
               {/* OTP Input */}
               <View style={styles.otpHint}>
-                <Ionicons name="information-circle-outline" size={16} color="#6d28d9" />
-                <Text style={styles.otpHintTxt}>
+                <Ionicons name="information-circle-outline" size={metrics.isCompact ? 15 : 16} color={AUTH_THEME.primary} />
+                <Text style={[styles.otpHintTxt, { fontSize: metrics.otpHintSize, lineHeight: metrics.helperLineHeight }]}>
                   Enter the 6-digit code sent to your {verificationPurpose === 'verify-email' ? 'email' : 'phone'}.
                   It expires in 10 minutes.
                 </Text>
               </View>
 
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Verification Code</Text>
-                <View style={[styles.inputRow, errors.otp ? styles.inputError : null]}>
-                  <Ionicons name="keypad-outline" size={18} color="#94a3b8" style={styles.icon} />
-                  <Input
+              <View style={[styles.fieldGroup, { marginBottom: metrics.fieldGroupMarginBottom }]}>
+                <Text style={[styles.label, { fontSize: metrics.labelSize }]}>Verification Code</Text>
+                <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.otp ? styles.inputError : null]}>
+                  <Ionicons name="keypad-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
+                  <TextInput
                     keyboardType="number-pad"
                     maxLength={6}
                     onChangeText={setField('otp')}
-                    placeholder="1 2 3 4 5 6"
+                    placeholderTextColor="#94a3b8"
+                    placeholder="OTP code"
                     value={otp}
-                    style={[styles.bare, styles.otpInput]}
+                    style={[styles.bare, styles.otpInput, { fontSize: metrics.otpFontSize, letterSpacing: metrics.otpLetterSpacing }]}
                   />
                 </View>
                 {errors.otp ? <Text style={styles.errTxt}>{errors.otp}</Text> : null}
@@ -327,7 +363,7 @@ export default function SignupScreen() {
                 disabled={resendCooldown > 0 || isLoading}
                 style={styles.resendWrap}
               >
-                <Text style={[styles.resendTxt, resendCooldown > 0 && styles.resendDisabled]}>
+                <Text style={[styles.resendTxt, { fontSize: metrics.footerTextSize }, resendCooldown > 0 && styles.resendDisabled]}>
                   {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Didn't receive it? Resend OTP"}
                 </Text>
               </Pressable>
@@ -341,8 +377,8 @@ export default function SignupScreen() {
           )}
         </View>
 
-        <Pressable onPress={() => router.replace('/login')} style={styles.footerWrap}>
-          <Text style={styles.footer}>
+        <Pressable onPress={() => router.replace('/login')} style={[styles.footerWrap, { marginTop: metrics.footerTopMargin }]}>
+          <Text style={[styles.footer, { fontSize: metrics.footerTextSize }]}>
             Already have an account?{' '}
             <Text style={styles.footerAccent}>Log in</Text>
           </Text>
@@ -357,9 +393,6 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, paddingBottom: 40 },
   hero: {
     alignItems: 'center',
-    paddingTop: 64,
-    paddingBottom: 48,
-    paddingHorizontal: 24,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -372,18 +405,13 @@ const styles = StyleSheet.create({
   heroTitle: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
   heroSub: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
     lineHeight: 20,
     textAlign: 'center',
-    maxWidth: 280,
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 24,
-    marginHorizontal: 20,
     marginTop: -24,
-    padding: 24,
-    shadowColor: '#6d28d9',
+    shadowColor: AUTH_THEME.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 24,
@@ -408,27 +436,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     borderWidth: 0,
+    minWidth: 0,
+    flexShrink: 1,
     padding: 0,
-    fontSize: 15,
     color: '#1e293b',
+    height: '100%',
   },
-  eyeBtn: { padding: 4 },
+  eyeBtn: { padding: 4, flexShrink: 0 },
   errTxt: { color: '#ef4444', fontSize: 12, marginTop: 4, marginLeft: 4 },
   otpHint: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: '#f5f3ff',
+    backgroundColor: '#f0fdfa',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
   },
-  otpHintTxt: { flex: 1, color: '#4c1d95', fontSize: 13, lineHeight: 18 },
-  otpInput: { letterSpacing: 8, fontSize: 20, fontWeight: '700' },
+  otpHintTxt: { flex: 1, color: AUTH_THEME.primaryDark, fontSize: 13, lineHeight: 18 },
+  otpInput: { letterSpacing: 3, fontSize: 18, fontWeight: '700', textAlign: 'center' },
   resendWrap: { alignItems: 'center', paddingVertical: 10 },
-  resendTxt: { color: '#6d28d9', fontSize: 13, fontWeight: '600' },
+  resendTxt: { color: AUTH_THEME.primary, fontSize: 13, fontWeight: '600' },
   resendDisabled: { color: '#94a3b8' },
   footerWrap: { marginTop: 24, alignItems: 'center' },
   footer: { color: '#64748b', fontSize: 14 },
-  footerAccent: { color: '#6d28d9', fontWeight: '700' },
+  footerAccent: { color: AUTH_THEME.primary, fontWeight: '700' },
 });

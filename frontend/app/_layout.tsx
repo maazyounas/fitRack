@@ -1,16 +1,9 @@
 import { Stack, usePathname, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
-import {
-  Animated,
-  AppState,
-  Pressable,
-  StyleSheet,
-  Text,
-} from 'react-native';
+import { AppState, StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useEffect, useRef } from 'react';
-import { Ionicons } from '@expo/vector-icons';
 import { ThemeProvider } from '../hooks/use-theme-color';
 import { useAuthStore } from '@/store/authStore';
 import { useTheme } from '@/hooks/useTheme';
@@ -18,43 +11,6 @@ import { useNutritionStore } from '@/store/nutritionStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
-import { SESSION_TIMEOUT_MS } from '@/constants/config';
-import { AnimatedSplashScreen } from '@/components/AnimatedSplashScreen';
-
-// ─── Session Warning Banner ───────────────────────────────────────────────────
-
-function SessionWarningBanner() {
-  const { sessionWarning, logout, lastActivityAt, touchActivity } = useAuthStore();
-  const opacity = useRef(new Animated.Value(0)).current;
-  const secondsLeft = Math.ceil(
-    Math.max(0, SESSION_TIMEOUT_MS - (Date.now() - lastActivityAt)) / 1000
-  );
-
-  useEffect(() => {
-    Animated.timing(opacity, {
-      toValue: sessionWarning ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [sessionWarning, opacity]);
-
-  if (!sessionWarning) return null;
-
-  return (
-    <Animated.View style={[styles.warningBanner, { opacity }]}>
-      <Ionicons name="time-outline" size={18} color="#fff" />
-      <Text style={styles.warningText}>
-        Session expires in ~{secondsLeft}s due to inactivity
-      </Text>
-      <Pressable onPress={touchActivity} style={styles.warningBtn}>
-        <Text style={styles.warningBtnTxt}>Stay</Text>
-      </Pressable>
-      <Pressable onPress={logout} style={[styles.warningBtn, styles.warningLogout]}>
-        <Text style={styles.warningBtnTxt}>Log out</Text>
-      </Pressable>
-    </Animated.View>
-  );
-}
 
 // ─── Root Layout ─────────────────────────────────────────────────────────────
 
@@ -81,10 +37,14 @@ export default function RootLayout() {
   const syncNotifications = useNotificationStore((state) => state.syncWithContext);
   const notificationsHydrated = useNotificationStore((state) => state.isHydrated);
   const clearNotifications = useNotificationStore((state) => state.clear);
+  const initializeStarted = useRef(false);
 
   const fullyHydrated = isHydrated && onboardingHydrated;
 
   useEffect(() => {
+    if (initializeStarted.current) return;
+    initializeStarted.current = true;
+
     initialize().catch(err => {
       console.error('Auth initialization failed:', err);
     });
@@ -119,10 +79,17 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboardingGroup = segments[0] === '(onboarding)';
+    const isAdminRoute = pathname === '/admin';
 
     // Not logged in → go to login
     if (!user && !inAuthGroup) {
       router.replace('/login');
+      return;
+    }
+
+    // Logged in but not an admin → keep admin route hidden and redirect away
+    if (user && !user.isAdmin && isAdminRoute) {
+      router.replace('/(tabs)/home');
       return;
     }
 
@@ -178,56 +145,14 @@ export default function RootLayout() {
     <ThemeProvider>
       <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <GestureHandlerRootView style={{ flex: 1 }}>
-        {/* Premium animated splash — visible while stores hydrate */}
-        <AnimatedSplashScreen visible={!fullyHydrated} />
-
-        {fullyHydrated && (
-          <>
-            {/* Session warning banner renders above the Stack */}
-            {user && <SessionWarningBanner />}
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="(onboarding)" />
-              {user?.isAdmin && <Stack.Screen name="admin" />}
-              <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
-            </Stack>
-          </>
-        )}
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(onboarding)" />
+          {user?.isAdmin && <Stack.Screen name="admin" />}
+          <Stack.Screen name="(modals)" options={{ presentation: 'modal' }} />
+        </Stack>
       </GestureHandlerRootView>
     </ThemeProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  warningBanner: {
-    backgroundColor: '#b45309',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-    zIndex: 999,
-  },
-  warningText: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-  warningBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  warningLogout: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  warningBtnTxt: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});

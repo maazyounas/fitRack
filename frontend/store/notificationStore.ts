@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import Constants from 'expo-constants';
 import { getSecureItem, setSecureItem } from '@/services/storage/secureStore';
+import { fetchNotificationSettings, updateNotificationSettings } from '@/services/api/auth';
 import {
   clearScheduledReminderNotifications,
   registerForPushNotificationsAsync,
@@ -121,6 +122,38 @@ async function loadPersistedSettings() {
   return normalizeSettings(stored ?? defaultSettings);
 }
 
+function getAuthToken() {
+  try {
+    const { useAuthStore } = require('@/store/authStore');
+    return useAuthStore.getState().tokens?.accessToken ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadBackendSettings() {
+  const accessToken = getAuthToken();
+  if (!accessToken) {
+    return null;
+  }
+
+  try {
+    const response = await fetchNotificationSettings(accessToken);
+    return normalizeSettings(response.notificationSettings);
+  } catch {
+    return null;
+  }
+}
+
+async function persistBackendSettings(settings: ReminderSettings) {
+  const accessToken = getAuthToken();
+  if (!accessToken) {
+    return;
+  }
+
+  await updateNotificationSettings(accessToken, settings);
+}
+
 async function runScheduler(settings: ReminderSettings, context: ReminderContext): Promise<NotificationStatus> {
   if (!context.notificationsEnabled || isExpoGo()) {
     await clearScheduledReminderNotifications();
@@ -166,6 +199,11 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       console.error('Failed to load persisted notification settings:', err);
     }
 
+    const backendSettings = await loadBackendSettings();
+    if (backendSettings) {
+      persisted = backendSettings;
+    }
+
     const merged = normalizeSettings({
       ...persisted,
       hydrationAlert: context.hydrationReminder ? normalizeHydrationReminder(context.hydrationReminder) : persisted.hydrationAlert,
@@ -178,6 +216,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
         hydrationReminder: merged.hydrationAlert,
       });
       await persistSettings(merged);
+      await persistBackendSettings(merged);
       set({ status, settings: merged, isSyncing: false });
     } catch {
       set({ isSyncing: false });
@@ -198,6 +237,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
         hydrationReminder: currentSettings.hydrationAlert,
       });
       await persistSettings(currentSettings);
+      await persistBackendSettings(currentSettings);
       set({ settings: currentSettings, status, isSyncing: false });
     } catch {
       set({ isSyncing: false });
@@ -215,6 +255,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     try {
       const status = await runScheduler(settings, context);
       await persistSettings(settings);
+      await persistBackendSettings(settings);
       set({ settings, status, isSyncing: false });
     } catch {
       set({ isSyncing: false });
@@ -232,6 +273,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     try {
       const status = await runScheduler(settings, context);
       await persistSettings(settings);
+      await persistBackendSettings(settings);
       set({ settings, status, isSyncing: false });
     } catch {
       set({ isSyncing: false });
@@ -252,6 +294,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     try {
       const status = await runScheduler(settings, context);
       await persistSettings(settings);
+      await persistBackendSettings(settings);
       set({ settings, status, isSyncing: false });
     } catch {
       set({ isSyncing: false });
@@ -269,6 +312,7 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
         hydrationReminder: settings.hydrationAlert,
       });
       await persistSettings(settings);
+      await persistBackendSettings(settings);
       set({ settings, status, isSyncing: false });
     } catch {
       set({ isSyncing: false });

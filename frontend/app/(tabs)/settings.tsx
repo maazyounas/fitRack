@@ -89,6 +89,19 @@ function TimeAdjustButtons({ onAdjust }: { onAdjust: (patch: Partial<DailyRemind
   );
 }
 
+function formatReminderTime(reminder: DailyReminder) {
+  return `${String(reminder.hour).padStart(2, '0')}:${String(reminder.minute).padStart(2, '0')}`;
+}
+
+function ReminderSummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.summaryRow}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={styles.summaryValue}>{value}</Text>
+    </View>
+  );
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const { t, isRTL, language } = useTranslation();
@@ -113,8 +126,12 @@ export default function SettingsScreen() {
   const [voiceStatus, setVoiceStatus] = useState('');
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
+
     void loadImageConsent();
-  }, [loadImageConsent]);
+  }, [loadImageConsent, user]);
 
   if (!user) {
     return null;
@@ -126,6 +143,8 @@ export default function SettingsScreen() {
     hydrationReminder,
     workouts: workoutPlans,
   };
+  const backendReminderSettings = user.notificationSettings;
+  const reminderSnapshot = backendReminderSettings ?? reminderSettings;
 
   const handlePreferenceUpdate = async (nextValues: Partial<typeof preferences>) => {
     try {
@@ -346,6 +365,31 @@ export default function SettingsScreen() {
           {remindersSyncing && (
             <Text style={styles.syncingText}>Updating reminders...</Text>
           )}
+        </SettingsSection>
+
+        {/* Saved Backend Snapshot */}
+        <SettingsSection icon="server-outline" title="Backend Reminder Snapshot">
+          <Text style={styles.reminderInfo}>
+            These values are hydrated from the server user profile and saved back on change.
+          </Text>
+          <View style={styles.snapshotCard}>
+            <ReminderSummaryRow
+              label="Workout"
+              value={`${reminderSnapshot.workoutReminder.enabled ? 'On' : 'Off'} · ${formatReminderTime(reminderSnapshot.workoutReminder)}`}
+            />
+            <ReminderSummaryRow
+              label="Missed workout"
+              value={`${reminderSnapshot.missedWorkoutAlert.enabled ? 'On' : 'Off'} · ${formatReminderTime(reminderSnapshot.missedWorkoutAlert)}`}
+            />
+            <ReminderSummaryRow
+              label="Hydration"
+              value={`${reminderSnapshot.hydrationAlert.enabled ? 'On' : 'Off'} · every ${reminderSnapshot.hydrationAlert.intervalMinutes} min`}
+            />
+            <ReminderSummaryRow
+              label="Meals"
+              value={`Breakfast ${reminderSnapshot.mealReminders.breakfast.enabled ? 'On' : 'Off'}, Lunch ${reminderSnapshot.mealReminders.lunch.enabled ? 'On' : 'Off'}, Dinner ${reminderSnapshot.mealReminders.dinner.enabled ? 'On' : 'Off'}`}
+            />
+          </View>
         </SettingsSection>
 
         {/* Account Section */}
@@ -599,6 +643,32 @@ const styles = StyleSheet.create({
     color: '#0d9488',
     textAlign: 'center',
     marginTop: 8,
+  },
+  snapshotCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 14,
+    gap: 10,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  summaryValue: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0f172a',
   },
   privacyActions: {
     gap: 10,

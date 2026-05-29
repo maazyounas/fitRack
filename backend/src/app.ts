@@ -37,7 +37,7 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Skip-Auth-Refresh', 'x-skip-auth-refresh'],
   })
 );
 
@@ -77,7 +77,7 @@ const globalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: env.nodeEnv === 'production' ? 10 : 1000, // Relaxed for development
+  max: env.nodeEnv === 'production' ? 10 : 10000, // Very relaxed for development to avoid accidental 429s
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: 'Too many authentication attempts. Please wait before trying again.' },
@@ -100,7 +100,16 @@ app.get('/api/health', (_req, res) => {
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/admin', adminRoutes);
-app.use('/api/auth', authLimiter, authRoutes);
+// Apply auth rate limiting only in production to avoid local 429s during development/testing
+if (env.nodeEnv === 'production') {
+  app.use('/api/auth', authLimiter, authRoutes);
+} else {
+  // In development attach routes without rate limiting to prevent accidental blocks
+  // Useful while testing signup flows locally.
+  // eslint-disable-next-line no-console
+  console.warn('Auth rate limiter disabled in development environment.');
+  app.use('/api/auth', authRoutes);
+}
 app.use('/api/ai', aiLimiter, aiRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/workouts', workoutRoutes);

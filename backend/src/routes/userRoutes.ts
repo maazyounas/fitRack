@@ -2,9 +2,11 @@ import { Router } from 'express';
 import {
   deactivateAccount,
   deleteAccount,
+  getNotificationSettings,
   getFitnessGoals,
   getMe,
   updateFitnessGoals,
+  updateNotificationSettings,
   updatePreferences,
   updateProfile,
   uploadProfilePicture,
@@ -27,6 +29,8 @@ userRoutes.post('/profile/picture', uploadProfileImage.single('image'), uploadPr
 userRoutes.get('/fitness-goals', getFitnessGoals);
 userRoutes.put('/fitness-goals', updateFitnessGoals);
 userRoutes.patch('/preferences', updatePreferences);
+userRoutes.get('/notification-settings', getNotificationSettings);
+userRoutes.patch('/notification-settings', updateNotificationSettings);
 userRoutes.get('/image-consent', getImageConsent);
 userRoutes.patch('/image-consent', updateImageConsent);
 userRoutes.post('/image-consent/revoke', revokeImageConsent);

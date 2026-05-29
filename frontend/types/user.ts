@@ -1,3 +1,5 @@
+import type { ReminderSettings } from './notifications';
+
 export type Language = 'en' | 'ur';
 export type UnitSystem = 'metric' | 'imperial';
 
@@ -45,6 +47,7 @@ export type User = {
   profile: UserProfile;
   preferences: UserPreferences;
   fitnessGoals: FitnessGoals;
+  notificationSettings?: ReminderSettings;
   verification: UserVerification;
   createdAt: string;
   updatedAt: string;

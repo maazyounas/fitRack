@@ -4,6 +4,18 @@ import { decryptValue } from '../utils/crypto';
 import { HttpError } from '../utils/http';
 import { calculateDailyCalories } from '../utils/calories';
 
+const defaultNotificationSettings = {
+  workoutReminder: { enabled: false, hour: 7, minute: 0 },
+  missedWorkoutAlert: { enabled: true, hour: 20, minute: 0 },
+  mealReminders: {
+    breakfast: { enabled: true, hour: 8, minute: 0 },
+    lunch: { enabled: true, hour: 13, minute: 0 },
+    dinner: { enabled: true, hour: 19, minute: 0 },
+    snack: { enabled: false, hour: 16, minute: 0 },
+  },
+  hydrationAlert: { enabled: false, intervalMinutes: 120, startHour: 8, endHour: 21 },
+};
+
 function serializeUser(user: any) {
   return {
     id: user.id,
@@ -13,9 +25,36 @@ function serializeUser(user: any) {
     profile: user.profile,
     preferences: user.preferences,
     fitnessGoals: user.fitnessGoals,
+    notificationSettings: user.notificationSettings,
     verification: user.verification,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
+  };
+}
+
+function normalizeDailyReminder(reminder: { enabled?: boolean; hour?: number; minute?: number } | undefined, fallback: { enabled: boolean; hour: number; minute: number }) {
+  return {
+    enabled: reminder?.enabled ?? fallback.enabled,
+    hour: reminder?.hour ?? fallback.hour,
+    minute: reminder?.minute ?? fallback.minute,
+  };
+}
+
+function normalizeMealReminders(mealReminders: any, fallback: any) {
+  return {
+    breakfast: normalizeDailyReminder(mealReminders?.breakfast, fallback.breakfast),
+    lunch: normalizeDailyReminder(mealReminders?.lunch, fallback.lunch),
+    dinner: normalizeDailyReminder(mealReminders?.dinner, fallback.dinner),
+    snack: normalizeDailyReminder(mealReminders?.snack, fallback.snack),
+  };
+}
+
+function normalizeHydrationReminder(reminder: any, fallback: { enabled: boolean; intervalMinutes: number; startHour: number; endHour: number }) {
+  return {
+    enabled: reminder?.enabled ?? fallback.enabled,
+    intervalMinutes: reminder?.intervalMinutes ?? fallback.intervalMinutes,
+    startHour: reminder?.startHour ?? fallback.startHour,
+    endHour: reminder?.endHour ?? fallback.endHour,
   };
 }
 
@@ -143,6 +182,54 @@ export async function updatePreferences(req: Request & { userId?: string }, res:
 
   await user.save();
   res.json({ message: 'Preferences updated.', user: serializeUser(user) });
+}
+
+export async function getNotificationSettings(req: Request & { userId?: string }, res: Response) {
+  const user = await UserModel.findById(req.userId);
+  if (!user) {
+    throw new HttpError(404, 'User not found.');
+  }
+
+  res.json({ notificationSettings: user.notificationSettings ?? defaultNotificationSettings });
+}
+
+export async function updateNotificationSettings(req: Request & { userId?: string }, res: Response) {
+  const user = await UserModel.findById(req.userId);
+  if (!user) {
+    throw new HttpError(404, 'User not found.');
+  }
+
+  const currentSettings = user.notificationSettings ?? {};
+  const { workoutReminder, missedWorkoutAlert, mealReminders, hydrationAlert } = req.body as {
+    workoutReminder?: { enabled?: boolean; hour?: number; minute?: number };
+    missedWorkoutAlert?: { enabled?: boolean; hour?: number; minute?: number };
+    mealReminders?: {
+      breakfast?: { enabled?: boolean; hour?: number; minute?: number };
+      lunch?: { enabled?: boolean; hour?: number; minute?: number };
+      dinner?: { enabled?: boolean; hour?: number; minute?: number };
+      snack?: { enabled?: boolean; hour?: number; minute?: number };
+    };
+    hydrationAlert?: { enabled?: boolean; intervalMinutes?: number; startHour?: number; endHour?: number };
+  };
+
+  user.notificationSettings = {
+    workoutReminder: normalizeDailyReminder(workoutReminder, currentSettings.workoutReminder ?? defaultNotificationSettings.workoutReminder),
+    missedWorkoutAlert: normalizeDailyReminder(
+      missedWorkoutAlert,
+      currentSettings.missedWorkoutAlert ?? defaultNotificationSettings.missedWorkoutAlert
+    ),
+    mealReminders: normalizeMealReminders(
+      mealReminders,
+      currentSettings.mealReminders ?? defaultNotificationSettings.mealReminders
+    ),
+    hydrationAlert: normalizeHydrationReminder(
+      hydrationAlert,
+      currentSettings.hydrationAlert ?? defaultNotificationSettings.hydrationAlert
+    ),
+  };
+
+  await user.save();
+  res.json({ message: 'Notification settings updated.', notificationSettings: user.notificationSettings });
 }
 
 export async function deactivateAccount(req: Request & { userId?: string }, res: Response) {

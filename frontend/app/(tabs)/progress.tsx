@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 // @ts-ignore
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { BodyMeasurementChart } from '@/components/progress/BodyMeasurementChart';
@@ -10,6 +10,7 @@ import { StreakFire } from '@/components/progress/StreakFire';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useProgressStore } from '@/store/progressStore';
+import { useAuthStore } from '@/store/authStore';
 import { ProgressPayload, ProgressAchievement, BodyMeasurements, GymPerformanceEntry } from '@/types/progress';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -51,6 +52,9 @@ const ALL_MILESTONES: Partial<ProgressAchievement>[] = [
 ];
 
 export default function ProgressScreen() {
+  const { width } = useWindowDimensions();
+  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const user = useAuthStore((state) => state.user);
   const {
     streakDays,
     achievements,
@@ -72,12 +76,19 @@ export default function ProgressScreen() {
   const [performance, setPerformance] = useState<GymPerformanceEntry[]>([emptyPerformance]);
   const [activeChart, setActiveChart] = useState('weight');
   const [showConfetti, setShowConfetti] = useState(false);
+  const isCompact = width < 380;
   
   const prevAchievementCount = useRef(achievements.length);
+  const bootedRef = useRef(false);
 
   useEffect(() => {
+    if (!isHydrated || !user || bootedRef.current) {
+      return;
+    }
+
+    bootedRef.current = true;
     void initialize();
-  }, [initialize]);
+  }, [initialize, isHydrated, user]);
 
   useEffect(() => {
     if (achievements.length > prevAchievementCount.current) {
@@ -143,29 +154,44 @@ export default function ProgressScreen() {
   return (
     <View style={styles.page}>
       <AppHeader title="Progress" />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.screen}
+        contentContainerStyle={[styles.content, isCompact ? styles.contentCompact : null]}
+        showsVerticalScrollIndicator={false}
+      >
         {showConfetti && <ConfettiCannon count={200} origin={{ x: -10, y: 0 }} fadeOut={true} />}
 
-        <View style={styles.subHeader}>
-          <TouchableOpacity 
+        <View style={[styles.subHeader, isCompact ? styles.subHeaderCompact : null]}>
+          <TouchableOpacity
             onPress={() => trackStreak()}
             disabled={isLoading}
+            style={isCompact ? styles.streakCompact : null}
           >
-            <StreakFire streak={streakDays} />
+            <StreakFire streak={streakDays} fullWidth />
           </TouchableOpacity>
         </View>
 
       {plateauMessage && (
-        <LinearGradient colors={['#fff7ed', '#ffedd5']} style={styles.plateauBox}>
-          <Ionicons name="bulb" size={24} color="#ea580c" style={styles.plateauIcon} />
+        <LinearGradient
+          colors={['#fff7ed', '#ffedd5']}
+          style={[styles.plateauBox, isCompact ? styles.plateauBoxCompact : null]}
+        >
+          <Ionicons
+            name="bulb"
+            size={isCompact ? 20 : 24}
+            color="#ea580c"
+            style={[styles.plateauIcon, isCompact ? styles.plateauIconCompact : null]}
+          />
           <View style={styles.plateauContent}>
             <Text style={styles.plateauTitle}>Smart Insight</Text>
-            <Text style={styles.plateauText}>{plateauMessage}</Text>
+            <Text style={[styles.plateauText, isCompact ? styles.plateauTextCompact : null]} numberOfLines={isCompact ? 2 : 3}>
+              {plateauMessage}
+            </Text>
           </View>
         </LinearGradient>
       )}
 
-      <View style={styles.hero}>
+      <View style={[styles.hero, isCompact ? styles.heroCompact : null]}>
         <LinearGradient colors={['#0f172a', '#1e293b']} style={styles.metricCard}>
           <Text style={styles.metricLabel}>Weight Change</Text>
           <Text style={styles.metricValue}>
@@ -184,7 +210,11 @@ export default function ProgressScreen() {
         {CHART_TYPES.map(type => (
           <Pressable 
             key={type.id} 
-            style={[styles.segment, activeChart === type.id && styles.segmentActive]}
+            style={[
+              styles.segment,
+              isCompact ? styles.segmentCompact : null,
+              activeChart === type.id && styles.segmentActive,
+            ]}
             onPress={() => setActiveChart(type.id)}
           >
             <Ionicons name={type.icon as any} size={18} color={activeChart === type.id ? '#fff' : '#64748b'} />
@@ -195,19 +225,19 @@ export default function ProgressScreen() {
 
       {activeChart === 'weight' && (
         <>
-          <WeightChart title="Daily Weight History" points={dailyTrend} />
-          <WeightChart title="30-Day Trend" points={monthlyTrend} />
+          <WeightChart title="Daily Weight History" points={dailyTrend} compact={isCompact} />
+          <WeightChart title="30-Day Trend" points={monthlyTrend} compact={isCompact} />
         </>
       )}
       {activeChart === 'body' && (
-        <BodyMeasurementChart title="Body Composition History" points={weeklyTrend} />
+        <BodyMeasurementChart title="Body Composition History" points={weeklyTrend} compact={isCompact} />
       )}
       {activeChart === 'strength' && (
-        <PerformanceChart points={monthlyTrend} />
+        <PerformanceChart points={monthlyTrend} compact={isCompact} />
       )}
 
-      <View style={styles.card}>
-        <View style={styles.sectionHeader}>
+      <View style={[styles.card, isCompact ? styles.cardCompact : null]}>
+        <View style={[styles.sectionHeader, isCompact ? styles.sectionHeaderCompact : null]}>
           <Text style={styles.sectionTitle}>Log Today&apos;s Progress</Text>
           <Ionicons name="add-circle" size={24} color="#0f766e" />
         </View>
@@ -216,7 +246,7 @@ export default function ProgressScreen() {
         
         <View style={styles.formGroup}>
           <Text style={styles.formLabel}>Body Composition</Text>
-          <View style={styles.inline}>
+          <View style={[styles.inline, isCompact ? styles.inlineCompact : null]}>
             <View style={styles.inlineItem}>
               <Input
                 label="Fat %"
@@ -257,13 +287,13 @@ export default function ProgressScreen() {
 
         <Text style={styles.subheading}>Strength Highlights</Text>
         {performance.map((item, index) => (
-          <View key={`perf-${index}`} style={styles.performanceCard}>
+          <View key={`perf-${index}`} style={[styles.performanceCard, isCompact ? styles.performanceCardCompact : null]}>
             <Input
               label="Exercise Name"
               value={item.exerciseName}
               onChangeText={(value) => updatePerformance(index, 'exerciseName', value)}
             />
-            <View style={styles.inline}>
+            <View style={[styles.inline, isCompact ? styles.inlineCompact : null]}>
               <View style={[styles.inlineItem, { flex: 2 }]}>
                 <Input label="Weight (kg)" keyboardType="decimal-pad" value={String(item.weightKg || '')} onChangeText={(v) => updatePerformance(index, 'weightKg', v)} />
               </View>
@@ -278,7 +308,7 @@ export default function ProgressScreen() {
         ))}
         
         <Pressable
-          style={styles.addButton}
+          style={[styles.addButton, isCompact ? styles.addButtonCompact : null]}
           onPress={() => setPerformance((current) => [...current, { ...emptyPerformance }])}
         >
           <Ionicons name="add" size={20} color="#155e75" />
@@ -288,11 +318,11 @@ export default function ProgressScreen() {
         <Button label="Submit Progress Update" onPress={handleSave} loading={isSaving} />
       </View>
 
-      <View style={styles.card}>
+      <View style={[styles.card, isCompact ? styles.cardCompact : null]}>
         <Text style={styles.sectionTitle}>Milestone Achievements</Text>
         <Text style={styles.sectionSubtitle}>Unlock badges by staying consistent</Text>
         
-        <View style={styles.badgesGrid}>
+        <View style={[styles.badgesGrid, isCompact ? styles.badgesGridCompact : null]}>
           {ALL_MILESTONES.map((milestone) => {
             const unlocked = achievements.find(a => a.key === milestone.key);
             return (
@@ -335,7 +365,12 @@ const styles = StyleSheet.create({
 
   content: {
     padding: 18,
-    paddingBottom: 40,
+    paddingBottom: 160,
+  },
+
+  contentCompact: {
+    padding: 14,
+    paddingBottom: 120,
   },
 
   // ───────────────── Header Area ─────────────────
@@ -344,6 +379,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 18,
+  },
+
+  subHeaderCompact: {
+    marginBottom: 14,
+  },
+
+  streakCompact: {
+    alignSelf: 'flex-start',
   },
 
   subtitle: {
@@ -357,6 +400,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
     marginBottom: 18,
+    width: '100%',
+    alignSelf: 'stretch',
 
     flexDirection: 'row',
     alignItems: 'center',
@@ -369,6 +414,10 @@ const styles = StyleSheet.create({
 
   plateauIcon: {
     marginRight: 10,
+  },
+
+  plateauIconCompact: {
+    marginRight: 8,
   },
 
   plateauContent: {
@@ -390,6 +439,18 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
+  plateauBoxCompact: {
+    padding: 10,
+    marginBottom: 14,
+    borderRadius: 16,
+    width: '100%',
+  },
+
+  plateauTextCompact: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+
   // ───────────────── Hero Cards ─────────────────
   hero: {
     flexDirection: 'row',
@@ -397,11 +458,15 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
 
+  heroCompact: {
+    flexDirection: 'column',
+  },
+
   metricCard: {
     borderRadius: 20,
     flex: 1,
-    padding: 16,
-    minHeight: 110,
+    padding: 12,
+    minHeight: 88,
     justifyContent: 'center',
   },
 
@@ -437,8 +502,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#e2e8f0',
     borderRadius: 14,
-    padding: 4,
-    marginBottom: 18,
+    padding: 3,
+    marginBottom: 14,
+  },
+
+  segmentCompact: {
+    paddingVertical: 8,
+    gap: 4,
   },
 
   segment: {
@@ -447,7 +517,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 12,
   },
 
@@ -471,8 +541,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 24,
 
-    marginBottom: 18,
-    padding: 20,
+    marginBottom: 14,
+    padding: 16,
 
     shadowColor: '#0f172a',
     shadowOpacity: 0.05,
@@ -480,11 +550,21 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
 
+  cardCompact: {
+    padding: 12,
+    borderRadius: 18,
+    marginBottom: 12,
+  },
+
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+  },
+
+  sectionHeaderCompact: {
+    marginBottom: 12,
   },
 
   sectionTitle: {
@@ -517,6 +597,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 
+  inlineCompact: {
+    flexDirection: 'column',
+    gap: 10,
+  },
+
   inlineItem: {
     flex: 1,
   },
@@ -539,6 +624,10 @@ const styles = StyleSheet.create({
     borderColor: '#eef2f7',
   },
 
+  performanceCardCompact: {
+    padding: 12,
+  },
+
   // ───────────────── Buttons ─────────────────
   addButton: {
     flexDirection: 'row',
@@ -553,6 +642,10 @@ const styles = StyleSheet.create({
     padding: 14,
 
     gap: 6,
+  },
+
+  addButtonCompact: {
+    paddingVertical: 12,
   },
 
   addButtonText: {
@@ -588,5 +681,9 @@ const styles = StyleSheet.create({
   // ───────────────── Badges ─────────────────
   badgesGrid: {
     marginTop: 10,
+  },
+
+  badgesGridCompact: {
+    marginTop: 8,
   },
 });

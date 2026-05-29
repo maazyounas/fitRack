@@ -7,9 +7,11 @@ import { ProgressTrendPoint } from '@/types/progress';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function PerformanceChart({ points }: { points: ProgressTrendPoint[] }) {
+  const compact = SCREEN_WIDTH < 380;
+
   if (!points || points.length === 0) {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, compact ? styles.cardCompact : null]}>
         <View style={styles.emptyContainer}>
           <Ionicons name="barbell-outline" size={40} color="#cbd5e1" />
           <Text style={styles.emptyTitle}>No performance data</Text>
@@ -42,7 +44,7 @@ export function PerformanceChart({ points }: { points: ProgressTrendPoint[] }) {
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, compact ? styles.cardCompact : null]}>
       <LinearGradient colors={['#f8fafc', '#ffffff']} style={styles.gradient} />
       
       <View style={styles.header}>
@@ -54,7 +56,7 @@ export function PerformanceChart({ points }: { points: ProgressTrendPoint[] }) {
         )}
       </View>
 
-      <View style={styles.statsGrid}>
+      <View style={[styles.statsGrid, compact ? styles.statsGridCompact : null]}>
         <View style={styles.statBox}>
           <Text style={styles.statBoxLabel}>Current Score</Text>
           <Text style={styles.statBoxValue}>{Math.round(latestScore || 0)}</Text>
@@ -80,12 +82,12 @@ export function PerformanceChart({ points }: { points: ProgressTrendPoint[] }) {
         </View>
       </View>
 
-      <View style={styles.chartContainer}>
+      <View style={[styles.chartContainer, compact ? styles.chartContainerCompact : null]}>
         <BarChart
           data={data}
-          width={SCREEN_WIDTH - 80}
-          height={200}
-          barWidth={24}
+          width={compact ? SCREEN_WIDTH - 56 : SCREEN_WIDTH - 80}
+          height={compact ? 180 : 200}
+          barWidth={compact ? 20 : 24}
           noOfSections={5}
           barBorderRadius={6}
           frontColor="#7c3aed"
@@ -107,7 +109,7 @@ export function PerformanceChart({ points }: { points: ProgressTrendPoint[] }) {
         />
       </View>
 
-      <View style={styles.legend}>
+      <View style={[styles.legend, compact ? styles.legendCompact : null]}>
         <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#ef4444' }]} />
           <Text style={styles.legendText}>Beginner (0-39)</Text>
@@ -140,6 +142,11 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 2,
     overflow: 'hidden',
+  },
+  cardCompact: {
+    marginHorizontal: 0,
+    padding: 16,
+    borderRadius: 20,
   },
   gradient: {
     position: 'absolute',
@@ -175,6 +182,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginBottom: 20,
+  },
+  statsGridCompact: {
+    flexWrap: 'wrap',
   },
   statBox: {
     flex: 1,
@@ -225,6 +235,9 @@ const styles = StyleSheet.create({
     marginLeft: -10,
     marginBottom: 16,
   },
+  chartContainerCompact: {
+    marginLeft: -6,
+  },
   axisText: {
     color: '#94a3b8',
     fontSize: 10,
@@ -255,6 +268,10 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
+  },
+  legendCompact: {
+    flexWrap: 'wrap',
+    gap: 10,
   },
   legendItem: {
     flexDirection: 'row',

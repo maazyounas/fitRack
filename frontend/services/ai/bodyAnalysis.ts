@@ -1,12 +1,11 @@
 /**
- * bodyAnalysis.ts — Orchestrator service for AI analysis (Placeholder Version).
- * Placeholder implementation without TensorFlow dependencies.
- * Uses mock data instead of real landmark detection.
+ * bodyAnalysis.ts — Orchestrator service for AI analysis.
+ * Runs pose detection first, then body type classification and recommendation generation.
  */
 
-// Removed TensorFlow dependencies - using placeholder data instead
 import { classifyBodyType } from './bodyTypeService';
 import { generateRecommendationPlan } from './recommendationService';
+import { detectLandmarks } from './landmarkDetectionService';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useAuthStore } from '@/store/authStore';
 import type { 
@@ -16,37 +15,8 @@ import type {
 } from '@/types/bodyAnalysis';
 
 /**
- * Placeholder landmark detection - returns mock data without TensorFlow
- */
-function getPlaceholderLandmarks() {
-  return {
-    landmarks: [
-      { id: 'nose', label: 'Nose', x: 0.5, y: 0.2, confidence: 0.95 },
-      { id: 'left_shoulder', label: 'Left Shoulder', x: 0.35, y: 0.45, confidence: 0.92 },
-      { id: 'right_shoulder', label: 'Right Shoulder', x: 0.65, y: 0.45, confidence: 0.92 },
-      { id: 'left_hip', label: 'Left Hip', x: 0.38, y: 0.65, confidence: 0.88 },
-      { id: 'right_hip', label: 'Right Hip', x: 0.62, y: 0.65, confidence: 0.88 },
-    ],
-    ratios: {
-      shoulderToWaist: 1.4,
-      shoulderToHip: 1.3,
-      hipToWaist: 0.9,
-      torsoToLeg: 0.52,
-    },
-    postureData: {
-      spineAngleDeg: 5,
-      shoulderLevelDeg: 2,
-      hipLevelDeg: 3,
-      headForwardPosture: false,
-    },
-    confidence: 0.90,
-    detectedPoses: 1,
-  };
-}
-
-/**
  * Main entry point for performing a body scan analysis.
- * Uses placeholder data instead of TensorFlow.
+ * Uses real pose detection and falls back to a clear no-body message when no human is detected.
  */
 export async function runBodyAnalysis(input: AnalysisInput): Promise<BodyAnalysisResult> {
   const onboarding = useOnboardingStore.getState();
@@ -61,11 +31,11 @@ export async function runBodyAnalysis(input: AnalysisInput): Promise<BodyAnalysi
   const goals = onboarding.goals || [];
 
   try {
-    // 1. Use Placeholder Landmarks & Ratios
-    const detection = getPlaceholderLandmarks();
+    // 1. Run real pose detection on the captured image.
+    const detection = await detectLandmarks(input.image.uri, input.image.width, input.image.height);
 
-    if (detection.landmarks.length === 0 && input.mode === 'body') {
-      throw new Error('No body detected. Please ensure your full body is visible in the frame.');
+    if (detection.detectedPoses === 0 || detection.landmarks.length === 0 || detection.confidence < 0.15) {
+      throw new Error('No body detected. Please use a clear photo with a full human body visible in the frame.');
     }
 
     // 2. Classify Body Type
@@ -73,8 +43,8 @@ export async function runBodyAnalysis(input: AnalysisInput): Promise<BodyAnalysi
       heightCm: height,
       weightKg: weight,
       wristCm: input.wristCm || onboarding.metrics?.wristCm,
-      shoulderWidthPx: detection.ratios.shoulderToWaist ? 1.5 : undefined, // Placeholder for actual pixel widths if needed
-      waistWidthPx: 1,
+      shoulderWidthPx: detection.ratios.shoulderToWaist ?? detection.ratios.shoulderToHip,
+      waistWidthPx: detection.ratios.shoulderToWaist || detection.ratios.shoulderToHip ? 1 : undefined,
     });
 
     // 3. Generate Recommendations

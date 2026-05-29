@@ -64,10 +64,15 @@ function calculateMealTotals(foods: Array<{ nutrients?: Partial<NutrientTotals> 
 }
 
 async function getOrCreateProfile(userId: string) {
+  if (!userId) {
+    throw new HttpError(401, 'Authentication required.');
+  }
+
   let profile = await NutritionProfileModel.findOne({ ownerId: userId });
   if (!profile) {
     profile = await NutritionProfileModel.create({ ownerId: userId });
   }
+
   return profile;
 }
 

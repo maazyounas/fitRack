@@ -81,12 +81,23 @@ export async function sendOtpNotification(identifier: string, otp: string, purpo
 
   if (isEmail) {
     // Send via Email using Resend
-    await sendOtpEmail(identifier, otp, purpose);
+    const result = await sendOtpEmail(identifier, otp, purpose);
+    if (result?.success) {
+      return { success: true as const };
+    }
+
+    const message = (result as any)?.error?.message || (result as any)?.message || 'Failed to send email OTP.';
+    return { success: false as const, message };
   } else if (isPhone) {
     // TODO: Implement SMS via Twilio
     console.log(`[TODO] SMS service not yet implemented. Would send OTP ${otp} to phone ${identifier}`);
+    return {
+      success: false as const,
+      message: 'Phone OTP is not configured yet. Please use email verification for now.',
+    };
   } else {
     console.warn(`[WARNING] Invalid identifier format: ${identifier}`);
+    return { success: false as const, message: 'Invalid email/phone format.' };
   }
 }
 

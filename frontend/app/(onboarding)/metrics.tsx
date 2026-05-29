@@ -47,21 +47,43 @@ function MetricSlider({
   const progress = (value - min) / (max - min);
   const thumbLeft = progress * (SLIDER_W - 28);
 
+  const clampValue = (nextValue: number) => Math.max(min, Math.min(max, nextValue));
+  const increment = () => onValueChange(clampValue(Number((value + step).toFixed(2))));
+  const decrement = () => onValueChange(clampValue(Number((value - step).toFixed(2))));
+
   const handlePress = (e: any) => {
     const x = e.nativeEvent.locationX;
     const ratio = Math.max(0, Math.min(1, x / SLIDER_W));
     const raw = min + ratio * (max - min);
     const stepped = Math.round(raw / step) * step;
-    onValueChange(Math.max(min, Math.min(max, stepped)));
+    onValueChange(clampValue(Number(stepped.toFixed(2))));
   };
 
   return (
     <View style={sliderStyles.wrap}>
       <View style={sliderStyles.labelRow}>
         <Text style={sliderStyles.label}>{label}</Text>
-        <View style={sliderStyles.valuePill}>
-          <Text style={sliderStyles.value}>{value}</Text>
-          <Text style={sliderStyles.unit}>{unit}</Text>
+        <View style={sliderStyles.valueControl}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Decrease ${label}`}
+            onPress={decrement}
+            style={({ pressed }) => [sliderStyles.adjustButton, pressed && sliderStyles.adjustButtonPressed]}
+          >
+            <Text style={sliderStyles.adjustButtonText}>-</Text>
+          </Pressable>
+          <View style={sliderStyles.valuePill}>
+            <Text style={sliderStyles.value}>{value}</Text>
+            <Text style={sliderStyles.unit}>{unit}</Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Increase ${label}`}
+            onPress={increment}
+            style={({ pressed }) => [sliderStyles.adjustButton, pressed && sliderStyles.adjustButtonPressed]}
+          >
+            <Text style={sliderStyles.adjustButtonText}>+</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -88,6 +110,10 @@ const sliderStyles = StyleSheet.create({
   wrap: { marginBottom: 24 },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   label: { color: '#334155', fontSize: 14, fontWeight: '700' },
+  valueControl: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  adjustButton: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e6fffb', borderWidth: 1, borderColor: '#99f6e4' },
+  adjustButtonPressed: { opacity: 0.75, transform: [{ scale: 0.96 }] },
+  adjustButtonText: { color: '#0d9488', fontSize: 18, fontWeight: '800', lineHeight: 18, marginTop: -1 },
   valuePill: { flexDirection: 'row', alignItems: 'baseline', backgroundColor: '#f0fdfa', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, gap: 3, borderWidth: 1, borderColor: '#ccfbf1' },
   value: { color: '#0d9488', fontSize: 20, fontWeight: '800' },
   unit: { color: '#0d9488', fontSize: 12, fontWeight: '600', opacity: 0.7 },

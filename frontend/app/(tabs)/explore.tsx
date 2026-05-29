@@ -1,60 +1,13 @@
-﻿import { Image } from 'expo-image';
-import { StyleSheet, ScrollView, TouchableOpacity, View, Text } from 'react-native';
+﻿import { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
 import { useRouter } from 'expo-router';
-
-// Feature Card Component
-function FeatureCard({ icon, title, description, color, onPress }: { 
-  icon: string; 
-  title: string; 
-  description: string; 
-  color: readonly [string, string];
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity style={styles.featureCard} onPress={onPress}>
-      <LinearGradient colors={color} style={styles.featureIcon}>
-        <Ionicons name={icon as any} size={28} color="#fff" />
-      </LinearGradient>
-      <View style={styles.featureContent}>
-        <Text style={styles.featureTitle}>{title}</Text>
-        <Text style={styles.featureDescription}>{description}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
-    </TouchableOpacity>
-  );
-}
-
-// Workout Card Component
-function WorkoutCard({ title, duration, calories, image, onPress }: {
-  title: string;
-  duration: string;
-  calories: string;
-  image: any;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity style={styles.workoutCard} onPress={onPress}>
-      <Image source={image} style={styles.workoutImage} contentFit="cover" />
-      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={styles.workoutOverlay} />
-      <View style={styles.workoutInfo}>
-        <Text style={styles.workoutTitle}>{title}</Text>
-        <View style={styles.workoutStats}>
-          <View style={styles.workoutStat}>
-            <Ionicons name="time-outline" size={14} color="#fff" />
-            <Text style={styles.workoutStatText}>{duration}</Text>
-          </View>
-          <View style={styles.workoutStat}>
-            <Ionicons name="flame-outline" size={14} color="#fff" />
-            <Text style={styles.workoutStatText}>{calories} kcal</Text>
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
+import { useAuthStore } from '@/store/authStore';
+import { fetchCommunityDashboard } from '@/services/api/community';
+import { fetchWorkoutTemplates } from '@/services/api/workout';
+import { CommunityChallenge, CommunityDashboard, CommunityMember } from '@/types/community';
+import { WorkoutTemplate } from '@/types/workout';
 
 // Category Pill Component
 function CategoryPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
@@ -70,73 +23,263 @@ function CategoryPill({ label, active, onPress }: { label: string; active: boole
   );
 }
 
-export default function ExploreScreen() {
-  const router = useRouter();
-  const [selectedCategory, setSelectedCategory] = useState('all');
+const difficultyGradients: Record<string, readonly [string, string]> = {
+  beginner: ['#0f766e', '#14b8a6'],
+  intermediate: ['#d97706', '#f59e0b'],
+  advanced: ['#7c3aed', '#8b5cf6'],
+};
 
-  const categories = ['All', 'Strength', 'Cardio', 'Yoga', 'HIIT'];
+function formatLabel(value: string) {
+  return value
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
 
-  const featuredWorkouts = [
-    { title: 'Full Body Blast', duration: '25 min', calories: '220', image: require('@/assets/images/react-logo.png') },
-    { title: 'Morning Stretch', duration: '10 min', calories: '60', image: require('@/assets/images/react-logo.png') },
-    { title: 'Core Crusher', duration: '15 min', calories: '150', image: require('@/assets/images/react-logo.png') },
-  ];
+function WorkoutCard({ template, onPress }: { template: WorkoutTemplate; onPress: () => void }) {
+  const colors = difficultyGradients[template.difficulty] ?? difficultyGradients.beginner;
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <TouchableOpacity style={styles.workoutCard} onPress={onPress}>
+      <LinearGradient colors={colors} style={styles.workoutCardGradient}>
+        <View style={styles.workoutBadge}>
+          <Text style={styles.workoutBadgeText}>{formatLabel(template.difficulty)}</Text>
+        </View>
+
+        <View style={styles.workoutIconWrap}>
+          <Ionicons name="barbell-outline" size={24} color="#fff" />
+        </View>
+
+        <View>
+          <Text style={styles.workoutTitle} numberOfLines={2}>
+            {template.name}
+          </Text>
+          <Text style={styles.workoutDescription} numberOfLines={2}>
+            {template.description}
+          </Text>
+        </View>
+
+        <View style={styles.workoutMetaRow}>
+          <View style={styles.workoutMetaPill}>
+            <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.85)" />
+            <Text style={styles.workoutMetaText}>{template.estimatedDurationMinutes} min</Text>
+          </View>
+          <View style={styles.workoutMetaPill}>
+            <Ionicons name="layers-outline" size={12} color="rgba(255,255,255,0.85)" />
+            <Text style={styles.workoutMetaText}>{template.exercises.length} moves</Text>
+          </View>
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
+function ChallengeCard({ challenge, onPress }: { challenge: CommunityChallenge; onPress: () => void }) {
+  const isExpired = new Date(challenge.endDate) < new Date();
+
+  return (
+    <TouchableOpacity style={styles.challengeCard} onPress={onPress}>
+      <LinearGradient
+        colors={challenge.joined ? ['#0f766e', '#14b8a6'] : ['#1e293b', '#0f172a']}
+        style={styles.challengeCardGradient}
+      >
+        <View style={styles.challengeHeader}>
+          <View style={styles.challengeIcon}>
+            <Ionicons name="trophy-outline" size={22} color={challenge.joined ? '#ffffff' : '#fbbf24'} />
+          </View>
+          <View style={styles.challengeHeaderContent}>
+            <Text style={styles.challengeTitle} numberOfLines={1}>
+              {challenge.title}
+            </Text>
+            <Text style={styles.challengeSubtitle} numberOfLines={2}>
+              {challenge.metricLabel} · {challenge.participantCount} participants
+            </Text>
+          </View>
+          <View style={styles.challengeStatus}>
+            <Text style={styles.challengeStatusText}>{challenge.joined ? 'Joined' : isExpired ? 'Ended' : 'Live'}</Text>
+          </View>
+        </View>
+
+        <Text style={styles.challengeDescription} numberOfLines={3}>
+          {challenge.description}
+        </Text>
+
+        <View style={styles.challengeStatsRow}>
+          <View style={styles.challengeStat}>
+            <Text style={styles.challengeStatLabel}>Target</Text>
+            <Text style={styles.challengeStatValue}>
+              {challenge.targetValue} {challenge.unitLabel}
+            </Text>
+          </View>
+          <View style={styles.challengeStat}>
+            <Text style={styles.challengeStatLabel}>Your score</Text>
+            <Text style={styles.challengeStatValue}>
+              {challenge.myScore} {challenge.unitLabel}
+            </Text>
+          </View>
+        </View>
+      </LinearGradient>
+    </TouchableOpacity>
+  );
+}
+
+function MemberChip({ member, onPress }: { member: CommunityMember; onPress: () => void }) {
+  const initials = member.name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+
+  return (
+    <TouchableOpacity style={styles.memberChip} onPress={onPress}>
+      {member.profilePictureUrl ? (
+        <Image source={{ uri: member.profilePictureUrl }} style={styles.memberAvatar} />
+      ) : (
+        <View style={styles.memberAvatarFallback}>
+          <Text style={styles.memberAvatarText}>{initials || 'M'}</Text>
+        </View>
+      )}
+      <Text style={styles.memberName} numberOfLines={1}>
+        {member.name}
+      </Text>
+      <Text style={styles.memberMeta} numberOfLines={1}>
+        {member.followerCount} followers
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+export default function ExploreScreen() {
+  const router = useRouter();
+  const { user, tokens } = useAuthStore();
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
+  const [dashboard, setDashboard] = useState<CommunityDashboard | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadExploreData = async (showLoading = true) => {
+    const accessToken = tokens?.accessToken;
+    if (!accessToken) {
+      setTemplates([]);
+      setDashboard(null);
+      setError('Sign in to load live explore content.');
+      setIsLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
+    if (showLoading) {
+      setIsLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
+
+    setError(null);
+
+    try {
+      const [workoutResponse, communityResponse] = await Promise.all([
+        fetchWorkoutTemplates(accessToken),
+        fetchCommunityDashboard(accessToken),
+      ]);
+
+      setTemplates(workoutResponse.templates);
+      setDashboard(communityResponse);
+    } catch (fetchError) {
+      setTemplates([]);
+      setDashboard(null);
+      setError(fetchError instanceof Error ? fetchError.message : 'Failed to load explore content.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadExploreData(true);
+    // Token changes should reload the screen data.
+  }, [tokens?.accessToken]);
+
+  const categories = ['all', ...Array.from(new Set(templates.map((template) => template.difficulty)))];
+  const filteredTemplates = selectedCategory === 'all' ? templates : templates.filter((template) => template.difficulty === selectedCategory);
+  const activeChallenges = dashboard?.challenges ?? [];
+  const suggestions = dashboard?.suggestions ?? [];
+  const displayName = user?.profile?.name?.split(' ')[0] ?? 'there';
+  const heroSummary = templates.length
+    ? `${templates.length} workout templates, ${activeChallenges.length} weekly challenges, and ${suggestions.length} suggested members are synced from the backend.`
+    : 'Connect your account to load live workout, challenge, and community data.';
+
+  const onRefresh = () => {
+    void loadExploreData(false);
+  };
+
+  return (
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor="#0f766e" />}
+    >
       {/* Hero Section */}
       <LinearGradient colors={['#0a0f1e', '#0f1c2a']} style={styles.heroSection}>
         <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>Discover Your</Text>
-          <Text style={styles.heroTitleAccent}>Best Self</Text>
+          <Text style={styles.heroTitle}>Discover what is live</Text>
+          <Text style={styles.heroTitleAccent}>Hi, {displayName}</Text>
           <Text style={styles.heroSubtitle}>
-            Explore workouts, track progress, and join challenges tailored just for you
+            {heroSummary}
           </Text>
         </View>
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>150+</Text>
-            <Text style={styles.statLabel}>Workouts</Text>
+            <Text style={styles.statValue}>{templates.length}</Text>
+            <Text style={styles.statLabel}>Templates</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>10k+</Text>
-            <Text style={styles.statLabel}>Active Members</Text>
+            <Text style={styles.statValue}>{activeChallenges.length}</Text>
+            <Text style={styles.statLabel}>Challenges</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>98%</Text>
-            <Text style={styles.statLabel}>Satisfaction</Text>
+            <Text style={styles.statValue}>{dashboard?.me.followingCount ?? 0}</Text>
+            <Text style={styles.statLabel}>Following</Text>
           </View>
         </View>
       </LinearGradient>
+
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle-outline" size={18} color="#b91c1c" />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
 
       {/* Quick Actions */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.quickActionsGrid}>
-          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(workout)/plan' as any)}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/workouts' as any)}>
             <LinearGradient colors={['#0d9488', '#14b8a6']} style={styles.quickActionIcon}>
               <Ionicons name="barbell-outline" size={24} color="#fff" />
             </LinearGradient>
             <Text style={styles.quickActionLabel}>Start Workout</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(nutrition)/track' as any)}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/nutrition' as any)}>
             <LinearGradient colors={['#f59e0b', '#fbbf24']} style={styles.quickActionIcon}>
               <Ionicons name="restaurant-outline" size={24} color="#fff" />
             </LinearGradient>
             <Text style={styles.quickActionLabel}>Log Meal</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(community)/challenges' as any)}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/community' as any)}>
             <LinearGradient colors={['#8b5cf6', '#a78bfa']} style={styles.quickActionIcon}>
               <Ionicons name="trophy-outline" size={24} color="#fff" />
             </LinearGradient>
             <Text style={styles.quickActionLabel}>Challenges</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/(progress)/track' as any)}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => router.push('/progress' as any)}>
             <LinearGradient colors={['#ef4444', '#f87171']} style={styles.quickActionIcon}>
               <Ionicons name="stats-chart-outline" size={24} color="#fff" />
             </LinearGradient>
@@ -145,65 +288,45 @@ export default function ExploreScreen() {
         </View>
       </View>
 
-      {/* Features Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Premium Features</Text>
-        <FeatureCard
-          icon="scan-outline"
-          title="AI Body Scan"
-          description="Get detailed body composition analysis"
-          color={['#0d9488', '#14b8a6']}
-          onPress={() => router.push('/(modals)/scan' as any)}
-        />
-        <FeatureCard
-          icon="calendar-outline"
-          title="Smart Workout Plans"
-          description="Personalized plans that adapt to your progress"
-          color={['#f59e0b', '#fbbf24']}
-          onPress={() => router.push('/(workout)/plans' as any)}
-        />
-        <FeatureCard
-          icon="nutrition-outline"
-          title="Meal Planning"
-          description="AI-generated meal plans based on your goals"
-          color={['#8b5cf6', '#a78bfa']}
-          onPress={() => router.push('/(nutrition)/plans' as any)}
-        />
-      </View>
-
       {/* Featured Workouts */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Featured Workouts</Text>
-          <TouchableOpacity onPress={() => router.push('/(workout)/all' as any)}>
+          <TouchableOpacity onPress={() => router.push('/workouts' as any)}>
             <Text style={styles.seeAllText}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workoutsScroll}>
-          {featuredWorkouts.map((workout, index) => (
-            <WorkoutCard
-              key={index}
-              title={workout.title}
-              duration={workout.duration}
-              calories={workout.calories}
-              image={workout.image}
-              onPress={() => router.push('/(workout)/details' as any)}
-            />
-          ))}
-        </ScrollView>
+        {isLoading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="small" color="#0f766e" />
+            <Text style={styles.loadingText}>Loading live workout templates...</Text>
+          </View>
+        ) : filteredTemplates.length ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workoutsScroll}>
+            {filteredTemplates.map((template) => (
+              <WorkoutCard key={template.id} template={template} onPress={() => router.push('/workouts' as any)} />
+            ))}
+          </ScrollView>
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="barbell-outline" size={28} color="#94a3b8" />
+            <Text style={styles.emptyTitle}>No workout templates found.</Text>
+            <Text style={styles.emptyText}>Seed the backend or create a workout plan to populate this section.</Text>
+          </View>
+        )}
       </View>
 
       {/* Popular Categories */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Popular Categories</Text>
+        <Text style={styles.sectionTitle}>Workout Categories</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-          {categories.map((category, index) => (
+          {categories.map((category) => (
             <CategoryPill
-              key={index}
-              label={category}
-              active={selectedCategory === category.toLowerCase()}
-              onPress={() => setSelectedCategory(category.toLowerCase())}
+              key={category}
+              label={formatLabel(category)}
+              active={selectedCategory === category}
+              onPress={() => setSelectedCategory(category)}
             />
           ))}
         </ScrollView>
@@ -213,23 +336,33 @@ export default function ExploreScreen() {
       <View style={[styles.section, styles.lastSection]}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Community Highlights</Text>
-          <TouchableOpacity onPress={() => router.push('/(community)/feed' as any)}>
+          <TouchableOpacity onPress={() => router.push('/community' as any)}>
             <Text style={styles.seeAllText}>View All</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.communityCard}>
-          <LinearGradient colors={['#fef3c7', '#fde68a']} style={styles.communityContent}>
-            <Ionicons name="people" size={32} color="#f59e0b" />
-            <Text style={styles.communityTitle}>Join Our Community</Text>
-            <Text style={styles.communityText}>
-              Connect with 10,000+ fitness enthusiasts, share your journey, and stay motivated
-            </Text>
-            <TouchableOpacity style={styles.joinButton}>
-              <Text style={styles.joinButtonText}>Join Now →</Text>
-            </TouchableOpacity>
-          </LinearGradient>
-        </View>
+        {activeChallenges.length ? (
+          activeChallenges.map((challenge) => (
+            <ChallengeCard key={challenge.id} challenge={challenge} onPress={() => router.push('/community' as any)} />
+          ))
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="people-outline" size={28} color="#94a3b8" />
+            <Text style={styles.emptyTitle}>No active challenges right now.</Text>
+            <Text style={styles.emptyText}>The backend will surface weekly challenges here as soon as they exist.</Text>
+          </View>
+        )}
+
+        {suggestions.length ? (
+          <View style={styles.sectionSpacing}>
+            <Text style={styles.sectionTitle}>Suggested Members</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionsScroll}>
+              {suggestions.map((member) => (
+                <MemberChip key={member.id} member={member} onPress={() => router.push(`/user/${member.id}` as any)} />
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
       </View>
     </ScrollView>
   );
@@ -303,6 +436,25 @@ const styles = StyleSheet.create({
     height: 30,
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
+  errorBanner: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    backgroundColor: '#fee2e2',
+    borderColor: '#fecaca',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#991b1b',
+    lineHeight: 18,
+  },
   
   // Section
   section: {
@@ -311,6 +463,9 @@ const styles = StyleSheet.create({
   },
   lastSection: {
     marginBottom: 32,
+  },
+  sectionSpacing: {
+    marginTop: 18,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -362,6 +517,40 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#1e293b',
   },
+
+  loadingState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#475569',
+  },
+  emptyState: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    paddingVertical: 22,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  emptyTitle: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    textAlign: 'center',
+  },
+  emptyText: {
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#64748b',
+    textAlign: 'center',
+  },
   
   // Feature Card
   featureCard: {
@@ -407,56 +596,73 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   workoutCard: {
-    width: 180,
-    height: 200,
+    width: 210,
     marginRight: 14,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#ffffff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 4,
   },
-  workoutImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
+  workoutCardGradient: {
+    minHeight: 200,
+    padding: 16,
+    justifyContent: 'space-between',
   },
-  workoutOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '60%',
+  workoutBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
   },
-  workoutInfo: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 14,
+  workoutBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#ffffff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  workoutIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   workoutTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
-    marginBottom: 6,
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
-  workoutStats: {
+  workoutDescription: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: 'rgba(255,255,255,0.84)',
+  },
+  workoutMetaRow: {
     flexDirection: 'row',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  workoutStat: {
+  workoutMetaPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  workoutStatText: {
+  workoutMetaText: {
     fontSize: 11,
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '500',
+    color: '#ffffff',
   },
   
   // Categories
@@ -484,6 +690,132 @@ const styles = StyleSheet.create({
   },
   categoryPillTextActive: {
     color: '#ffffff',
+  },
+
+  challengeCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  challengeCardGradient: {
+    padding: 18,
+  },
+  challengeHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  challengeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  challengeHeaderContent: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 10,
+  },
+  challengeTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginBottom: 4,
+    letterSpacing: -0.2,
+  },
+  challengeSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.68)',
+    lineHeight: 17,
+  },
+  challengeStatus: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  challengeStatusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  challengeDescription: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.82)',
+    lineHeight: 19,
+    marginBottom: 14,
+  },
+  challengeStatsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    paddingTop: 12,
+  },
+  challengeStat: {
+    flex: 1,
+  },
+  challengeStatLabel: {
+    fontSize: 10,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    color: 'rgba(255,255,255,0.52)',
+    marginBottom: 4,
+  },
+  challengeStatValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+
+  suggestionsScroll: {
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+  },
+  memberChip: {
+    width: 120,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 14,
+    alignItems: 'center',
+    marginRight: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  memberAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    marginBottom: 10,
+    backgroundColor: '#e2e8f0',
+  },
+  memberAvatarFallback: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    marginBottom: 10,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  memberName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1e293b',
+    textAlign: 'center',
+  },
+  memberMeta: {
+    marginTop: 4,
+    fontSize: 11,
+    color: '#64748b',
+    textAlign: 'center',
   },
   
   // Community Card

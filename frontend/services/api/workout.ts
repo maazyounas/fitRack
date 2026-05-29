@@ -22,6 +22,12 @@ export function getCurrentWorkout(accessToken: string) {
   );
 }
 
+export function fetchWorkoutPlan(accessToken: string, id: string) {
+  return apiRequest<{ workout: WorkoutPlan }>(`/workouts/${id}`, {
+    accessToken,
+  });
+}
+
 export function createWorkoutPlan(accessToken: string, payload: WorkoutCreatePayload) {
   return apiRequest<{ workout: WorkoutPlan }>('/workouts', {
     method: 'POST',
@@ -73,11 +79,11 @@ export function updateWeeklySchedule(accessToken: string, id: string, schedule: 
   });
 }
 
-export function completeWorkout(accessToken: string, id: string, scheduleEntryId: string) {
+export function completeWorkout(accessToken: string, id: string, scheduleEntryId?: string) {
   return apiRequest<{ workout: WorkoutPlan }>(`/workouts/${id}/complete`, {
     method: 'POST',
     accessToken,
-    body: { scheduleEntryId },
+    body: scheduleEntryId ? { scheduleEntryId } : {},
   });
 }
 
@@ -85,6 +91,16 @@ export function fetchWorkoutAiReview(accessToken: string, id: string) {
   return apiRequest<{ aiReview: WorkoutAiReview; missedWorkouts: WorkoutScheduleEntry[] }>(
     `/workouts/${id}/ai-review`,
     {
+      accessToken,
+    }
+  );
+}
+
+export function refreshWorkoutAiReview(accessToken: string, id: string) {
+  return apiRequest<{ aiReview: WorkoutAiReview; missedWorkouts: WorkoutScheduleEntry[] }>(
+    `/workouts/${id}/ai-review`,
+    {
+      method: 'POST',
       accessToken,
     }
   );

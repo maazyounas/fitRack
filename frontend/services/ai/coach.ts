@@ -29,6 +29,105 @@ function formatWeekday(date: Date) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(date);
 }
 
+function buildWorkoutCoachReply(message: string, data: AiCoachDataPoints, summary: AiCoachSummary) {
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes('gain muscle') ||
+    normalized.includes('build muscle') ||
+    normalized.includes('muscle gain') ||
+    normalized.includes('bulk') ||
+    normalized.includes('hypertrophy') ||
+    normalized.includes('get bigger') ||
+    normalized.includes('size up')
+  ) {
+    const proteinGap = Math.max(0, Math.round(data.nutrition.proteinGoal - data.nutrition.protein));
+    const calorieGap = Math.max(0, Math.round(data.nutrition.calorieGoal - data.nutrition.calories));
+
+    return {
+      reply: `For muscle gain, use progressive overload, train each muscle 2 times per week, and keep most sets in the 6 to 12 rep range. You are about ${proteinGap} g protein and ${calorieGap} kcal short of today's targets, so add a protein-heavy meal and keep lifting consistently.`,
+      followUps: ['Build me a muscle gain workout', 'What should I eat to bulk cleanly?'],
+    };
+  }
+
+  if (
+    normalized.includes('cut') ||
+    normalized.includes('fat loss') ||
+    normalized.includes('lose fat') ||
+    normalized.includes('lose weight') ||
+    normalized.includes('lean down') ||
+    normalized.includes('shred') ||
+    normalized.includes('define')
+  ) {
+    return {
+      reply: 'For fat loss, keep protein high, keep lifting to preserve muscle, and use a small calorie deficit. Add steps or short cardio, but do not stop strength training.',
+      followUps: ['Make me a fat loss workout', 'How much should I eat on a cut?'],
+    };
+  }
+
+  if (
+    normalized.includes('split') ||
+    normalized.includes('push pull legs') ||
+    normalized.includes('ppl') ||
+    normalized.includes('bro split') ||
+    normalized.includes('upper lower') ||
+    normalized.includes('routine') ||
+    normalized.includes('program') ||
+    normalized.includes('schedule')
+  ) {
+    return {
+      reply: 'For most lifters, push/pull/legs or upper/lower gives better recovery and progression than random workouts. The best split depends on how many days you can train and how hard you recover.',
+      followUps: ['Build me a 4-day split', 'Give me a push/pull/legs plan'],
+    };
+  }
+
+  if (
+    normalized.includes('sets') ||
+    normalized.includes('reps') ||
+    normalized.includes('volume') ||
+    normalized.includes('failure') ||
+    normalized.includes('progressive overload') ||
+    normalized.includes('1rm')
+  ) {
+    return {
+      reply: 'For muscle growth, keep weekly volume high enough, train close to failure on accessory work, and progress by reps first, then weight. Most big lifts should stay around 1 to 3 reps in reserve.',
+      followUps: ['How many sets per muscle?', 'What reps are best for hypertrophy?'],
+    };
+  }
+
+  if (
+    normalized.includes('chest') ||
+    normalized.includes('back') ||
+    normalized.includes('legs') ||
+    normalized.includes('shoulders') ||
+    normalized.includes('arms') ||
+    normalized.includes('biceps') ||
+    normalized.includes('triceps') ||
+    normalized.includes('core') ||
+    normalized.includes('abs') ||
+    normalized.includes('glutes') ||
+    normalized.includes('hamstrings') ||
+    normalized.includes('quads')
+  ) {
+    return {
+      reply: 'Train that muscle with 2 to 4 exercises, start with a compound movement, then finish with 1 to 2 isolation moves. Keep total weekly volume consistent and recover with sleep, protein, and enough calories.',
+      followUps: ['Give me exercises for that muscle', 'How many times per week should I train it?'],
+    };
+  }
+
+  if (/(workout|train|exercise|lift|cardio|session)/.test(normalized)) {
+    return {
+      reply:
+        summary.recovery.recommendRecoveryDay || summary.stress.level === 'high'
+          ? 'Use a structured session with one compound lift, one secondary movement, and one or two isolation finishers. Keep it lighter if recovery is poor.'
+          : 'Use a structured session with one compound lift, one secondary movement, and one or two isolation finishers. Push progressive overload with good form.',
+      followUps: ['Should I push intensity today?', 'Give me a recovery-focused session'],
+    };
+  }
+
+  return null;
+}
+
 function getCompletionRate(plan: WorkoutPlan) {
   if (plan.aiReview?.completionRate !== undefined) {
     return plan.aiReview.completionRate;
@@ -45,6 +144,44 @@ function getCompletionRate(plan: WorkoutPlan) {
 function getMissedCount(plan: WorkoutPlan) {
   if (typeof plan.missedCount === 'number') {
     return plan.missedCount;
+  }
+
+  if (/(gain muscle|build muscle|muscle gain|bulk|hypertrophy|get bigger|size up)/.test(normalized)) {
+    const proteinGap = Math.max(0, Math.round(data.nutrition.proteinGoal - data.nutrition.protein));
+    const calorieGap = Math.max(0, Math.round(data.nutrition.calorieGoal - data.nutrition.calories));
+
+    return {
+      reply: `For muscle gain, use progressive overload, keep your reps mostly in the 6 to 12 range, and eat in a small calorie surplus. You are about ${proteinGap} g protein and ${calorieGap} kcal short of today's targets, so push a protein-heavy meal plus a quality lifting session.`,
+      followUps: ['Give me a muscle gain workout', 'What should I eat to bulk cleanly?'],
+    };
+  }
+
+  if (/(cut|fat loss|lose fat|lose weight|lean down|shred|define|definition)/.test(normalized)) {
+    return {
+      reply: 'For fat loss, keep protein high, keep lifting heavy enough to hold muscle, and use a small calorie deficit instead of starving yourself. Add steps or short cardio sessions, but do not drop strength training.',
+      followUps: ['Make me a fat loss workout', 'How much should I eat on a cut?'],
+    };
+  }
+
+  if (/(split|push pull legs|ppl|bro split|upper lower|program|routine|schedule)/.test(normalized)) {
+    return {
+      reply: 'A good split depends on your recovery and how many days you can train. For most people, push/pull/legs or upper/lower works better than random workouts because volume and recovery are easier to control.',
+      followUps: ['Build me a 4-day split', 'Give me a push/pull/legs plan'],
+    };
+  }
+
+  if (/(sets|reps|volume|failure|progressive overload|strength|1rm|one rep|max)/.test(normalized)) {
+    return {
+      reply: 'For muscle growth, use enough weekly volume, train close to failure on accessories, and keep 1 to 3 reps in reserve on most big lifts. Progress by adding reps first, then load, while keeping form strict.',
+      followUps: ['How many sets per muscle?', 'What reps are best for hypertrophy?'],
+    };
+  }
+
+  if (/(chest|back|legs|shoulders|arms|biceps|triceps|core|abs|glutes|hamstrings|quads)/.test(normalized)) {
+    return {
+      reply: 'Train the muscle with 2 to 4 exercises, start with a compound movement, then finish with 1 to 2 isolation moves. Keep total weekly volume consistent and recover with sleep, protein, and enough calories.',
+      followUps: ['Give me exercises for that muscle', 'How many times per week should I train it?'],
+    };
   }
 
   return plan.schedule.filter((entry) => entry.status === 'missed').length;
@@ -202,6 +339,10 @@ export function generateAiCoachChat(
   data: AiCoachDataPoints,
   summary: AiCoachSummary = generateAiCoachSummary(data)
 ): AiCoachChatResponse {
+  const workoutResponse = buildWorkoutCoachReply(message, data, summary);
+  if (workoutResponse) {
+    return workoutResponse;
+  }
   const normalized = message.toLowerCase();
 
   if (/(recover|rest|day off|deload|sore|fatigue)/.test(normalized)) {
@@ -237,6 +378,16 @@ export function generateAiCoachChat(
           ? 'Keep today low impact: 20 to 30 minutes of walking or cycling, mobility, and technique work. Save heavy lifting for when recovery and stress markers improve.'
           : 'You look ready for a productive session. Use a main strength block, keep volume controlled, and stop one or two reps before failure on most sets.',
       followUps: ['Should I push intensity today?', 'Give me a recovery-focused session'],
+    };
+  }
+
+  if (/(gain muscle|build muscle|muscle gain|bulk|hypertrophy|get bigger|size up)/.test(normalized)) {
+    const proteinGap = Math.max(0, Math.round(data.nutrition.proteinGoal - data.nutrition.protein));
+    const calorieGap = Math.max(0, Math.round(data.nutrition.calorieGoal - data.nutrition.calories));
+
+    return {
+      reply: `To gain muscle, focus on progressive overload, enough total calories, and daily protein. You are about ${proteinGap} g protein and ${calorieGap} kcal short of today's targets, so build your next meal around lean protein, carbs, and a solid lifting session.`,
+      followUps: ['Give me a muscle gain workout', 'What should I eat to bulk cleanly?'],
     };
   }
 

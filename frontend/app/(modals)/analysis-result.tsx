@@ -297,6 +297,18 @@ export default function AnalysisResultScreen() {
           </View>
         </Animated.View>
 
+        <Animated.View entering={FadeInDown.delay(700).springify()} style={styles.actionRow}>
+          <Pressable style={styles.secondaryAction} onPress={() => router.replace('/(tabs)/home')}>
+            <Ionicons name="home-outline" size={18} color="#2dd4bf" />
+            <Text style={styles.secondaryActionText}>Go Home</Text>
+          </Pressable>
+
+          <Pressable style={styles.primaryAction} onPress={() => router.push('/(modals)/scan' as any)}>
+            <Ionicons name="camera-outline" size={18} color="#fff" />
+            <Text style={styles.primaryActionText}>Scan Again</Text>
+          </Pressable>
+        </Animated.View>
+
         <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
@@ -345,4 +357,9 @@ const styles = StyleSheet.create({
   coachIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#0d9488', alignItems: 'center', justifyContent: 'center' },
   coachTitle: { color: '#2dd4bf', fontSize: 12, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6 },
   coachText: { color: 'rgba(255,255,255,0.65)', fontSize: 13, lineHeight: 19 },
+  actionRow: { flexDirection: 'row', gap: 12, marginTop: 4 },
+  secondaryAction: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(45,212,191,0.35)', backgroundColor: 'rgba(45,212,191,0.08)' },
+  secondaryActionText: { color: '#2dd4bf', fontSize: 13, fontWeight: '800' },
+  primaryAction: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 16, backgroundColor: '#0d9488' },
+  primaryActionText: { color: '#fff', fontSize: 13, fontWeight: '800' },
 });

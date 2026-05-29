@@ -11,7 +11,7 @@ type CommunityState = {
   createPost: (content: string, imageUrl?: string, challengeId?: string) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
   addComment: (postId: string, content: string) => Promise<void>;
-  toggleFollow: (userId: string) => Promise<void>;
+  toggleFollow: (userId: string) => Promise<boolean | null>;
   joinChallenge: (challengeId: string) => Promise<void>;
   reportPost: (postId: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
@@ -100,13 +100,16 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
 
   toggleFollow: async (userId) => {
     try {
-      await apiRequest(`/community/follow/${userId}`, {
+      const res = await apiRequest<{ message: string; following: boolean; dashboard: CommunityDashboard }>(`/community/follow/${userId}`, {
         method: 'POST',
         accessToken: getAccessToken(),
       });
-      await get().initialize();
+      // Update dashboard from response to avoid an extra fetch
+      set({ dashboard: res.dashboard });
+      return res.following;
     } catch (error) {
       console.error('Toggle follow failed', error);
+      return null;
     }
   },
 

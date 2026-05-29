@@ -6,7 +6,40 @@ import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'noreply@fittrack.com';
+const DEFAULT_FROM_EMAIL = 'onboarding@resend.dev';
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || DEFAULT_FROM_EMAIL;
+
+async function sendWithFallback(params: { to: string; subject: string; html: string }) {
+  const primaryResponse = await resend.emails.send({
+    from: FROM_EMAIL,
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+  });
+
+  if (!primaryResponse.error) {
+    return primaryResponse;
+  }
+
+  const errorMessage = String((primaryResponse.error as any)?.message ?? '');
+  const domainNotVerified = errorMessage.toLowerCase().includes('domain is not verified');
+
+  // If custom sender domain is not verified, retry with Resend's default sender.
+  if (domainNotVerified && FROM_EMAIL !== DEFAULT_FROM_EMAIL) {
+    console.warn(
+      `[EMAIL] Sender domain not verified for ${FROM_EMAIL}. Retrying with ${DEFAULT_FROM_EMAIL}.`
+    );
+
+    return resend.emails.send({
+      from: DEFAULT_FROM_EMAIL,
+      to: params.to,
+      subject: params.subject,
+      html: params.html,
+    });
+  }
+
+  return primaryResponse;
+}
 
 /**
  * Send OTP email for verification
@@ -33,8 +66,7 @@ export async function sendOtpEmail(email: string, otp: string, purpose: 'verify-
       htmlContent = generateOtpEmailHTML(otp, 'Password Reset', 'Use this code to reset your FITRACK account password. This code expires in 10 minutes.');
     }
 
-    const response = await resend.emails.send({
-      from: FROM_EMAIL,
+    const response = await sendWithFallback({
       to: email,
       subject,
       html: htmlContent,
@@ -63,8 +95,7 @@ export async function sendPasswordChangedEmail(email: string) {
       return { success: false, message: 'Email service not configured' };
     }
 
-    const response = await resend.emails.send({
-      from: FROM_EMAIL,
+    const response = await sendWithFallback({
       to: email,
       subject: 'Password Changed - FITRACK',
       html: generatePasswordChangedEmailHTML(),

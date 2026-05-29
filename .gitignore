@@ -1,0 +1,47 @@
+# Node / JS
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+.expo/
+web-build/
+
+# Logs and test output
+*.log
+jest_output.txt
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Coverage
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Local uploads / runtime files
+uploads/
+
+# Project reports and generated markdown that are not source
+fitrack-*.md
+
+# Personal or one-off scripts (adjust if these are part of the project)
+# Uncomment if you want to ignore all top-level scripts/ personal scripts
+# /scripts/
+# personal-scripts/

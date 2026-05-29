@@ -48,6 +48,45 @@ const fitnessGoalsSchema = new Schema(
   { _id: false }
 );
 
+const dailyReminderSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    hour: { type: Number, min: 0, max: 23, default: 0 },
+    minute: { type: Number, min: 0, max: 59, default: 0 },
+  },
+  { _id: false }
+);
+
+const mealRemindersSchema = new Schema(
+  {
+    breakfast: { type: dailyReminderSchema, default: () => ({ enabled: true, hour: 8, minute: 0 }) },
+    lunch: { type: dailyReminderSchema, default: () => ({ enabled: true, hour: 13, minute: 0 }) },
+    dinner: { type: dailyReminderSchema, default: () => ({ enabled: true, hour: 19, minute: 0 }) },
+    snack: { type: dailyReminderSchema, default: () => ({ enabled: false, hour: 16, minute: 0 }) },
+  },
+  { _id: false }
+);
+
+const hydrationReminderSchema = new Schema(
+  {
+    enabled: { type: Boolean, default: false },
+    intervalMinutes: { type: Number, min: 30, max: 360, default: 120 },
+    startHour: { type: Number, min: 0, max: 23, default: 8 },
+    endHour: { type: Number, min: 0, max: 23, default: 21 },
+  },
+  { _id: false }
+);
+
+const notificationSettingsSchema = new Schema(
+  {
+    workoutReminder: { type: dailyReminderSchema, default: () => ({ enabled: false, hour: 7, minute: 0 }) },
+    missedWorkoutAlert: { type: dailyReminderSchema, default: () => ({ enabled: true, hour: 20, minute: 0 }) },
+    mealReminders: { type: mealRemindersSchema, default: () => ({}) },
+    hydrationAlert: { type: hydrationReminderSchema, default: () => ({}) },
+  },
+  { _id: false }
+);
+
 const userSchema = new Schema(
   {
     emailEncrypted: encryptedFieldSchema,
@@ -58,6 +97,7 @@ const userSchema = new Schema(
     profile: { type: profileSchema, required: true },
     preferences: { type: preferencesSchema, default: () => ({}) },
     fitnessGoals: { type: fitnessGoalsSchema, default: () => ({}) },
+    notificationSettings: { type: notificationSettingsSchema, default: () => ({}) },
     verification: {
       emailVerified: { type: Boolean, default: false },
       phoneVerified: { type: Boolean, default: false },

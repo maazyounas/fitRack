@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { WorkoutPlanModel } from '../models/WorkoutPlan';
 import { HttpError } from '../utils/http';
 import { analyzeWorkoutPlan } from '../services/workoutAiService';
@@ -209,6 +210,19 @@ export async function createWorkoutPlan(req: Request & { userId?: string }, res:
     throw new HttpError(400, 'Workout name and at least one exercise are required.');
   }
 
+  // Remove any client-generated temporary IDs from exercises so Mongoose
+  // can create proper ObjectId values for subdocuments. If the client sent
+  // a valid 24-character hex ObjectId string we keep it; otherwise drop it.
+  const sanitizedExercises = payload.exercises.map((ex: any) => {
+    const copy = { ...ex } as any;
+    if (copy._id && typeof copy._id === 'string') {
+      if (!mongoose.Types.ObjectId.isValid(copy._id)) {
+        delete copy._id;
+      }
+    }
+    return copy;
+  });
+
   const plan = await WorkoutPlanModel.create({
     ownerId: req.userId,
     name: payload.name,
@@ -217,7 +231,7 @@ export async function createWorkoutPlan(req: Request & { userId?: string }, res:
     isTemplate: Boolean(payload.isTemplate),
     sourceTemplateKey: payload.sourceTemplateKey ?? '',
     estimatedDurationMinutes: payload.estimatedDurationMinutes ?? 45,
-    exercises: payload.exercises,
+    exercises: sanitizedExercises,
     schedule: payload.schedule ?? [],
   });
 
@@ -250,7 +264,14 @@ export async function updateWorkoutPlan(req: Request & { userId?: string }, res:
   }
 
   if (Array.isArray(req.body.exercises)) {
-    plan.exercises = req.body.exercises;
+    // Preserve valid ObjectId _id values; strip any client-local temporary ids
+    plan.exercises = (req.body.exercises as any[]).map((ex) => {
+      const copy = { ...ex } as any;
+      if (copy._id && typeof copy._id === 'string' && !mongoose.Types.ObjectId.isValid(copy._id)) {
+        delete copy._id;
+      }
+      return copy;
+    }) as any;
   }
 
   if (Array.isArray(req.body.schedule)) {
@@ -339,21 +360,49 @@ export async function markWorkoutCompleted(req: Request & { userId?: string }, r
   }
 
   const { scheduleEntryId } = req.body as { scheduleEntryId?: string };
-  const scheduleEntry = plan.schedule.find((entry: any) => entry.id === scheduleEntryId);
 
-  if (!scheduleEntry) {
-    throw new HttpError(404, 'Scheduled workout not found.');
+  if (scheduleEntryId) {
+    const scheduleEntry = plan.schedule.find((entry: any) => entry.id === scheduleEntryId);
+    if (!scheduleEntry) {
+      throw new HttpError(404, 'Scheduled workout not found.');
+    }
+    scheduleEntry.completed = true;
+    scheduleEntry.status = 'completed';
+    scheduleEntry.completedAt = new Date();
+  } else {
+    plan.schedule.push({
+      scheduledDate: new Date(),
+      status: 'completed',
+      completed: true,
+      completedAt: new Date(),
+    } as any);
   }
-
-  scheduleEntry.completed = true;
-  scheduleEntry.status = 'completed';
-  scheduleEntry.completedAt = new Date();
 
   await plan.save();
   res.json({ workout: normalizePlan(plan) });
 }
 
 export async function getWorkoutAiReview(req: Request & { userId?: string }, res: Response) {
+  const plan = await WorkoutPlanModel.findOne({
+    _id: req.params.id,
+    ownerId: req.userId,
+  });
+
+  if (!plan) {
+    throw new HttpError(404, 'Workout plan not found.');
+  }
+
+  res.json({
+    aiReview: plan.aiReview,
+    missedWorkouts: getMissedWorkouts(plan.schedule).map((entry: any) => ({
+      id: entry.id,
+      scheduledDate: entry.scheduledDate,
+      status: entry.status,
+    })),
+  });
+}
+
+export async function refreshWorkoutAiReview(req: Request & { userId?: string }, res: Response) {
   const plan = await WorkoutPlanModel.findOne({
     _id: req.params.id,
     ownerId: req.userId,
@@ -463,11 +512,15 @@ export async function reorderExercises(req: Request & { userId?: string }, res: 
     throw new HttpError(400, 'Exercises array is required.');
   }
 
-  // Update order field for each exercise
-  plan.exercises = exercises.map((exercise, index) => ({
-    ...exercise,
-    order: index + 1,
-  })) as any;
+  // Update order field for each exercise. Preserve valid ObjectId _id values;
+  // remove client-local temporary ids so casting doesn't fail.
+  plan.exercises = exercises.map((exercise, index) => {
+    const copy = { ...exercise } as any;
+    if (copy._id && typeof copy._id === 'string' && !mongoose.Types.ObjectId.isValid(copy._id)) {
+      delete copy._id;
+    }
+    return { ...copy, order: index + 1 };
+  }) as any;
 
   await plan.save();
   res.json({ workout: normalizePlan(plan) });

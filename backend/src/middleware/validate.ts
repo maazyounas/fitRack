@@ -10,8 +10,9 @@ export function validate<T>(schema: ZodSchema<T>) {
     const result = schema.safeParse(req.body);
 
     if (!result.success) {
-      const errors = (result as any).error.errors.map((e: any) => ({
-        field: e.path.join('.'),
+      let issues = (result as any).error?.issues || (result as any).error?.errors || (result as any).issues || [];
+      const errors = issues.map((e: any) => ({
+        field: e.path ? e.path.join('.') : 'unknown',
         message: e.message,
       }));
       return res.status(400).json({
@@ -34,8 +35,9 @@ export function validateQuery<T>(schema: ZodSchema<T>) {
     const result = schema.safeParse(req.query);
 
     if (!result.success) {
-      const errors = (result as any).error.errors.map((e: any) => ({
-        field: e.path.join('.'),
+      let issues = (result as any).error?.issues || (result as any).error?.errors || (result as any).issues || [];
+      const errors = issues.map((e: any) => ({
+        field: e.path ? e.path.join('.') : 'unknown',
         message: e.message,
       }));
       return res.status(400).json({

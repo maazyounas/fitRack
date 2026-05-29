@@ -24,6 +24,8 @@ export const env = {
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET as string,
   fieldEncryptionKey: process.env.FIELD_ENCRYPTION_KEY as string,
   clientUrl: process.env.CLIENT_URL ?? 'http://localhost:8081',
+  geminiApiKey: process.env.GEMINI_API_KEY,
+  geminiModel: process.env.GEMINI_MODEL ?? 'gemini-1.5-flash',
   openaiApiKey: process.env.OPENAI_API_KEY,
   sentryDsn: process.env.SENTRY_DSN,
   cloudinary: {

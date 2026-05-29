@@ -5,12 +5,12 @@
 
 import { useEffect } from 'react';
 import {
-  Dimensions,
   Pressable,
   StatusBar,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -24,9 +24,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useOnboardingStore, type OnboardingGender } from '@/store/onboardingStore';
 import { PremiumButton } from '@/components/ui/PremiumButton';
-
-const { width } = Dimensions.get('window');
-const CARD_W = (width - 48 - 16) / 2;
 
 type GenderOption = {
   key: OnboardingGender;
@@ -57,10 +54,12 @@ function GenderCard({
   option,
   selected,
   onSelect,
+  isCompact,
 }: {
   option: GenderOption;
   selected: boolean;
   onSelect: () => void;
+  isCompact: boolean;
 }) {
   const scale = useSharedValue(1);
   const borderOpacity = useSharedValue(selected ? 1 : 0);
@@ -86,7 +85,7 @@ function GenderCard({
         onSelect();
       }}
     >
-      <Animated.View style={[{ width: CARD_W }, cardStyle]}>
+      <Animated.View style={[isCompact ? styles.cardFullWidth : styles.cardHalfWidth, cardStyle]}>
         {/* Glow border */}
         <Animated.View style={[StyleSheet.absoluteFill, styles.glowBorder, glowStyle]}>
           <LinearGradient
@@ -127,6 +126,8 @@ function GenderCard({
 export default function GenderScreen() {
   const router = useRouter();
   const { gender, setGender } = useOnboardingStore();
+  const { width } = useWindowDimensions();
+  const isCompact = width < 480;
 
   return (
     <View style={styles.safe}>
@@ -160,13 +161,14 @@ export default function GenderScreen() {
 
       {/* Main Content Card */}
       <View style={styles.card}>
-        <View style={styles.cardsRow}>
+        <View style={[styles.cardsRow, isCompact && styles.cardsColumn]}>
           {OPTIONS.map((opt) => (
             <GenderCard
               key={opt.key}
               option={opt}
               selected={gender === opt.key}
               onSelect={() => setGender(opt.key)}
+              isCompact={isCompact}
             />
           ))}
         </View>
@@ -250,9 +252,9 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: 24,
-    marginHorizontal: 20,
+    marginHorizontal: 14,
     marginTop: -40,
-    padding: 24,
+    padding: 18,
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
@@ -261,8 +263,18 @@ const styles = StyleSheet.create({
   },
   cardsRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
     marginBottom: 24,
+  },
+  cardsColumn: {
+    flexDirection: 'column',
+    gap: 10,
+  },
+  cardHalfWidth: {
+    flex: 1,
+  },
+  cardFullWidth: {
+    width: '100%',
   },
   glowBorder: {
     borderRadius: 24,
@@ -274,10 +286,10 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
-    padding: 20,
+    padding: 16,
     alignItems: 'center',
     gap: 12,
-    minHeight: 180,
+    minHeight: 170,
     justifyContent: 'center',
   },
   cardSelected: {
@@ -334,7 +346,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingBottom: 40,
     paddingTop: 16,
     backgroundColor: '#f1f5f9',

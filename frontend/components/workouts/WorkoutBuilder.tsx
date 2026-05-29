@@ -1,23 +1,49 @@
-import { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View, Pressable } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+  Pressable,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button } from '@/components/ui/Button';
 import { WorkoutCreatePayload, WorkoutDifficulty, WorkoutExercise, WorkoutPlan } from '@/types/workout';
 import { ExerciseItem } from './ExerciseItem';
 
-function createExercise(order: number): WorkoutExercise {
+function makeLocalExerciseId(order: number) {
+  return `local-${Date.now()}-${order}-${Math.random().toString(16).slice(2, 6)}`;
+}
+
+function createExercise(order: number, source?: Partial<WorkoutExercise>): WorkoutExercise {
   return {
-    name: `Exercise ${order}`,
-    muscleGroup: 'Full Body',
-    equipment: 'Bodyweight',
-    sets: 3,
-    reps: 10,
-    restSeconds: 60,
-    notes: '',
-    intensity: 'moderate',
+    _id: makeLocalExerciseId(order),
+    name: source?.name ?? `Exercise ${order}`,
+    muscleGroup: source?.muscleGroup ?? 'Full Body',
+    equipment: source?.equipment ?? 'Bodyweight',
+    sets: source?.sets ?? 3,
+    reps: source?.reps ?? 10,
+    restSeconds: source?.restSeconds ?? 60,
+    notes: source?.notes ?? '',
+    intensity: source?.intensity ?? 'moderate',
     order,
   };
+}
+
+function normalizeExercises(exercises?: WorkoutExercise[]) {
+  if (!exercises?.length) {
+    return [createExercise(1), createExercise(2), createExercise(3)];
+  }
+
+  return exercises
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((exercise, index) => createExercise(index + 1, exercise));
 }
 
 export function WorkoutBuilder({
@@ -35,11 +61,18 @@ export function WorkoutBuilder({
   const [estimatedDurationMinutes, setEstimatedDurationMinutes] = useState(
     String(initialPlan?.estimatedDurationMinutes ?? 45)
   );
-  const [exercises, setExercises] = useState<WorkoutExercise[]>(
-    initialPlan?.exercises?.length
-      ? initialPlan.exercises
-      : [createExercise(1), createExercise(2), createExercise(3)]
-  );
+  const [exercises, setExercises] = useState<WorkoutExercise[]>(() => normalizeExercises(initialPlan?.exercises));
+  const { width } = useWindowDimensions();
+  const isCompact = width < 390;
+  const isTablet = width >= 768;
+
+  useEffect(() => {
+    setName(initialPlan?.name ?? '');
+    setDescription(initialPlan?.description ?? '');
+    setDifficulty(initialPlan?.difficulty ?? 'beginner');
+    setEstimatedDurationMinutes(String(initialPlan?.estimatedDurationMinutes ?? 45));
+    setExercises(normalizeExercises(initialPlan?.exercises));
+  }, [initialPlan]);
 
   const canSave = useMemo(() => name.trim().length > 0 && exercises.length > 0, [exercises.length, name]);
 
@@ -61,6 +94,19 @@ export function WorkoutBuilder({
 
   const addExercise = () => {
     setExercises((current) => [...current, createExercise(current.length + 1)]);
+  };
+
+  const duplicateExercise = (index: number) => {
+    setExercises((current) => {
+      const exerciseToCopy = current[index];
+      if (!exerciseToCopy) {
+        return current;
+      }
+
+      const next = [...current];
+      next.splice(index + 1, 0, createExercise(current.length + 1, exerciseToCopy));
+      return next.map((exercise, exerciseIndex) => ({ ...exercise, order: exerciseIndex + 1 }));
+    });
   };
 
   const removeExercise = (index: number) => {
@@ -86,6 +132,11 @@ export function WorkoutBuilder({
       return;
     }
 
+    const orderedExercises = exercises.map((exercise, index) => ({
+      ...exercise,
+      order: index + 1,
+    }));
+
     await onSave(
       {
         name: name.trim(),
@@ -94,7 +145,7 @@ export function WorkoutBuilder({
         estimatedDurationMinutes: Number(estimatedDurationMinutes) || 45,
         isTemplate: initialPlan?.isTemplate,
         sourceTemplateKey: initialPlan?.sourceTemplateKey,
-        exercises,
+        exercises: orderedExercises,
       },
       initialPlan?.id
     );
@@ -107,106 +158,142 @@ export function WorkoutBuilder({
   ];
 
   return (
-    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      <LinearGradient colors={['#0a0f1e', '#0f1c2a']} style={styles.heroSection}>
-        <Text style={styles.title}>{initialPlan ? 'Edit Workout' : 'Create Custom Workout'}</Text>
-        <Text style={styles.subtitle}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={[styles.container, { paddingBottom: isCompact ? 124 : 140 }]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <LinearGradient
+          colors={['#ecfeff', '#f8fafc']}
+          style={[styles.heroSection, isCompact && styles.heroSectionCompact]}
+        >
+          <Text style={[styles.title, { fontSize: isCompact ? 24 : isTablet ? 32 : 28 }]}>
+            {initialPlan ? 'Edit Workout' : 'Create Custom Workout'}
+          </Text>
+          <Text style={styles.subtitle}>
           {initialPlan 
-            ? 'Modify your existing workout routine' 
-            : 'Build your perfect routine by adding exercises and customizing details'}
-        </Text>
-      </LinearGradient>
+            ? 'Adjust the workout and save the changes.' 
+            : 'Add a name, pick a difficulty, and build the exercise list.'}
+          </Text>
+        </LinearGradient>
 
-      <View style={styles.formSection}>
-        {/* Basic Info */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Basic Information</Text>
-          
-          <View style={styles.inputWrapper}>
-            <Ionicons name="create-outline" size={18} color="#64748b" />
-            <TextInput
-              onChangeText={setName}
-              placeholder="Workout name"
-              placeholderTextColor="#94a3b8"
-              style={styles.input}
-              value={name}
-            />
-          </View>
-          
-          <View style={styles.inputWrapper}>
-            <Ionicons name="document-text-outline" size={18} color="#64748b" />
-            <TextInput
-              onChangeText={setDescription}
-              placeholder="Description (optional)"
-              placeholderTextColor="#94a3b8"
-              style={[styles.input, styles.textArea]}
-              multiline
-              numberOfLines={3}
-              value={description}
-            />
-          </View>
-        </View>
+        <View style={styles.formSection}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Basic Information</Text>
 
-        {/* Difficulty */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Difficulty Level</Text>
-          <View style={styles.difficultyRow}>
-            {difficultyOptions.map((option) => (
-              <Pressable
-                key={option.value}
-                onPress={() => setDifficulty(option.value as WorkoutDifficulty)}
-                style={[
-                  styles.difficultyOption,
-                  difficulty === option.value && { borderColor: option.color, backgroundColor: `${option.color}10` },
-                ]}>
-                <Ionicons name={option.icon as any} size={24} color={difficulty === option.value ? option.color : '#64748b'} />
-                <Text style={[styles.difficultyLabel, difficulty === option.value && { color: option.color }]}>
-                  {option.label}
-                </Text>
+            <View style={styles.inputWrapper}>
+              <Ionicons name="create-outline" size={18} color="#64748b" />
+              <TextInput
+                onChangeText={setName}
+                placeholder="Workout name"
+                placeholderTextColor="#94a3b8"
+                style={styles.input}
+                value={name}
+              />
+            </View>
+
+            <View style={styles.inputWrapper}>
+              <Ionicons name="document-text-outline" size={18} color="#64748b" />
+              <TextInput
+                onChangeText={setDescription}
+                placeholder="Description (optional)"
+                placeholderTextColor="#94a3b8"
+                style={[styles.input, styles.textArea]}
+                multiline
+                numberOfLines={3}
+                value={description}
+              />
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Difficulty Level</Text>
+            <View style={[styles.difficultyRow, isCompact && styles.difficultyRowCompact]}>
+              {difficultyOptions.map((option) => (
+                <Pressable
+                  key={option.value}
+                  onPress={() => setDifficulty(option.value as WorkoutDifficulty)}
+                  style={[
+                    styles.difficultyOption,
+                    difficulty === option.value && { borderColor: option.color, backgroundColor: `${option.color}10` },
+                  ]}>
+                  <Ionicons
+                    name={option.icon as any}
+                    size={24}
+                    color={difficulty === option.value ? option.color : '#64748b'}
+                  />
+                  <Text style={[styles.difficultyLabel, difficulty === option.value && { color: option.color }]}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Estimated Duration</Text>
+            <View style={[styles.durationWrapper, isCompact && styles.durationWrapperCompact]}>
+              <TextInput
+                keyboardType="number-pad"
+                onChangeText={setEstimatedDurationMinutes}
+                style={styles.durationInput}
+                value={estimatedDurationMinutes}
+              />
+              <Text style={styles.durationUnit}>minutes</Text>
+            </View>
+          </View>
+
+          <View style={styles.card}>
+            <View style={styles.exercisesHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Exercises</Text>
+                <Text style={styles.sectionSubtitle}>{exercises.length} exercises added</Text>
+              </View>
+              <Pressable onPress={addExercise} style={styles.secondaryActionButton}>
+                <Ionicons name="add" size={18} color="#0d9488" />
+                <Text style={styles.addButtonText}>Add</Text>
               </Pressable>
-            ))}
+            </View>
+
+            <View style={styles.quickActionsRow}>
+              <Pressable onPress={addExercise} style={styles.quickActionButton}>
+                <Ionicons name="add-circle-outline" size={18} color="#0d9488" />
+                <Text style={styles.quickActionText}>Add blank exercise</Text>
+              </Pressable>
+              <Pressable onPress={() => duplicateExercise(exercises.length - 1)} style={styles.quickActionButton}>
+                <Ionicons name="copy-outline" size={18} color="#0d9488" />
+                <Text style={styles.quickActionText}>Duplicate last</Text>
+              </Pressable>
+            </View>
+
+            {exercises.length === 0 ? (
+              <View style={styles.emptyExercisesState}>
+                <Ionicons name="barbell-outline" size={44} color="#cbd5e1" />
+                <Text style={styles.emptyExercisesTitle}>No exercises yet</Text>
+                <Text style={styles.emptyExercisesText}>
+                  Add one or duplicate the last exercise to build the workout.
+                </Text>
+              </View>
+            ) : (
+              exercises.map((exercise, index) => (
+                <ExerciseItem
+                  key={exercise._id ?? `exercise-${index}`}
+                  exercise={exercise}
+                  index={index}
+                  onEdit={updateExercise}
+                  onDuplicate={duplicateExercise}
+                  onRemove={removeExercise}
+                  onReorder={reorderExercises}
+                  total={exercises.length}
+                />
+              ))
+            )}
           </View>
         </View>
+      </ScrollView>
 
-        {/* Duration */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Estimated Duration</Text>
-          <View style={styles.durationWrapper}>
-            <TextInput
-              keyboardType="number-pad"
-              onChangeText={setEstimatedDurationMinutes}
-              style={styles.durationInput}
-              value={estimatedDurationMinutes}
-            />
-            <Text style={styles.durationUnit}>minutes</Text>
-          </View>
-        </View>
-
-        {/* Exercises Section */}
-        <View style={styles.exercisesHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Exercises</Text>
-            <Text style={styles.sectionSubtitle}>{exercises.length} exercises added</Text>
-          </View>
-          <Pressable onPress={addExercise} style={styles.addButton}>
-            <Ionicons name="add" size={20} color="#0d9488" />
-            <Text style={styles.addButtonText}>Add</Text>
-          </Pressable>
-        </View>
-
-        {exercises.map((exercise, index) => (
-          <ExerciseItem
-            key={`${exercise.name}-${index}`}
-            exercise={exercise}
-            index={index}
-            onEdit={updateExercise}
-            onRemove={removeExercise}
-            onReorder={reorderExercises}
-            total={exercises.length}
-          />
-        ))}
-
-        {/* Save Button */}
+      <View style={[styles.stickyFooter, isCompact && styles.stickyFooterCompact]}>
         <Pressable style={[styles.saveButton, (!canSave || saving) && styles.saveButtonDisabled]} onPress={handleSave}>
           <LinearGradient
             colors={['#0d9488', '#0f766e']}
@@ -226,11 +313,15 @@ export function WorkoutBuilder({
           </LinearGradient>
         </Pressable>
       </View>
-    </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     flexGrow: 1,
     backgroundColor: '#f8fafc',
@@ -242,15 +333,20 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
+  heroSectionCompact: {
+    paddingTop: 22,
+    paddingBottom: 22,
+    paddingHorizontal: 16,
+  },
   title: {
-    color: '#ffffff',
+    color: '#0f172a',
     fontSize: 28,
     fontWeight: '600',
     letterSpacing: -0.5,
     marginBottom: 8,
   },
   subtitle: {
-    color: 'rgba(255,255,255,0.7)',
+    color: '#475569',
     fontSize: 14,
     fontWeight: '400',
     lineHeight: 20,
@@ -302,6 +398,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  difficultyRowCompact: {
+    flexDirection: 'column',
+  },
   difficultyOption: {
     flex: 1,
     alignItems: 'center',
@@ -320,6 +419,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  durationWrapperCompact: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
   },
   durationInput: {
     flex: 1,
@@ -344,6 +447,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
     paddingHorizontal: 4,
+  },
+  exerciseActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   sectionTitle: {
     fontSize: 17,
@@ -371,6 +478,61 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0d9488',
   },
+  secondaryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f0fdfa',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 14,
+  },
+  quickActionButton: {
+    flexGrow: 1,
+    flexBasis: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#d1fae5',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  quickActionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#0f172a',
+  },
+  emptyExercisesState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 18,
+    paddingHorizontal: 12,
+    borderRadius: 18,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  emptyExercisesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  emptyExercisesText: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#64748b',
+    textAlign: 'center',
+  },
   saveButton: {
     marginTop: 8,
     marginBottom: 32,
@@ -386,6 +548,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     paddingVertical: 14,
+  },
+  stickyFooter: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 14,
+  },
+  stickyFooterCompact: {
+    left: 12,
+    right: 12,
+    bottom: 10,
   },
   saveButtonText: {
     fontSize: 16,

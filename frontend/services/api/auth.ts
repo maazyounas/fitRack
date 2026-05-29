@@ -8,10 +8,14 @@ import {
   User,
   FitnessGoals,
 } from '@/types/user';
+import { ReminderSettings } from '@/types/notifications';
 import { apiRequest } from './client';
 
 export function registerUser(payload: RegisterPayload) {
-  return apiRequest<{ message: string; user: User }>('/auth/register', {
+  return apiRequest<{
+    message: string;
+    debugOtp?: { email?: string; phone?: string };
+  }>('/auth/register', {
     method: 'POST',
     body: payload,
   });
@@ -49,6 +53,7 @@ export function refreshSession(payload: { refreshToken: string; sessionSecret: s
   return apiRequest<{ accessToken: string; refreshToken: string }>('/auth/refresh', {
     method: 'POST',
     body: payload,
+    skipAuthRefresh: true,
   });
 }
 
@@ -112,6 +117,23 @@ export function updateFitnessGoals(accessToken: string, payload: Partial<Fitness
 
 export function updateUserPreferences(accessToken: string, payload: UpdatePreferencesPayload) {
   return apiRequest<{ message: string; user: User }>('/users/preferences', {
+    method: 'PATCH',
+    accessToken,
+    body: payload,
+  });
+}
+
+export function fetchNotificationSettings(accessToken: string) {
+  return apiRequest<{ notificationSettings: ReminderSettings }>('/users/notification-settings', {
+    accessToken,
+  });
+}
+
+export function updateNotificationSettings(
+  accessToken: string,
+  payload: Partial<ReminderSettings>
+) {
+  return apiRequest<{ message: string; notificationSettings: ReminderSettings }>('/users/notification-settings', {
     method: 'PATCH',
     accessToken,
     body: payload,

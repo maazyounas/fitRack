@@ -9,19 +9,28 @@ import { CommunityMember } from '@/types/community';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { AppHeader } from '@/components/common/AppHeader';
+import { useAuthStore } from '@/store/authStore';
 
 export default function CommunityScreen() {
   const { dashboard, isLoading, initialize, searchUsers, toggleFollow } = useCommunityStore();
+  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const user = useAuthStore((state) => state.user);
   const [activeTab, setActiveTab] = useState<'feed' | 'challenges'>('feed');
   const [isPostModalVisible, setIsPostModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<CommunityMember[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const router = useRouter();
+  const bootedRef = React.useRef(false);
 
   useEffect(() => {
+    if (!isHydrated || !user || bootedRef.current) {
+      return;
+    }
+
+    bootedRef.current = true;
     void initialize();
-  }, [initialize]);
+  }, [initialize, isHydrated, user]);
 
   const handleSearch = async (text: string) => {
     setSearchQuery(text);
@@ -62,27 +71,34 @@ export default function CommunityScreen() {
           {isSearching ? (
             <ActivityIndicator color="#0f766e" style={{ marginVertical: 10 }} />
           ) : (
-            searchResults.map(user => (
-              <Pressable 
-                key={user.id} 
-                style={styles.searchResultItem}
-                onPress={() => router.push(`/user/${user.id}` as any)}
-              >
-                <Image source={{ uri: user.profilePictureUrl || 'https://via.placeholder.com/150' }} style={styles.searchAvatar} />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.searchName}>{user.name}</Text>
-                  <Text style={styles.searchBio} numberOfLines={1}>{user.bio || 'FITRACK member'}</Text>
-                </View>
+            <>
+              {searchResults.map(user => (
                 <Pressable 
-                  style={[styles.followButton, user.isFollowing && styles.followingButton]}
-                  onPress={() => toggleFollow(user.id)}
+                  key={user.id} 
+                  style={styles.searchResultItem}
+                  onPress={() => router.push(`/user/${user.id}` as any)}
                 >
-                  <Text style={[styles.followButtonText, user.isFollowing && styles.followingButtonText]}>
-                    {user.isFollowing ? 'Following' : 'Follow'}
-                  </Text>
+                  <Image source={{ uri: user.profilePictureUrl || 'https://via.placeholder.com/150' }} style={styles.searchAvatar} />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.searchName}>{user.name}</Text>
+                    <Text style={styles.searchBio} numberOfLines={1}>{user.bio || 'FITRACK member'}</Text>
+                  </View>
+                  <Pressable 
+                    style={[styles.followButton, user.isFollowing && styles.followingButton]}
+                    onPress={async () => {
+                      const following = await toggleFollow(user.id);
+                      if (following !== null) {
+                        setSearchResults((prev) => prev.map((u) => (u.id === user.id ? { ...u, isFollowing: following } : u)));
+                      }
+                    }}
+                  >
+                    <Text style={[styles.followButtonText, user.isFollowing && styles.followingButtonText]}>
+                      {user.isFollowing ? 'Following' : 'Follow'}
+                    </Text>
+                  </Pressable>
                 </Pressable>
-              </Pressable>
-            ))
+              ))}
+            </>
           )}
           {searchResults.length === 0 && !isSearching && (
             <Text style={styles.noResults}>No users found.</Text>
@@ -105,6 +121,15 @@ export default function CommunityScreen() {
         </Pressable>
       </View>
 
+      {activeTab === 'feed' && (
+        <Pressable style={styles.createPostButton} onPress={() => setIsPostModalVisible(true)}>
+          <LinearGradient colors={['#0f766e', '#14b8a6']} style={styles.createPostGradient}>
+            <Ionicons name="create-outline" size={18} color="#fff" />
+            <Text style={styles.createPostText}>Create Post</Text>
+          </LinearGradient>
+        </Pressable>
+      )}
+
       {activeTab === 'feed' && dashboard?.suggestions && dashboard.suggestions.length > 0 && (
         <View style={styles.suggestionsSection}>
           <Text style={styles.sectionTitle}>Friend Suggestions</Text>
@@ -118,10 +143,13 @@ export default function CommunityScreen() {
                 <Image source={{ uri: user.profilePictureUrl || 'https://via.placeholder.com/150' }} style={styles.suggestionAvatar} />
                 <Text style={styles.suggestionName} numberOfLines={1}>{user.name}</Text>
                 <Pressable 
-                  style={styles.suggestionFollow}
-                  onPress={() => toggleFollow(user.id)}
+                  style={[styles.suggestionFollow, user.isFollowing && styles.suggestionFollowing]}
+                  onPress={async () => {
+                    const following = await toggleFollow(user.id);
+                    // dashboard in store is updated; UI will re-render from store
+                  }}
                 >
-                  <Text style={styles.suggestionFollowText}>Follow</Text>
+                  <Text style={[styles.suggestionFollowText, user.isFollowing && styles.suggestionFollowingText]}>{user.isFollowing ? 'Following' : 'Follow'}</Text>
                 </Pressable>
               </Pressable>
             ))}
@@ -355,6 +383,26 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
 
+  createPostButton: {
+    marginTop: 16,
+    marginBottom: 6,
+  },
+
+  createPostGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderRadius: 16,
+    paddingVertical: 14,
+  },
+
+  createPostText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
   activeTabText: {
     color: '#0f172a',
     fontWeight: '700',
@@ -432,10 +480,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
+  suggestionFollowing: {
+    backgroundColor: '#0f766e',
+  },
+
   suggestionFollowText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#0f766e',
+  },
+
+  suggestionFollowingText: {
+    color: '#ffffff',
   },
 
   // ───────────────── Empty State ─────────────────

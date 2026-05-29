@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  TextInput,
+  useWindowDimensions,
   View,
   Alert,
 } from 'react-native';
@@ -14,8 +16,9 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { requestPasswordReset, resetPassword } from '@/services/api/auth';
+import { AUTH_THEME } from '@/utils/authTheme';
+import { getAuthResponsiveMetrics } from '@/utils/responsive';
 import { validateOtp, validatePassword, validateRequired } from '@/utils/validators';
 
 type FieldErrors = {
@@ -26,6 +29,8 @@ type FieldErrors = {
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const metrics = getAuthResponsiveMetrics(width);
   const [step, setStep] = useState<'request' | 'reset'>('request');
   const [identifier, setIdentifier] = useState('');
   const [otp, setOtp] = useState('');
@@ -100,22 +105,29 @@ export default function ForgotPasswordScreen() {
       >
         {/* Header */}
         <LinearGradient
-          colors={['#0369a1', '#0284c7', '#0ea5e9']}
+          colors={AUTH_THEME.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.hero}
+          style={[
+            styles.hero,
+            {
+              paddingTop: metrics.heroPaddingTop,
+              paddingBottom: metrics.heroPaddingBottom,
+              paddingHorizontal: metrics.heroHorizontalPadding,
+            },
+          ]}
         >
-          <View style={styles.logoRing}>
+          <View style={[styles.logoRing, { padding: metrics.isCompact ? 14 : 16, marginBottom: metrics.isCompact ? 12 : 16 }]}>
             <Ionicons
               name={step === 'request' ? 'key-outline' : 'lock-open-outline'}
-              size={28}
+              size={metrics.isCompact ? 26 : 28}
               color="#fff"
             />
           </View>
-          <Text style={styles.heroTitle}>
+          <Text style={[styles.heroTitle, { fontSize: metrics.heroTitleSize - 2 }]}>
             {step === 'request' ? 'Password Recovery' : 'Set New Password'}
           </Text>
-          <Text style={styles.heroSub}>
+          <Text style={[styles.heroSub, { fontSize: metrics.heroSubSize, maxWidth: metrics.heroSubMaxWidth }]}>
             {step === 'request'
               ? 'Enter your email or phone and we\'ll send you a one-time code.'
               : 'Enter the OTP and choose a strong new password.'}
@@ -123,23 +135,36 @@ export default function ForgotPasswordScreen() {
         </LinearGradient>
 
         {/* Card */}
-        <View style={styles.card}>
+        <View
+          style={[
+            styles.card,
+            {
+              marginHorizontal: metrics.cardMarginHorizontal,
+              padding: metrics.cardPadding,
+              borderRadius: metrics.cardRadius,
+              maxWidth: metrics.isTablet ? 600 : 680,
+              width: '100%',
+              alignSelf: 'center',
+            },
+          ]}
+        >
           {/* Identifier field — always visible */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Email or Phone</Text>
-            <View style={[styles.inputRow, errors.identifier ? styles.inputError : null]}>
-              <Ionicons name="at-outline" size={18} color="#94a3b8" style={styles.icon} />
-              <Input
+          <View style={[styles.fieldGroup, { marginBottom: metrics.fieldGroupMarginBottom }]}>
+            <Text style={[styles.label, { fontSize: metrics.labelSize }]}>Email or Phone</Text>
+            <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.identifier ? styles.inputError : null]}>
+              <Ionicons name="at-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
+              <TextInput
                 autoCapitalize="none"
                 keyboardType="email-address"
                 onChangeText={setField('identifier', setIdentifier)}
-                placeholder="you@example.com or +923001234567"
+                placeholderTextColor="#94a3b8"
+                placeholder="Email or phone"
                 value={identifier}
                 editable={step === 'request'}
-                style={[styles.bare, step === 'reset' && styles.bareDisabled]}
+                style={[styles.bare, { fontSize: metrics.bareFontSize }, step === 'reset' && styles.bareDisabled]}
               />
               {step === 'reset' && (
-                <Ionicons name="checkmark-circle" size={18} color="#10b981" />
+                <Ionicons name="checkmark-circle" size={metrics.iconSize} color="#10b981" />
               )}
             </View>
             {errors.identifier ? <Text style={styles.errTxt}>{errors.identifier}</Text> : null}
@@ -149,8 +174,8 @@ export default function ForgotPasswordScreen() {
             <>
               <Button label="Send OTP" loading={isSubmitting} onPress={handleRequest} />
               <View style={styles.infoBox}>
-                <Ionicons name="information-circle-outline" size={16} color="#0369a1" />
-                <Text style={styles.infoTxt}>
+                <Ionicons name="information-circle-outline" size={metrics.isCompact ? 15 : 16} color={AUTH_THEME.primary} />
+                <Text style={[styles.infoTxt, { fontSize: metrics.helperTextSize, lineHeight: metrics.helperLineHeight }]}>
                   For security, the response is the same whether the account exists or not.
                 </Text>
               </View>
@@ -158,38 +183,40 @@ export default function ForgotPasswordScreen() {
           ) : (
             <>
               {/* OTP */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>Verification Code</Text>
-                <View style={[styles.inputRow, errors.otp ? styles.inputError : null]}>
-                  <Ionicons name="keypad-outline" size={18} color="#94a3b8" style={styles.icon} />
-                  <Input
+              <View style={[styles.fieldGroup, { marginBottom: metrics.fieldGroupMarginBottom }]}>
+                <Text style={[styles.label, { fontSize: metrics.labelSize }]}>Verification Code</Text>
+                <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.otp ? styles.inputError : null]}>
+                  <Ionicons name="keypad-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
+                  <TextInput
                     keyboardType="number-pad"
                     maxLength={6}
                     onChangeText={setField('otp', setOtp)}
-                    placeholder="1 2 3 4 5 6"
+                    placeholderTextColor="#94a3b8"
+                    placeholder="OTP code"
                     value={otp}
-                    style={[styles.bare, styles.otpInput]}
+                    style={[styles.bare, styles.otpInput, { fontSize: metrics.otpFontSize, letterSpacing: metrics.otpLetterSpacing }]}
                   />
                 </View>
                 {errors.otp ? <Text style={styles.errTxt}>{errors.otp}</Text> : null}
               </View>
 
               {/* New Password */}
-              <View style={styles.fieldGroup}>
-                <Text style={styles.label}>New Password</Text>
-                <View style={[styles.inputRow, errors.newPassword ? styles.inputError : null]}>
-                  <Ionicons name="lock-closed-outline" size={18} color="#94a3b8" style={styles.icon} />
-                  <Input
+              <View style={[styles.fieldGroup, { marginBottom: metrics.fieldGroupMarginBottom }]}>
+                <Text style={[styles.label, { fontSize: metrics.labelSize }]}>New Password</Text>
+                <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.newPassword ? styles.inputError : null]}>
+                  <Ionicons name="lock-closed-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
+                  <TextInput
                     onChangeText={setField('newPassword', setNewPassword)}
-                    placeholder="8+ chars, upper, lower, number, symbol"
+                    placeholderTextColor="#94a3b8"
+                    placeholder="New password"
                     secureTextEntry={!showPassword}
                     value={newPassword}
-                    style={styles.bare}
+                    style={[styles.bare, { fontSize: metrics.bareFontSize }]}
                   />
-                  <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={styles.eyeBtn}>
+                  <TouchableOpacity onPress={() => setShowPassword((v) => !v)} style={[styles.eyeBtn, { padding: metrics.eyePadding }]}>
                     <Ionicons
                       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
+                      size={metrics.isCompact ? 18 : 20}
                       color="#64748b"
                     />
                   </TouchableOpacity>
@@ -197,18 +224,20 @@ export default function ForgotPasswordScreen() {
                 {errors.newPassword ? <Text style={styles.errTxt}>{errors.newPassword}</Text> : null}
               </View>
 
-              <Button label="Reset Password" loading={isSubmitting} onPress={handleReset} />
+              <View style={[styles.actionStack, { gap: metrics.isCompact ? 12 : 16 }]}>
+                <Button label="Reset Password" loading={isSubmitting} onPress={handleReset} />
 
-              <Pressable onPress={() => { setStep('request'); setOtp(''); setErrors({}); }} style={styles.backWrap}>
-                <Ionicons name="arrow-back-outline" size={14} color="#0369a1" />
-                <Text style={styles.backTxt}>Back — Request a new OTP</Text>
-              </Pressable>
+                <Pressable onPress={() => { setStep('request'); setOtp(''); setErrors({}); }} style={styles.backWrap}>
+                  <Ionicons name="arrow-back-outline" size={14} color={AUTH_THEME.primary} />
+                  <Text style={[styles.backTxt, { fontSize: metrics.footerTextSize }]}>Back — Request a new OTP</Text>
+                </Pressable>
+              </View>
             </>
           )}
         </View>
 
-        <Pressable onPress={() => router.replace('/login')} style={styles.footerWrap}>
-          <Text style={styles.footer}>
+        <Pressable onPress={() => router.replace('/login')} style={[styles.footerWrap, { marginTop: metrics.footerTopMargin }]}>
+          <Text style={[styles.footer, { fontSize: metrics.footerTextSize }]}>
             Remember it?{' '}
             <Text style={styles.footerAccent}>Log in</Text>
           </Text>
@@ -219,13 +248,10 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#f0f9ff' },
+  flex: { flex: 1, backgroundColor: '#f0fdfa' },
   container: { flexGrow: 1, paddingBottom: 40 },
   hero: {
     alignItems: 'center',
-    paddingTop: 64,
-    paddingBottom: 48,
-    paddingHorizontal: 24,
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
@@ -238,18 +264,13 @@ const styles = StyleSheet.create({
   heroTitle: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
   heroSub: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
     lineHeight: 20,
     textAlign: 'center',
-    maxWidth: 280,
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 24,
-    marginHorizontal: 20,
     marginTop: -24,
-    padding: 24,
-    shadowColor: '#0369a1',
+    shadowColor: AUTH_THEME.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 24,
@@ -275,8 +296,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 0,
     padding: 0,
-    fontSize: 15,
     color: '#1e293b',
+    height: '100%',
   },
   bareDisabled: { color: '#64748b' },
   eyeBtn: { padding: 4 },
@@ -286,21 +307,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 8,
-    backgroundColor: '#f0f9ff',
+    backgroundColor: '#f0fdfa',
     borderRadius: 12,
     padding: 12,
     marginTop: 8,
   },
-  infoTxt: { flex: 1, color: '#0369a1', fontSize: 12, lineHeight: 18 },
+  infoTxt: { flex: 1, color: AUTH_THEME.primaryDark, fontSize: 12, lineHeight: 18 },
+  actionStack: {
+    marginTop: 4,
+  },
   backWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
+    paddingVertical: 12,
   },
-  backTxt: { color: '#0369a1', fontSize: 13, fontWeight: '600' },
+  backTxt: { color: AUTH_THEME.primary, fontSize: 13, fontWeight: '600' },
   footerWrap: { marginTop: 24, alignItems: 'center' },
   footer: { color: '#64748b', fontSize: 14 },
-  footerAccent: { color: '#0369a1', fontWeight: '700' },
+  footerAccent: { color: AUTH_THEME.primary, fontWeight: '700' },
 });

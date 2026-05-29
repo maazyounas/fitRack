@@ -7,9 +7,11 @@ import { ProgressTrendPoint } from '@/types/progress';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function WeightChart({ title, points }: { title: string; points: ProgressTrendPoint[] }) {
+  const compact = SCREEN_WIDTH < 380;
+
   if (!points || points.length === 0) {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, compact ? styles.cardCompact : null]}>
         <View style={styles.emptyContainer}>
           <Ionicons name="scale-outline" size={40} color="#cbd5e1" />
           <Text style={styles.emptyTitle}>No weight data</Text>
@@ -37,7 +39,7 @@ export function WeightChart({ title, points }: { title: string; points: Progress
   const goalProgress = lastWeight && weightGoal ? ((lastWeight - firstWeight) / (weightGoal - firstWeight)) * 100 : 0;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, compact ? styles.cardCompact : null]}>
       <LinearGradient colors={['#f8fafc', '#ffffff']} style={styles.gradient} />
       
       <View style={styles.header}>
@@ -50,7 +52,7 @@ export function WeightChart({ title, points }: { title: string; points: Progress
         </View>
       </View>
 
-      <View style={styles.statsRow}>
+      <View style={[styles.statsRow, compact ? styles.statsRowCompact : null]}>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Current Weight</Text>
           <Text style={styles.statValue}>
@@ -84,11 +86,11 @@ export function WeightChart({ title, points }: { title: string; points: Progress
         </View>
       )}
 
-      <View style={styles.chartContainer}>
+      <View style={[styles.chartContainer, compact ? styles.chartContainerCompact : null]}>
         <LineChart
           data={chartData}
-          width={SCREEN_WIDTH - 80}
-          height={200}
+          width={compact ? SCREEN_WIDTH - 56 : SCREEN_WIDTH - 80}
+          height={compact ? 180 : 200}
           color="#0d9488"
           thickness={2.5}
           dataPointsColor="#0d9488"
@@ -150,6 +152,11 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden',
   },
+  cardCompact: {
+    marginHorizontal: 0,
+    padding: 16,
+    borderRadius: 20,
+  },
   gradient: {
     position: 'absolute',
     top: 0,
@@ -191,6 +198,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     marginBottom: 20,
+  },
+  statsRowCompact: {
+    flexWrap: 'wrap',
   },
   statCard: {
     flex: 1,
@@ -251,6 +261,9 @@ const styles = StyleSheet.create({
   chartContainer: {
     marginLeft: -10,
     marginBottom: 16,
+  },
+  chartContainerCompact: {
+    marginLeft: -6,
   },
   axisText: {
     color: '#94a3b8',

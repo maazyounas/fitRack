@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ScrollView,
   View,
@@ -10,17 +10,18 @@ import {
   Alert,
   Modal,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { WorkoutExercise, WorkoutPlan } from '@/types/workout';
 import { useAppPalette } from '@/hooks/useAppPalette';
 import { useAuthStore } from '@/store/authStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { ExerciseTimer } from './ExerciseTimer';
 import { CompletionModal } from './CompletionModal';
 import { fetchExercises } from '@/services/api/exercise';
+import { fetchWorkoutPlan } from '@/services/api/workout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -40,20 +41,61 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
   const [showCompletion, setShowCompletion] = useState(false);
   const [showTimer, setShowTimer] = useState(false);
   const [exerciseVideos, setExerciseVideos] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [restTimeRemaining, setRestTimeRemaining] = useState(0);
+  const [loadedWorkout, setLoadedWorkout] = useState<ReturnType<typeof useWorkoutStore.getState>['plans'][number] | null>(null);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [isCompleting, setIsCompleting] = useState(false);
 
-  const workout = plans.find((p) => p.id === workoutId);
-  const currentExercise = workout?.exercises[currentExerciseIndex];
+  const workout = plans.find((p) => p.id === workoutId) ?? loadedWorkout;
+  const exercises = useMemo(() => workout?.exercises ?? [], [workout?.exercises]);
+  const currentExercise = exercises[currentExerciseIndex];
+  const completedExerciseCount = useMemo(() => new Set(completedExercises).size, [completedExercises]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadWorkout = async () => {
+      if (!accessToken) {
+        setIsHydrating(false);
+        return;
+      }
+
+      const cachedWorkout = plans.find((plan) => plan.id === workoutId);
+      if (cachedWorkout) {
+        setLoadedWorkout(cachedWorkout);
+        setIsHydrating(false);
+        return;
+      }
+
+      try {
+        const response = await fetchWorkoutPlan(accessToken, workoutId);
+        if (!cancelled) {
+          setLoadedWorkout(response.workout);
+        }
+      } catch (error) {
+        console.error('Failed to load workout:', error);
+      } finally {
+        if (!cancelled) {
+          setIsHydrating(false);
+        }
+      }
+    };
+
+    setIsHydrating(true);
+    void loadWorkout();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, plans, workoutId]);
 
   useEffect(() => {
     const loadExerciseVideos = async () => {
-      if (!accessToken || !workout?.exercises.length) return;
+      if (!accessToken || !exercises.length) return;
 
       try {
-        const exerciseNames = [...new Set(workout.exercises.map((ex) => ex.name))];
+        const exerciseNames = [...new Set(exercises.map((ex) => ex.name))];
         const data = await fetchExercises(accessToken, {
-          search: exerciseNames[0],
+          search: exerciseNames.join(' '),
         });
 
         const videos: Record<string, string> = {};
@@ -74,25 +116,57 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
     };
 
     void loadExerciseVideos();
-  }, [workout?.exercises, accessToken]);
+  }, [exercises, accessToken]);
 
   const duration = Math.round((Date.now() - startTime) / 60000);
-  const progress = completedExercises.length / (workout?.exercises.length || 1);
+  const progress = completedExerciseCount / (exercises.length || 1);
+
+  const markCurrentExerciseCompleted = () => {
+    setCompletedExercises((previousCompleted) => {
+      if (previousCompleted.includes(currentExerciseIndex)) {
+        return previousCompleted;
+      }
+
+      return [...previousCompleted, currentExerciseIndex];
+    });
+  };
+
+  const jumpToExercise = (index: number) => {
+    setCurrentExerciseIndex(index);
+    setShowTimer(false);
+  };
 
   const handleExerciseComplete = () => {
-    if (currentExerciseIndex < (workout?.exercises.length || 0) - 1) {
-      setCompletedExercises([...completedExercises, currentExerciseIndex]);
-      setCurrentExerciseIndex(currentExerciseIndex + 1);
-      setShowTimer(false);
-    } else {
-      handleWorkoutComplete();
+    const nextIndex = currentExerciseIndex + 1;
+    markCurrentExerciseCompleted();
+    setShowTimer(false);
+
+    if (nextIndex >= exercises.length) {
+      void handleWorkoutComplete();
+      return;
     }
+
+    setCurrentExerciseIndex(nextIndex);
+  };
+
+  const advanceToNextExercise = () => {
+    const nextIndex = currentExerciseIndex + 1;
+    markCurrentExerciseCompleted();
+    setShowTimer(false);
+
+    if (nextIndex >= exercises.length) {
+      void handleWorkoutComplete();
+      return;
+    }
+
+    setCurrentExerciseIndex(nextIndex);
   };
 
   const handleWorkoutComplete = async () => {
-    if (!workout) return;
+    if (!workout || isCompleting) return;
 
-    setIsLoading(true);
+    setIsCompleting(true);
+    setShowTimer(false);
     try {
       const scheduleEntry = workout.schedule.find((entry) => {
         const entryDate = new Date(entry.scheduledDate);
@@ -102,31 +176,30 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
         );
       });
 
-      if (scheduleEntry?.['_id']) {
-        await markCompleted(workout.id, scheduleEntry['_id']);
-      }
+      await markCompleted(workout.id, scheduleEntry?.['_id']);
 
       setShowCompletion(true);
     } catch (error) {
       Alert.alert('Error', 'Failed to complete workout');
       console.error(error);
     } finally {
-      setIsLoading(false);
+      setIsCompleting(false);
     }
   };
 
   const handleSkipExercise = () => {
+    if (Platform.OS === 'web') {
+      const confirmed = globalThis.confirm?.('Skip this exercise?');
+      if (!confirmed) return;
+      advanceToNextExercise();
+      return;
+    }
+
     Alert.alert('Skip Exercise?', 'Are you sure you want to skip this exercise?', [
       { text: 'No', style: 'cancel' },
       {
         text: 'Yes',
-        onPress: () => {
-          if (currentExerciseIndex < (workout?.exercises.length || 0) - 1) {
-            setCurrentExerciseIndex(currentExerciseIndex + 1);
-          } else {
-            handleWorkoutComplete();
-          }
-        },
+        onPress: advanceToNextExercise,
       },
     ]);
   };
@@ -142,7 +215,7 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
     ]);
   };
 
-  if (!workout || !currentExercise) {
+  if (isHydrating || !workout || !currentExercise) {
     return (
       <View style={[styles.centerContainer, { backgroundColor: palette.background }]}>
         <ActivityIndicator size="large" color="#0d9488" />
@@ -173,7 +246,7 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
             <View style={styles.metaPill}>
               <Ionicons name="repeat-outline" size={12} color="#5eead4" />
               <Text style={styles.headerMetaText}>
-                {currentExerciseIndex + 1} / {workout.exercises.length}
+                {currentExerciseIndex + 1} / {exercises.length}
               </Text>
             </View>
           </View>
@@ -194,6 +267,58 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={[styles.sequenceCard, { backgroundColor: palette.card }]}> 
+          <View style={styles.sequenceHeader}>
+            <View>
+              <Text style={[styles.sequenceTitle, { color: palette.text }]}>Exercise Sequence</Text>
+              <Text style={[styles.sequenceSubtitle, { color: palette.mutedText }]}>Tap any exercise to jump to it</Text>
+            </View>
+            <View style={styles.sequenceBadge}>
+              <Ionicons name="list-outline" size={14} color="#0d9488" />
+              <Text style={styles.sequenceBadgeText}>{exercises.length} total</Text>
+            </View>
+          </View>
+
+          <View style={styles.sequenceList}>
+            {exercises.map((exercise, index) => {
+              const isCurrent = index === currentExerciseIndex;
+              const isCompleted = completedExercises.includes(index);
+
+              return (
+                <Pressable
+                  key={exercise._id ?? `${exercise.name}-${index}`}
+                  onPress={() => jumpToExercise(index)}
+                  style={[
+                    styles.sequenceItem,
+                    {
+                      backgroundColor: isCurrent ? '#0d94881a' : palette.background,
+                      borderColor: isCurrent ? '#0d9488' : '#e2e8f0',
+                    },
+                  ]}
+                >
+                  <View style={[styles.sequenceIndex, { backgroundColor: isCompleted ? '#dcfce7' : '#f1f5f9' }]}>
+                    <Text style={[styles.sequenceIndexText, { color: isCompleted ? '#16a34a' : '#475569' }]}>
+                      {index + 1}
+                    </Text>
+                  </View>
+                  <View style={styles.sequenceCopy}>
+                    <Text style={[styles.sequenceName, { color: palette.text }]} numberOfLines={1}>
+                      {exercise.name}
+                    </Text>
+                    <Text style={[styles.sequenceMeta, { color: palette.mutedText }]}>
+                      {exercise.sets} sets • {exercise.reps} reps • {exercise.restSeconds}s rest
+                    </Text>
+                  </View>
+                  <View style={styles.sequenceFlags}>
+                    {isCurrent && <Text style={styles.sequenceCurrentFlag}>Active</Text>}
+                    {isCompleted && <Ionicons name="checkmark-circle" size={18} color="#16a34a" />}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Exercise Card */}
         <View style={[styles.exerciseCard, { backgroundColor: palette.card }]}>
           {/* Video Thumbnail */}
@@ -305,6 +430,11 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
         streak={workoutStreak}
         onClose={() => {
           setShowCompletion(false);
+          if (Platform.OS === 'web') {
+            router.replace('/workouts');
+            return;
+          }
+
           router.back();
         }}
       />
@@ -321,9 +451,11 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
           <Text style={styles.footerButtonPrimaryText}>Rest</Text>
         </Pressable>
 
-        <Pressable style={styles.footerButtonSuccess} onPress={handleExerciseComplete}>
+        <Pressable style={styles.footerButtonSuccess} onPress={handleExerciseComplete} disabled={isCompleting}>
           <Ionicons name="checkmark" size={20} color="#ffffff" />
-          <Text style={styles.footerButtonPrimaryText}>Complete</Text>
+          <Text style={styles.footerButtonPrimaryText}>
+            {currentExerciseIndex >= exercises.length - 1 ? 'Finish' : 'Complete'}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -425,6 +557,93 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingVertical: 16,
+  },
+  sequenceCard: {
+    marginBottom: 16,
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  sequenceHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 12,
+  },
+  sequenceTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  sequenceSubtitle: {
+    marginTop: 4,
+    fontSize: 12,
+  },
+  sequenceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#f0fdfa',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  sequenceBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0d9488',
+  },
+  sequenceList: {
+    gap: 10,
+  },
+  sequenceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderRadius: 16,
+  },
+  sequenceIndex: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sequenceIndexText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  sequenceCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  sequenceName: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  sequenceMeta: {
+    fontSize: 12,
+  },
+  sequenceFlags: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minWidth: 54,
+  },
+  sequenceCurrentFlag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0d9488',
+    textTransform: 'uppercase',
   },
   exerciseCard: {
     borderRadius: 24,

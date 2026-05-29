@@ -26,7 +26,7 @@ beforeEach(async () => {
   await request(app).post(`${AUTH}/register`).send(TEST_USER);
   const res = await request(app)
     .post(`${AUTH}/login`)
-    .send({ email: TEST_USER.email, password: TEST_USER.password });
+    .send({ identifier: TEST_USER.email, password: TEST_USER.password });
   accessToken = res.body.accessToken;
 });
 

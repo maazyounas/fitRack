@@ -227,7 +227,6 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             />
           )}
           contentContainerStyle={styles.listContent}
-          scrollEnabled={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#0d9488" />}
           ListEmptyComponent={
             <View style={styles.emptyState}>

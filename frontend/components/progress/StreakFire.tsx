@@ -17,9 +17,10 @@ interface StreakFireProps {
   streak: number;
   showConfetti?: boolean;
   onPress?: () => void;
+  fullWidth?: boolean;
 }
 
-export function StreakFire({ streak, showConfetti = false, onPress }: StreakFireProps) {
+export function StreakFire({ streak, showConfetti = false, onPress, fullWidth = false }: StreakFireProps) {
   const scale = useSharedValue(1);
   const rotate = useSharedValue(0);
   const glowOpacity = useSharedValue(0.3);
@@ -111,6 +112,7 @@ export function StreakFire({ streak, showConfetti = false, onPress }: StreakFire
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [
       styles.container,
+      fullWidth && styles.containerFull,
       pressed && styles.containerPressed
     ]}>
       <LinearGradient
@@ -200,6 +202,9 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     position: 'relative',
+  },
+  containerFull: {
+    marginHorizontal: 0,
   },
   containerPressed: {
     opacity: 0.9,

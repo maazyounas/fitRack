@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { create } from 'zustand';
 import {
   deleteStoredImages,
@@ -19,6 +20,7 @@ import {
   verifyRegistrationOtp,
 } from '@/services/api/auth';
 import { SESSION_TIMEOUT_MS, SESSION_WARNING_MS } from '@/constants/config';
+import { API_BASE_URL } from '@/constants/config';
 import { getSecureItem, removeSecureItem, setSecureItem } from '@/services/storage/secureStore';
 import {
   AuthTokens,
@@ -45,7 +47,7 @@ type AuthState = {
   /** True when the session is <SESSION_WARNING_MS away from expiring */
   sessionWarning: boolean;
   initialize: () => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<{ message: string; user: User }>;
+  register: (payload: RegisterPayload) => Promise<{ message: string; debugOtp?: { email?: string; phone?: string } }>;
   verifyOtp: (payload: {
     identifier: string;
     otp: string;
@@ -62,6 +64,8 @@ type AuthState = {
   updatePreferences: (payload: UpdatePreferencesPayload) => Promise<void>;
   updateFitnessGoals: (payload: Partial<FitnessGoals>) => Promise<void>;
   uploadProfilePicture: (imageUri: string) => Promise<void>;
+  uploadProgress: number | null;
+  setUploadProgress: (p: number | null) => void;
   deactivateAccount: () => Promise<void>;
   deleteAccount: (confirmation: string) => Promise<void>;
   loadImageConsent: () => Promise<void>;
@@ -93,6 +97,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   lastActivityAt: Date.now(),
   rememberMe: true,
   sessionWarning: false,
+  uploadProgress: null,
 
   initialize: async () => {
     try {
@@ -333,27 +338,65 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const tokens = get().tokens;
     if (!tokens) throw new Error('You need to log in first.');
 
-    set({ isLoading: true });
+    set({ isLoading: true, uploadProgress: 0 });
     try {
       const formData = new FormData();
-      // Adjust file name and type as needed based on the URI if possible.
-      // For expo-image-picker, we can just append it:
       const match = /\.(\w+)$/.exec(imageUri);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-      formData.append('image', {
-        uri: imageUri,
-        name: `profile.${match ? match[1] : 'jpg'}`,
-        type,
-      } as any);
+      if (Platform.OS === 'web') {
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+        formData.append('image', blob, `profile.${match ? match[1] : 'jpg'}`);
+      } else {
+        formData.append('image', {
+          uri: imageUri,
+          name: `profile.${match ? match[1] : 'jpg'}`,
+          type,
+        } as any);
+      }
 
-      const response = await uploadProfilePictureApi(tokens.accessToken, formData);
+      let response;
+      if (Platform.OS === 'web') {
+        // Browser: use fetch (no reliable progress from fetch), show indeterminate state
+        const uploadResponse = await fetch(`${API_BASE_URL}/users/profile/picture`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${tokens.accessToken}`,
+          },
+          body: formData,
+        });
+
+        const payload = await uploadResponse.json().catch(() => null);
+        if (!uploadResponse.ok) {
+          throw new Error(payload?.message ?? 'Could not upload picture.');
+        }
+
+        response = payload as { message: string; profilePictureUrl: string; user: User };
+      } else {
+        // Native: use axios client to track upload progress
+        const { apiClient } = require('@/services/api/client');
+        const uploadResp = await apiClient.post('/users/profile/picture', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (ev: { loaded: number; total?: number }) => {
+            try {
+              const total = ev.total ?? 0;
+              if (!total) {
+                set({ uploadProgress: 0 });
+              } else {
+                set({ uploadProgress: Math.min(1, ev.loaded / total) });
+              }
+            } catch (e) {}
+          },
+        });
+        response = uploadResp.data as { message: string; profilePictureUrl: string; user: User };
+      }
       if (get().rememberMe) {
         await persistSession({ user: response.user, tokens });
       }
       set({ user: response.user, lastActivityAt: Date.now() });
     } finally {
-      set({ isLoading: false });
+      set({ isLoading: false, uploadProgress: null });
     }
   },
 

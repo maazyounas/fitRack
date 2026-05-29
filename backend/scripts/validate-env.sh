@@ -41,6 +41,11 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   exit 1
 fi
 
+if [[ -z "${GEMINI_API_KEY:-}" && -z "${OPENAI_API_KEY:-}" ]]; then
+  echo "❌  Set either GEMINI_API_KEY or OPENAI_API_KEY so the AI coach can use a real provider."
+  exit 1
+fi
+
 # Validate FIELD_ENCRYPTION_KEY length (must be exactly 32 chars)
 KEY_LEN=${#FIELD_ENCRYPTION_KEY}
 if [[ $KEY_LEN -ne 32 ]]; then

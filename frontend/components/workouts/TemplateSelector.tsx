@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WorkoutTemplate } from '@/types/workout';
@@ -6,10 +6,15 @@ import { WorkoutTemplate } from '@/types/workout';
 export function TemplateSelector({
   templates,
   onUseTemplate,
+  compact = false,
 }: {
   templates: WorkoutTemplate[];
   onUseTemplate: (template: WorkoutTemplate) => void;
+  compact?: boolean;
 }) {
+  const { width } = useWindowDimensions();
+  const isCompact = compact || width < 380;
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'beginner': return ['#10b981', '#059669'];
@@ -29,9 +34,13 @@ export function TemplateSelector({
   };
 
   return (
-    <View style={styles.wrapper}>
-      <Text style={styles.sectionTitle}>Popular Templates</Text>
-      <Text style={styles.sectionSubtitle}>Choose a template to get started quickly</Text>
+    <View style={[styles.wrapper, isCompact ? styles.wrapperCompact : null]}>
+      <Text style={[styles.sectionTitle, isCompact ? styles.sectionTitleCompact : null]}>
+        Popular Templates
+      </Text>
+      <Text style={[styles.sectionSubtitle, isCompact ? styles.sectionSubtitleCompact : null]}>
+        Choose a template to get started quickly
+      </Text>
       
       {templates.map((template) => {
         const colors = getDifficultyColor(template.difficulty);
@@ -41,10 +50,7 @@ export function TemplateSelector({
           <Pressable
             key={template.id}
             onPress={() => onUseTemplate(template)}
-            style={({ pressed }) => [
-              styles.card,
-              pressed && styles.cardPressed,
-            ]}>
+              style={({ pressed }) => [styles.card, isCompact ? styles.cardCompact : null, pressed && styles.cardPressed]}>
             <LinearGradient
               colors={colors}
               style={styles.cardGradient}
@@ -52,10 +58,10 @@ export function TemplateSelector({
               end={{ x: 1, y: 1 }}
             />
             
-            <View style={styles.cardContent}>
+              <View style={[styles.cardContent, isCompact ? styles.cardContentCompact : null]}>
               <View style={styles.header}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name={icon} size={24} color="#ffffff" />
+                <View style={[styles.iconContainer, isCompact ? styles.iconContainerCompact : null]}>
+                  <Ionicons name={icon} size={isCompact ? 22 : 24} color="#ffffff" />
                 </View>
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>
@@ -64,12 +70,12 @@ export function TemplateSelector({
                 </View>
               </View>
               
-              <Text style={styles.title}>{template.name}</Text>
-              <Text style={styles.description} numberOfLines={2}>
+              <Text style={[styles.title, isCompact ? styles.titleCompact : null]}>{template.name}</Text>
+              <Text style={[styles.description, isCompact ? styles.descriptionCompact : null]} numberOfLines={3}>
                 {template.description}
               </Text>
               
-              <View style={styles.footer}>
+              <View style={[styles.footer, isCompact ? styles.footerCompact : null]}>
                 <View style={styles.metaItem}>
                   <Ionicons name="repeat-outline" size={14} color="rgba(255,255,255,0.7)" />
                   <Text style={styles.metaText}>
@@ -84,7 +90,7 @@ export function TemplateSelector({
                 </View>
               </View>
               
-              <View style={styles.useButton}>
+              <View style={[styles.useButton, isCompact ? styles.useButtonCompact : null]}>
                 <Text style={styles.useButtonText}>Use Template</Text>
                 <Ionicons name="arrow-forward" size={16} color="#ffffff" />
               </View>
@@ -102,6 +108,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
+  wrapperCompact: {
+    paddingHorizontal: 0,
+    paddingVertical: 4,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -115,6 +125,12 @@ const styles = StyleSheet.create({
     color: '#64748b',
     marginBottom: 8,
   },
+  sectionTitleCompact: {
+    fontSize: 17,
+  },
+  sectionSubtitleCompact: {
+    lineHeight: 19,
+  },
   card: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -127,6 +143,9 @@ const styles = StyleSheet.create({
   cardPressed: {
     transform: [{ scale: 0.98 }],
   },
+  cardCompact: {
+    borderRadius: 18,
+  },
   cardGradient: {
     position: 'absolute',
     top: 0,
@@ -136,6 +155,9 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     padding: 18,
+  },
+  cardContentCompact: {
+    padding: 16,
   },
   header: {
     flexDirection: 'row',
@@ -150,6 +172,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  iconContainerCompact: {
+    width: 44,
+    height: 44,
   },
   badge: {
     backgroundColor: 'rgba(255,255,255,0.25)',
@@ -170,6 +196,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     letterSpacing: -0.3,
   },
+  titleCompact: {
+    fontSize: 17,
+  },
   description: {
     color: 'rgba(255,255,255,0.85)',
     fontSize: 13,
@@ -177,10 +206,18 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 14,
   },
+  descriptionCompact: {
+    lineHeight: 17,
+    marginBottom: 12,
+  },
   footer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 16,
     marginBottom: 14,
+  },
+  footerCompact: {
+    gap: 10,
   },
   metaItem: {
     flexDirection: 'row',
@@ -200,6 +237,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     paddingVertical: 10,
     borderRadius: 14,
+  },
+  useButtonCompact: {
+    paddingVertical: 9,
   },
   useButtonText: {
     color: '#ffffff',

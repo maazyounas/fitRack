@@ -16,14 +16,15 @@ import {
   registerRateLimit,
   resendOtpRateLimit,
 } from '../middleware/rateLimit';
+import { asyncHandler } from '../utils/asyncHandler';
 
 export const authRoutes = Router();
 
-authRoutes.post('/register', registerRateLimit, register);
-authRoutes.post('/verify', otpRateLimit, verifyRegistrationOtp);
-authRoutes.post('/resend-otp', resendOtpRateLimit, resendOtp);
-authRoutes.post('/login', loginRateLimit, login);
-authRoutes.post('/refresh', refreshSession);
-authRoutes.post('/forgot-password', forgotPasswordRateLimit, requestPasswordReset);
-authRoutes.post('/reset-password', otpRateLimit, resetPassword);
-authRoutes.post('/logout', logout);
+authRoutes.post('/register', registerRateLimit, asyncHandler(register));
+authRoutes.post('/verify', otpRateLimit, asyncHandler(verifyRegistrationOtp));
+authRoutes.post('/resend-otp', resendOtpRateLimit, asyncHandler(resendOtp));
+authRoutes.post('/login', loginRateLimit, asyncHandler(login));
+authRoutes.post('/refresh', asyncHandler(refreshSession));
+authRoutes.post('/forgot-password', forgotPasswordRateLimit, asyncHandler(requestPasswordReset));
+authRoutes.post('/reset-password', otpRateLimit, asyncHandler(resetPassword));
+authRoutes.post('/logout', asyncHandler(logout));

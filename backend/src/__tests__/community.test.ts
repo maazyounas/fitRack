@@ -26,7 +26,7 @@ async function registerAndLogin(user: typeof USER_A) {
   await request(app).post(`${AUTH}/register`).send(user);
   const res = await request(app)
     .post(`${AUTH}/login`)
-    .send({ email: user.email, password: user.password });
+    .send({ identifier: user.email, password: user.password });
   return res.body.accessToken as string;
 }
 

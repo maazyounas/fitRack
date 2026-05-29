@@ -7,9 +7,11 @@ import { ProgressTrendPoint } from '@/types/progress';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export function BodyMeasurementChart({ title, points }: { title: string; points: ProgressTrendPoint[] }) {
+  const compact = SCREEN_WIDTH < 380;
+
   if (!points || points.length === 0) {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, compact ? styles.cardCompact : null]}>
         <View style={styles.emptyContainer}>
           <Ionicons name="analytics-outline" size={40} color="#cbd5e1" />
           <Text style={styles.emptyTitle}>No data yet</Text>
@@ -45,7 +47,7 @@ export function BodyMeasurementChart({ title, points }: { title: string; points:
   const muscleChange = latestMuscle && firstMuscle ? latestMuscle - firstMuscle : 0;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, compact ? styles.cardCompact : null]}>
       <LinearGradient
         colors={['#f8fafc', '#ffffff']}
         style={styles.gradient}
@@ -63,7 +65,7 @@ export function BodyMeasurementChart({ title, points }: { title: string; points:
         </View>
       </View>
 
-      <View style={styles.statsRow}>
+      <View style={[styles.statsRow, compact ? styles.statsRowCompact : null]}>
         <View style={styles.statCard}>
           <Text style={styles.statLabel}>Current Body Fat</Text>
           <Text style={styles.statValue}>
@@ -94,7 +96,7 @@ export function BodyMeasurementChart({ title, points }: { title: string; points:
         </View>
       </View>
 
-      <View style={styles.legend}>
+      <View style={[styles.legend, compact ? styles.legendCompact : null]}>
         <View style={styles.legendItem}>
           <View style={[styles.dot, { backgroundColor: '#f97316' }]} />
           <Text style={styles.legendText}>Body Fat %</Text>
@@ -105,12 +107,12 @@ export function BodyMeasurementChart({ title, points }: { title: string; points:
         </View>
       </View>
 
-      <View style={styles.chartContainer}>
+      <View style={[styles.chartContainer, compact ? styles.chartContainerCompact : null]}>
         <LineChart
           data={fatData}
           data2={muscleData}
-          width={SCREEN_WIDTH - 80}
-          height={200}
+          width={compact ? SCREEN_WIDTH - 56 : SCREEN_WIDTH - 80}
+          height={compact ? 180 : 200}
           color1="#f97316"
           color2="#0d9488"
           thickness={2.5}
@@ -167,6 +169,11 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden',
   },
+  cardCompact: {
+    marginHorizontal: 0,
+    padding: 16,
+    borderRadius: 20,
+  },
   gradient: {
     position: 'absolute',
     top: 0,
@@ -204,6 +211,9 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 20,
   },
+  statsRowCompact: {
+    flexWrap: 'wrap',
+  },
   statCard: {
     flex: 1,
     backgroundColor: '#f8fafc',
@@ -239,6 +249,10 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
   },
+  legendCompact: {
+    flexWrap: 'wrap',
+    gap: 10,
+  },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -256,6 +270,9 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     marginLeft: -10,
+  },
+  chartContainerCompact: {
+    marginLeft: -6,
   },
   axisText: {
     color: '#94a3b8',

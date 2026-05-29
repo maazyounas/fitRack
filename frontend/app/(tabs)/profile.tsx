@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -10,6 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import type { ComponentProps } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -56,6 +58,33 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ShortcutCard({
+  icon,
+  title,
+  description,
+  onPress,
+  tint = '#0d9488',
+}: {
+  icon: ComponentProps<typeof Ionicons>['name'];
+  title: string;
+  description: string;
+  onPress: () => void;
+  tint?: string;
+}) {
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.shortcutCard, pressed && { opacity: 0.85 }]}>
+      <View style={[styles.shortcutIcon, { backgroundColor: `${tint}18` }]}>
+        <Ionicons name={icon} size={18} color={tint} />
+      </View>
+      <View style={styles.shortcutTextWrap}>
+        <Text style={styles.shortcutTitle}>{title}</Text>
+        <Text style={styles.shortcutDesc}>{description}</Text>
+      </View>
+      <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
+    </Pressable>
+  );
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, updateProfile, isLoading, logout, touchActivity } = useAuthStore();
@@ -68,6 +97,19 @@ export default function ProfileScreen() {
   const [weightKg, setWeightKg] = useState(user?.profile.weightKg ? String(user.profile.weightKg) : '');
   const [profilePictureUrl, setProfilePictureUrl] = useState(user?.profile.profilePictureUrl ?? '');
   const [editing, setEditing] = useState(false);
+  const uploadProgress = useAuthStore((s) => s.uploadProgress);
+
+  useEffect(() => {
+    if (!editing) {
+      setName(user?.profile.name ?? '');
+      setAge(user?.profile.age ? String(user.profile.age) : '');
+      setGender(user?.profile.gender ?? 'male');
+      setHeightCm(user?.profile.heightCm ? String(user.profile.heightCm) : '');
+      setWeightKg(user?.profile.weightKg ? String(user.profile.weightKg) : '');
+    }
+
+    setProfilePictureUrl(user?.profile.profilePictureUrl ?? '');
+  }, [editing, user]);
 
   const h = Number(heightCm);
   const w = Number(weightKg);
@@ -150,6 +192,14 @@ export default function ProfileScreen() {
   };
 
   const firstName = user?.profile.name?.split(' ')[0] || 'Member';
+  const hiddenRoutes = [
+    { icon: 'settings-outline' as const, title: 'Settings', description: 'Notifications, reminders & preferences', route: '/settings' },
+    { icon: 'notifications-outline' as const, title: 'Notifications', description: 'View your alerts and updates', route: '/notifications' },
+    { icon: 'chatbubbles-outline' as const, title: 'AI Coach', description: 'Talk to your personalized coach', route: '/coach' },
+    { icon: 'compass-outline' as const, title: 'Explore', description: 'Discover workouts and content', route: '/explore' },
+    { icon: 'barbell-outline' as const, title: 'Exercises', description: 'Open the exercise library', route: '/exercises' },
+    ...(user?.isAdmin ? [{ icon: 'shield-checkmark-outline' as const, title: 'Admin', description: 'Manage users and content', route: '/admin', tint: '#0f766e' }] : []),
+  ];
 
   return (
     <View style={styles.page}>
@@ -170,6 +220,15 @@ export default function ProfileScreen() {
                   </LinearGradient>
                 )}
               </LinearGradient>
+              {uploadProgress !== null && (
+                <View style={styles.uploadOverlay} pointerEvents="none">
+                  {uploadProgress > 0 ? (
+                    <Text style={styles.uploadPercent}>{Math.round(uploadProgress * 100)}%</Text>
+                  ) : (
+                    <ActivityIndicator size="small" color="#fff" />
+                  )}
+                </View>
+              )}
               <View style={styles.cameraBtn}>
                 <Ionicons name="camera" size={12} color="#fff" />
               </View>
@@ -293,10 +352,25 @@ export default function ProfileScreen() {
           </View>
         </Animated.View>
 
+        {/* More */}
+        <Animated.View entering={FadeInDown.delay(180).springify()} style={styles.card}>
+          <SectionHeader icon="apps-outline" title="More" />
+          <View style={styles.shortcutList}>
+            {hiddenRoutes.map((item) => (
+              <ShortcutCard
+                key={item.route}
+                icon={item.icon}
+                title={item.title}
+                description={item.description}
+                tint={item.tint ?? '#0d9488'}
+                onPress={() => router.push(item.route as any)}
+              />
+            ))}
+          </View>
+        </Animated.View>
+
         {/* Actions Section */}
-        <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.actionsWrap}>
-          <Button label="Settings" onPress={() => router.push('/settings' as any)} tone="secondary" />
-          
+        <Animated.View entering={FadeInDown.delay(220).springify()} style={styles.actionsWrap}>
           <TouchableOpacity onPress={handleRetakeOnboarding} style={styles.retakeBtn}>
             <Ionicons name="refresh-outline" size={18} color="#0d9488" />
             <Text style={styles.retakeBtnText}>Re-take Body Assessment</Text>
@@ -374,6 +448,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     borderWidth: 2, 
     borderColor: '#0a0f1e' 
+  },
+  uploadOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadPercent: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   heroName: { 
     color: '#fff', 
@@ -630,6 +720,42 @@ const styles = StyleSheet.create({
     fontSize: 12, 
     fontWeight: '400',
     lineHeight: 16
+  },
+
+  shortcutList: {
+    gap: 10,
+  },
+  shortcutCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  shortcutIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shortcutTextWrap: {
+    flex: 1,
+  },
+  shortcutTitle: {
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  shortcutDesc: {
+    color: '#64748b',
+    fontSize: 12,
+    lineHeight: 16,
   },
 
   // Actions

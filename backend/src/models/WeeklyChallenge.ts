@@ -16,6 +16,7 @@ const weeklyChallengeSchema = new Schema(
     description: { type: String, required: true, trim: true },
     metricLabel: { type: String, required: true, trim: true },
     unitLabel: { type: String, required: true, trim: true },
+    targetValue: { type: Number, required: true, min: 1 },
     startDate: { type: Date, required: true, index: true },
     endDate: { type: Date, required: true, index: true },
     participants: { type: [participantSchema], default: [] },

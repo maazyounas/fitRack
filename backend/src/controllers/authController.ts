@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
+import { env } from '../config/env';
 import { OtpTokenModel } from '../models/OtpToken';
+import { PendingRegistrationModel } from '../models/PendingRegistration';
 import { SessionModel } from '../models/Session';
 import { UserModel } from '../models/User';
 import {
@@ -73,6 +75,19 @@ export async function register(req: Request, res: Response) {
     name?: string;
   };
 
+  // Debug logging: capture incoming register attempts (dev only)
+  try {
+    // eslint-disable-next-line no-console
+    console.log('Register attempt:', JSON.stringify({
+      ts: new Date().toISOString(),
+      ip: req.ip,
+      xForwardedFor: req.headers['x-forwarded-for'],
+      body: { email: email ?? null, phone: phone ?? null, name: name ?? null },
+    }));
+  } catch (e) {
+    // ignore logging failures
+  }
+
   if ((!email && !phone) || !password || !name) {
     throw new HttpError(400, 'Name, password, and either email or phone are required.');
   }
@@ -100,32 +115,70 @@ export async function register(req: Request, res: Response) {
     }
   }
 
-  const user = await UserModel.create({
-    emailEncrypted: email ? encryptValue(normalizeIdentifier(email)) : undefined,
-    emailHash,
-    phoneEncrypted: phone ? encryptValue(normalizeIdentifier(phone)) : undefined,
-    phoneHash,
-    passwordHash: await hashPassword(password),
-    isAdmin: false,
-    profile: {
-      name: name.trim(),
-      dailyCalories: calculateDailyCalories({}),
+  const pendingMatchFilters: Array<Record<string, string>> = [];
+  if (emailHash) pendingMatchFilters.push({ emailHash });
+  if (phoneHash) pendingMatchFilters.push({ phoneHash });
+
+  const pending = await PendingRegistrationModel.findOneAndUpdate(
+    pendingMatchFilters.length > 0 ? { $or: pendingMatchFilters } : {},
+    {
+      $set: {
+        emailEncrypted: email ? encryptValue(normalizeIdentifier(email)) : undefined,
+        emailHash,
+        phoneEncrypted: phone ? encryptValue(normalizeIdentifier(phone)) : undefined,
+        phoneHash,
+        passwordHash: await hashPassword(password),
+        name: name.trim(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
     },
-  });
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    }
+  );
+
+  const debugOtp: { email?: string; phone?: string } = {};
+
+  await OtpTokenModel.updateMany(
+    {
+      userId: pending.id,
+      purpose: { $in: ['verify-email', 'verify-phone'] },
+      consumedAt: { $exists: false },
+    },
+    { $set: { consumedAt: new Date() } }
+  );
 
   if (email) {
-    const otp = await createOtp(user.id, 'verify-email');
-    await sendOtpNotification(email, otp, 'verify-email');
+    const otp = await createOtp(pending.id, 'verify-email');
+    debugOtp.email = otp;
+    const emailOtpResult = await sendOtpNotification(email, otp, 'verify-email');
+    if (!emailOtpResult.success) {
+      if (env.nodeEnv === 'production') {
+        throw new HttpError(502, `Could not send email OTP: ${emailOtpResult.message}`);
+      }
+
+      console.warn('[AUTH] Email OTP delivery failed in development, continuing with debug OTP.', emailOtpResult.message);
+    }
   }
 
   if (phone) {
-    const otp = await createOtp(user.id, 'verify-phone');
-    await sendOtpNotification(phone, otp, 'verify-phone');
+    const otp = await createOtp(pending.id, 'verify-phone');
+    debugOtp.phone = otp;
+    const phoneOtpResult = await sendOtpNotification(phone, otp, 'verify-phone');
+    if (!phoneOtpResult.success) {
+      if (env.nodeEnv === 'production') {
+        throw new HttpError(502, `Could not send phone OTP: ${phoneOtpResult.message}`);
+      }
+
+      console.warn('[AUTH] Phone OTP delivery failed in development, continuing with debug OTP.', phoneOtpResult.message);
+    }
   }
 
   res.status(201).json({
-    message: 'Account created. Verify your email or phone with the OTP sent.',
-    user: buildUserResponse(user),
+    message: 'OTP sent. Verify your email or phone to complete registration.',
+    ...(env.nodeEnv !== 'production' ? { debugOtp } : {}),
   });
 }
 
@@ -141,6 +194,60 @@ export async function verifyRegistrationOtp(req: Request, res: Response) {
   }
 
   const identifierHash = hashIdentifier(identifier);
+  const pending = await PendingRegistrationModel.findOne(
+    purpose === 'verify-email' ? { emailHash: identifierHash } : { phoneHash: identifierHash }
+  );
+
+  if (pending) {
+    const record = await OtpTokenModel.findOne({
+      userId: pending.id,
+      purpose,
+      consumedAt: { $exists: false },
+    }).sort({ createdAt: -1 });
+
+    if (!record || isOtpExpired(record.expiresAt) || record.otpHash !== hashOtp(otp)) {
+      throw new HttpError(400, 'Invalid or expired OTP.');
+    }
+
+    const existingUserFilters: Array<Record<string, string>> = [];
+    if (pending.emailHash) existingUserFilters.push({ emailHash: pending.emailHash });
+    if (pending.phoneHash) existingUserFilters.push({ phoneHash: pending.phoneHash });
+
+    const existingUser = existingUserFilters.length
+      ? await UserModel.findOne({ $or: existingUserFilters })
+      : null;
+    if (existingUser) {
+      throw new HttpError(409, 'Account already exists for this email/phone.');
+    }
+
+    const user = await UserModel.create({
+      emailEncrypted: pending.emailEncrypted,
+      emailHash: pending.emailHash,
+      phoneEncrypted: pending.phoneEncrypted,
+      phoneHash: pending.phoneHash,
+      passwordHash: pending.passwordHash,
+      isAdmin: false,
+      profile: {
+        name: pending.name,
+        dailyCalories: calculateDailyCalories({}),
+      },
+      verification: {
+        emailVerified: purpose === 'verify-email',
+        phoneVerified: purpose === 'verify-phone',
+        verifiedAt: new Date(),
+      },
+    });
+
+    record.consumedAt = new Date();
+    await record.save();
+    await OtpTokenModel.deleteMany({ userId: pending.id });
+    await PendingRegistrationModel.findByIdAndDelete(pending.id);
+
+    res.json({ message: 'Verification successful. Account created.', user: buildUserResponse(user) });
+    return;
+  }
+
+  // Backward compatibility for already-created unverified users.
   const user = await UserModel.findOne(
     purpose === 'verify-email' ? { emailHash: identifierHash } : { phoneHash: identifierHash }
   );
@@ -189,6 +296,33 @@ export async function resendOtp(req: Request, res: Response) {
   }
 
   const identifierHash = hashIdentifier(identifier);
+  const pending = await PendingRegistrationModel.findOne(
+    purpose === 'verify-email' ? { emailHash: identifierHash } : { phoneHash: identifierHash }
+  );
+
+  if (pending) {
+    await OtpTokenModel.updateMany(
+      { userId: pending.id, purpose, consumedAt: { $exists: false } },
+      { $set: { consumedAt: new Date() } }
+    );
+
+    const otp = await createOtp(pending.id, purpose);
+    const otpResult = await sendOtpNotification(identifier, otp, purpose);
+    if (!otpResult.success) {
+      if (env.nodeEnv === 'production') {
+        throw new HttpError(502, `Could not resend OTP: ${otpResult.message}`);
+      }
+
+      console.warn('[AUTH] OTP resend failed in development, continuing with debug OTP.', otpResult.message);
+    }
+
+    res.json({
+      message: 'If the account exists and is unverified, a new OTP has been sent.',
+      ...(env.nodeEnv !== 'production' ? { debugOtp: otp } : {}),
+    });
+    return;
+  }
+
   const user = await UserModel.findOne(
     purpose === 'verify-email' ? { emailHash: identifierHash } : { phoneHash: identifierHash }
   );
@@ -215,9 +349,19 @@ export async function resendOtp(req: Request, res: Response) {
   );
 
   const otp = await createOtp(user.id, purpose);
-  await sendOtpNotification(identifier, otp, purpose);
+  const otpResult = await sendOtpNotification(identifier, otp, purpose);
+  if (!otpResult.success) {
+    if (env.nodeEnv === 'production') {
+      throw new HttpError(502, `Could not resend OTP: ${otpResult.message}`);
+    }
 
-  res.json({ message: 'If the account exists and is unverified, a new OTP has been sent.' });
+    console.warn('[AUTH] OTP resend failed in development, continuing with debug OTP.', otpResult.message);
+  }
+
+  res.json({
+    message: 'If the account exists and is unverified, a new OTP has been sent.',
+    ...(env.nodeEnv !== 'production' ? { debugOtp: otp } : {}),
+  });
 }
 
 export async function login(req: Request, res: Response) {
@@ -350,7 +494,10 @@ export async function requestPasswordReset(req: Request, res: Response) {
   }
 
   const otp = await createOtp(user.id, 'password-reset');
-  await sendOtpNotification(identifier, otp, 'password-reset');
+  const otpResult = await sendOtpNotification(identifier, otp, 'password-reset');
+  if (!otpResult.success) {
+    throw new HttpError(502, `Could not send password reset OTP: ${otpResult.message}`);
+  }
 
   res.json({ message: 'If the account exists, an OTP has been sent.' });
 }

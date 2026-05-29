@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -31,10 +31,16 @@ function createMessage(role: AiCoachMessage['role'], text: string, followUps?: s
 }
 
 export default function CoachScreen() {
-  const { user, tokens } = useAuthStore();
-  const workoutStore = useWorkoutStore();
-  const nutritionStore = useNutritionStore();
-  const progressStore = useProgressStore();
+  const user = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.tokens?.accessToken);
+  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const workoutPlans = useWorkoutStore((state) => state.plans);
+  const nutritionDailyReport = useNutritionStore((state) => state.dailyReport);
+  const nutritionGoals = useNutritionStore((state) => state.goals);
+  const progressSummary = useProgressStore((state) => state.summary);
+  const progressStreakDays = useProgressStore((state) => state.streakDays);
+  const progressEntries = useProgressStore((state) => state.entries);
+  const progressMonthlyTrend = useProgressStore((state) => state.monthlyTrend);
 
   const [summary, setSummary] = useState<AiCoachSummary | null>(null);
   const [messages, setMessages] = useState<AiCoachMessage[]>([]);
@@ -42,34 +48,34 @@ export default function CoachScreen() {
   const [isBooting, setIsBooting] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const bootedRef = useRef(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   const dataPoints = useMemo(
     () =>
       buildAiCoachDataPoints({
         user,
-        workouts: workoutStore.plans,
-        nutritionReport: nutritionStore.dailyReport,
-        nutritionGoals: nutritionStore.goals,
-        progressSummary: progressStore.summary,
-        streakDays: progressStore.streakDays,
-        progressEntries: progressStore.entries,
-        monthlyTrend: progressStore.monthlyTrend,
+        workouts: workoutPlans,
+        nutritionReport: nutritionDailyReport,
+        nutritionGoals,
+        progressSummary,
+        streakDays: progressStreakDays,
+        progressEntries,
+        monthlyTrend: progressMonthlyTrend,
       }),
     [
-      nutritionStore.dailyReport,
-      nutritionStore.goals,
-      progressStore.entries,
-      progressStore.monthlyTrend,
-      progressStore.streakDays,
-      progressStore.summary,
+      nutritionDailyReport,
+      nutritionGoals,
+      progressEntries,
+      progressMonthlyTrend,
+      progressStreakDays,
+      progressSummary,
       user,
-      workoutStore.plans,
+      workoutPlans,
     ]
   );
 
   const refreshCoach = useCallback(async (showErrors = false) => {
-    const accessToken = tokens?.accessToken;
-
     const applyLocalSummary = () => {
       const localSummary = generateAiCoachSummary(
         buildAiCoachDataPoints({
@@ -97,9 +103,9 @@ export default function CoachScreen() {
     try {
       if (accessToken) {
         await Promise.allSettled([
-          workoutStore.initialize(),
-          nutritionStore.initialize(),
-          progressStore.initialize(),
+          useWorkoutStore.getState().initialize(),
+          useNutritionStore.getState().initialize(),
+          useProgressStore.getState().initialize(),
         ]);
       }
 
@@ -127,9 +133,15 @@ export default function CoachScreen() {
         Alert.alert('Coach refresh failed', error instanceof Error ? error.message : 'Please try again.');
       }
     }
-  }, [nutritionStore, progressStore, tokens?.accessToken, workoutStore]);
+  }, [accessToken]);
 
   useEffect(() => {
+    if (!isHydrated || bootedRef.current) {
+      return;
+    }
+
+    bootedRef.current = true;
+
     async function load() {
       setIsBooting(true);
       await refreshCoach();
@@ -137,7 +149,19 @@ export default function CoachScreen() {
     }
 
     void load();
-  }, [refreshCoach]);
+  }, [isHydrated, refreshCoach]);
+
+  useEffect(() => {
+    if (!messages.length) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [messages.length]);
 
   async function handleRefresh() {
     setIsRefreshing(true);
@@ -151,19 +175,32 @@ export default function CoachScreen() {
       return;
     }
 
-    setMessages((current) => [...current, createMessage('user', nextMessage)]);
+    const fallbackSummary = summary ?? generateAiCoachSummary(dataPoints);
+    const optimisticCoachMessage = createMessage(
+      'coach',
+      generateAiCoachChat(nextMessage, dataPoints, fallbackSummary).reply,
+      generateAiCoachChat(nextMessage, dataPoints, fallbackSummary).followUps
+    );
+
+    setMessages((current) => [...current, createMessage('user', nextMessage), optimisticCoachMessage]);
     setInput('');
-    setIsSending(true);
 
     try {
-      const fallbackSummary = summary ?? generateAiCoachSummary(dataPoints);
-      const response = tokens?.accessToken
-        ? await sendAiCoachMessage(tokens.accessToken, nextMessage).catch(() =>
-            Promise.resolve(generateAiCoachChat(nextMessage, dataPoints, fallbackSummary))
-          )
-        : generateAiCoachChat(nextMessage, dataPoints, fallbackSummary);
+      setIsSending(true);
 
-      setMessages((current) => [...current, createMessage('coach', response.reply, response.followUps)]);
+      const response = tokens?.accessToken
+        ? await sendAiCoachMessage(tokens.accessToken, nextMessage).catch(() => null)
+        : null;
+
+      if (response?.reply) {
+        setMessages((current) =>
+          current.map((message) =>
+            message.id === optimisticCoachMessage.id
+              ? createMessage('coach', response.reply, response.followUps)
+              : message
+          )
+        );
+      }
     } catch (error) {
       Alert.alert('Message failed', error instanceof Error ? error.message : 'Please try again.');
     } finally {
@@ -195,6 +232,7 @@ export default function CoachScreen() {
 
   return (
     <ScrollView
+      ref={scrollRef}
       style={styles.screen}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} />}

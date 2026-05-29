@@ -39,6 +39,7 @@ async function ensureWeeklyChallenges() {
       description: 'Stack points by checking in after each workout session this week.',
       metricLabel: 'workout points',
       unitLabel: 'pts',
+      targetValue: 5,
       startDate: weekStart,
       endDate: weekEnd,
       participants: [],
@@ -48,11 +49,29 @@ async function ensureWeeklyChallenges() {
       description: 'Celebrate consistency by logging healthy habits and daily wins.',
       metricLabel: 'habit points',
       unitLabel: 'pts',
+      targetValue: 7,
       startDate: weekStart,
       endDate: weekEnd,
       participants: [],
     },
   ]);
+}
+
+function getChallengeTargetValue(challenge: any) {
+  const explicitTarget = Number(challenge.targetValue);
+  if (Number.isFinite(explicitTarget) && explicitTarget > 0) {
+    return explicitTarget;
+  }
+
+  const metricLabel = String(challenge.metricLabel ?? '').toLowerCase();
+  if (metricLabel.includes('workout')) {
+    return 5;
+  }
+  if (metricLabel.includes('habit')) {
+    return 7;
+  }
+
+  return 10;
 }
 
 async function getOrCreateSocialProfile(userId: string) {
@@ -168,6 +187,7 @@ function serializeChallenge(challenge: any, currentUserId: string, usersMap: Map
     description: challenge.description,
     metricLabel: challenge.metricLabel,
     unitLabel: challenge.unitLabel,
+    targetValue: getChallengeTargetValue(challenge),
     startDate: challenge.startDate,
     endDate: challenge.endDate,
     joined: Boolean(myEntry),

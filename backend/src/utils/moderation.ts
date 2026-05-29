@@ -1,5 +1,5 @@
-const badWords = require('bad-words');
-const Filter = badWords.Filter;
+const _badWords: any = require('bad-words');
+const Filter = _badWords?.Filter ?? _badWords?.default ?? _badWords;
 const filter = new Filter();
 
 export function cleanText(text: string): string {

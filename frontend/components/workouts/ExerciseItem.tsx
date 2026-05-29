@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Animated, PanResponder, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, PanResponder, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WorkoutExercise } from '@/types/workout';
@@ -9,6 +9,7 @@ type ExerciseItemProps = {
   index: number;
   total: number;
   onEdit: (index: number, field: keyof WorkoutExercise, value: string) => void;
+  onDuplicate?: (index: number) => void;
   onRemove: (index: number) => void;
   onReorder: (from: number, to: number) => void;
 };
@@ -20,11 +21,14 @@ export function ExerciseItem({
   index,
   total,
   onEdit,
+  onDuplicate,
   onRemove,
   onReorder,
 }: ExerciseItemProps) {
   const translateY = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
+  const { width } = useWindowDimensions();
+  const isCompact = width < 390;
 
   const responder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -78,10 +82,10 @@ export function ExerciseItem({
         end={{ x: 1, y: 1 }}
       />
       
-      <View style={styles.header}>
+      <View style={[styles.header, isCompact && styles.headerCompact]}>
         <View style={styles.headerCopy}>
           <Text style={styles.title}>{exercise.name || `Exercise ${index + 1}`}</Text>
-          <View style={styles.metaContainer}>
+          <View style={[styles.metaContainer, isCompact && styles.metaContainerCompact]}>
             <View style={styles.metaPill}>
               <Ionicons name="body-outline" size={12} color="#64748b" />
               <Text style={styles.meta}>{exercise.muscleGroup}</Text>
@@ -97,17 +101,22 @@ export function ExerciseItem({
           </View>
         </View>
         
-        <View style={styles.actions}>
+        <View style={[styles.actions, isCompact && styles.actionsCompact]}>
           <Pressable {...responder.panHandlers} style={styles.dragHandle}>
             <Ionicons name="menu" size={20} color="#64748b" />
           </Pressable>
+          {onDuplicate && (
+            <Pressable onPress={() => onDuplicate(index)} style={styles.duplicateButton}>
+              <Ionicons name="copy-outline" size={18} color="#0d9488" />
+            </Pressable>
+          )}
           <Pressable onPress={() => onRemove(index)} style={styles.removeButton}>
             <Ionicons name="trash-outline" size={18} color="#ef4444" />
           </Pressable>
         </View>
       </View>
 
-      <View style={styles.formGrid}>
+      <View style={[styles.formGrid, isCompact && styles.formGridCompact]}>
         <TextInput
           onChangeText={(value) => onEdit(index, 'name', value)}
           placeholder="Exercise name"
@@ -131,7 +140,7 @@ export function ExerciseItem({
         />
       </View>
 
-      <View style={styles.quickStats}>
+      <View style={[styles.quickStats, isCompact && styles.quickStatsCompact]}>
         <View style={styles.statControl}>
           <Text style={styles.statLabel}>Sets</Text>
           <View style={styles.statButtons}>
@@ -199,6 +208,10 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 8,
   },
+  headerCompact: {
+    paddingHorizontal: 14,
+    paddingTop: 14,
+  },
   headerCopy: {
     flex: 1,
     paddingRight: 12,
@@ -214,6 +227,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+  },
+  metaContainerCompact: {
+    gap: 5,
   },
   metaPill: {
     flexDirection: 'row',
@@ -234,6 +250,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  actionsCompact: {
+    gap: 6,
+  },
   dragHandle: {
     padding: 6,
     backgroundColor: '#f1f5f9',
@@ -244,10 +263,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#fef2f2',
     borderRadius: 10,
   },
+  duplicateButton: {
+    padding: 6,
+    backgroundColor: '#f0fdfa',
+    borderRadius: 10,
+  },
   formGrid: {
     gap: 10,
     paddingHorizontal: 16,
     paddingBottom: 12,
+  },
+  formGridCompact: {
+    paddingHorizontal: 14,
   },
   input: {
     backgroundColor: '#ffffff',
@@ -265,6 +292,10 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
     paddingBottom: 16,
+  },
+  quickStatsCompact: {
+    flexDirection: 'column',
+    gap: 8,
   },
   statControl: {
     flex: 1,

@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Text,
   View,
-  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,16 +24,13 @@ import { AppHeader } from '@/components/common/AppHeader';
 
 const { width } = Dimensions.get('window');
 
-const getQuickActions = (isAdmin: boolean) => [
+const getQuickActions = () => [
   { icon: 'barbell', label: 'Start Workout', route: '/(modals)/workout-builder', gradient: ['#0d9488', '#0f766e'] as const },
   { icon: 'body', label: 'Body Scan', route: '/(modals)/scan', gradient: ['#7c3aed', '#6d28d9'] as const },
   { icon: 'restaurant', label: 'Log Meal', route: '/(modals)/meal-logger', gradient: ['#e11d48', '#be123c'] as const },
   { icon: 'analytics', label: 'Progress', route: '/progress', gradient: ['#2563eb', '#1d4ed8'] as const },
   { icon: 'chatbubbles', label: 'AI Coach', route: '/coach', gradient: ['#d97706', '#b45309'] as const },
   { icon: 'library', label: 'Exercises', route: '/(modals)/exercise-library', gradient: ['#059669', '#047857'] as const },
-  ...(isAdmin
-    ? [{ icon: Platform.OS === 'web' ? 'shield-checkmark' : 'shield', label: 'Admin Hub', route: '/admin', gradient: ['#475569', '#334155'] as const }]
-    : []),
 ];
 
 // â”€â”€â”€ Screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -65,8 +61,7 @@ export default function HomeScreen() {
     void loadData();
   }, [tokens?.accessToken, initNutrition]);
 
-  const isAdmin = Boolean(user?.isAdmin);
-  const quickActions = getQuickActions(isAdmin);
+  const quickActions = getQuickActions();
   const caloriesConsumed = Math.round(dailyReport.totals.calories || 0);
 
   return (
@@ -137,7 +132,7 @@ export default function HomeScreen() {
       <View style={styles.sectionWrap}>
         <View style={styles.quickGrid}>
           {quickActions.map((action, idx) => (
-            <Animated.View key={action.label} entering={FadeInDown.delay(300 + idx * 50).springify()}>
+            <Animated.View key={action.label} entering={FadeInDown.delay(300 + idx * 50).springify()} style={styles.quickCardWrap}>
               <Pressable onPress={() => router.push(action.route as any)} style={styles.quickCard}>
                 <LinearGradient colors={action.gradient} style={styles.quickIcon}>
                   <Ionicons name={action.icon as any} size={20} color="#fff" />
@@ -310,8 +305,13 @@ const styles = StyleSheet.create({
     rowGap: 14,
   },
 
+  quickCardWrap: {
+    width: '48%',
+    maxWidth: '48%',
+  },
+
   quickCard: {
-    width: (width - 52) / 3,
+    width: '100%',
 
     backgroundColor: '#ffffff',
 

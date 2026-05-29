@@ -5,6 +5,7 @@ import {
   createWorkoutPlan,
   deleteWorkoutPlan,
   fetchWorkoutAiReview,
+  refreshWorkoutAiReview,
   fetchWorkoutPlans,
   fetchWorkoutTemplates,
   getCurrentWorkout,
@@ -33,7 +34,7 @@ type WorkoutState = {
   deletePlan: (id: string) => Promise<void>;
   schedulePlan: (id: string, scheduledDate: string) => Promise<WorkoutPlan>;
   updateWeeklySchedule: (id: string, schedule: any[]) => Promise<WorkoutPlan>;
-  markCompleted: (id: string, scheduleEntryId: string) => Promise<WorkoutPlan>;
+  markCompleted: (id: string, scheduleEntryId?: string) => Promise<WorkoutPlan>;
   loadCurrentWorkout: () => Promise<WorkoutPlan | null>;
   reorderExercises: (id: string, exercises: WorkoutPlan['exercises']) => Promise<WorkoutPlan>;
   calculateStreak: () => number;
@@ -68,7 +69,19 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
   workoutStreak: 0,
   isLoading: false,
   initialize: async () => {
-    const accessToken = requireAccessToken();
+    const accessToken = useAuthStore.getState().tokens?.accessToken;
+    if (!accessToken) {
+      set({
+        plans: [],
+        templates: [],
+        selectedPlanId: null,
+        currentWorkout: null,
+        workoutStreak: 0,
+        isLoading: false,
+      });
+      return;
+    }
+
     set({ isLoading: true });
     try {
       const [planResponse, templateResponse] = await Promise.all([
@@ -219,7 +232,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
   },
   refreshAiReview: async (id) => {
     const accessToken = requireAccessToken();
-    const response = await fetchWorkoutAiReview(accessToken, id);
+    const response = await refreshWorkoutAiReview(accessToken, id);
     set((state) => ({
       plans: state.plans.map((plan) =>
         plan.id === id ? { ...plan, aiReview: response.aiReview } : plan

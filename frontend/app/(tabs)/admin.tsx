@@ -1,859 +1,495 @@
-﻿import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, Pressable, FlatList, ActivityIndicator, Alert, TextInput, Dimensions, Modal } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useAdminStore } from '@/store/adminStore';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BarChart } from 'react-native-gifted-charts';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { useAdminStore } from '@/store/adminStore';
 
 type TabType = 'overview' | 'users' | 'exercises' | 'logs' | 'notify';
 
+function formatDate(value?: string | null) {
+  if (!value) return 'Not available';
+  return new Date(value).toLocaleString();
+}
+
+function TabChip({
+  active,
+  icon,
+  label,
+  onPress,
+}: {
+  active: boolean;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} style={[styles.tabChip, active && styles.tabChipActive]}>
+      <Ionicons name={icon} size={16} color={active ? '#0d9488' : '#64748b'} />
+      <Text style={[styles.tabChipLabel, active && styles.tabChipLabelActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  tint,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  value: string | number;
+  tint: string;
+}) {
+  return (
+    <View style={styles.metricCard}>
+      <View style={[styles.metricIcon, { backgroundColor: tint }]}>
+        <Ionicons name={icon} size={18} color="#fff" />
+      </View>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
+    </View>
+  );
+}
+
 export default function AdminHubScreen() {
-  const { data, isLoading, initialize, toggleUserStatus, sendBroadcast } = useAdminStore();
+  const { data, isLoading, error, initialize, toggleUserStatus, deletePost, deleteExercise, sendBroadcast } = useAdminStore();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastBody, setBroadcastBody] = useState('');
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string; isActive: boolean } | null>(null);
+  const [confirmState, setConfirmState] = useState<
+    | { type: 'user'; id: string; name: string; nextLabel: string }
+    | { type: 'exercise'; id: string; name: string }
+    | { type: 'post'; id: string; author: string }
+    | null
+  >(null);
 
   useEffect(() => {
     void initialize();
   }, [initialize]);
 
-  const handleToggleUser = (userId: string, name: string, isActive: boolean) => {
-    setSelectedUser({ id: userId, name, isActive });
-    setShowConfirmModal(true);
+  const handleRefresh = async () => {
+    await initialize();
   };
 
-  const confirmToggleUser = async () => {
-    if (selectedUser) {
-      await toggleUserStatus(selectedUser.id);
-      setShowConfirmModal(false);
-      setSelectedUser(null);
+  const analytics = data?.analytics;
+
+  const overviewCards = useMemo(
+    () => [
+      { icon: 'people-outline', label: 'Members', value: analytics?.users.total ?? 0, tint: '#0d9488' },
+      { icon: 'flash-outline', label: 'Active sessions', value: analytics?.content.activeSessions ?? 0, tint: '#d97706' },
+      { icon: 'barbell-outline', label: 'Exercises', value: analytics?.content.exercises ?? 0, tint: '#4338ca' },
+      { icon: 'chatbubbles-outline', label: 'Community posts', value: analytics?.content.communityPosts ?? 0, tint: '#be185d' },
+    ],
+    [analytics]
+  );
+
+  const confirmAction = async () => {
+    if (!confirmState) return;
+    try {
+      if (confirmState.type === 'user') {
+        await toggleUserStatus(confirmState.id);
+      } else if (confirmState.type === 'exercise') {
+        await deleteExercise(confirmState.id);
+      } else if (confirmState.type === 'post') {
+        await deletePost(confirmState.id);
+      }
+    } catch (error) {
+      Alert.alert('Action failed', error instanceof Error ? error.message : 'Please try again.');
+    } finally {
+      setConfirmState(null);
     }
   };
 
   const handleBroadcast = async () => {
-    if (!broadcastTitle || !broadcastBody) return;
+    if (!broadcastTitle.trim() || !broadcastBody.trim()) return;
     try {
-      await sendBroadcast(broadcastTitle, broadcastBody);
-      Alert.alert('Success', 'Broadcast sent to all active members.');
+      await sendBroadcast(broadcastTitle.trim(), broadcastBody.trim());
+      Alert.alert('Sent', 'Broadcast sent to active members.');
       setBroadcastTitle('');
       setBroadcastBody('');
-    } catch {
-      Alert.alert('Error', 'Failed to send broadcast.');
+    } catch (error) {
+      Alert.alert('Broadcast failed', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
-  const renderOverview = () => {
-    if (!data?.analytics) return null;
-    const { analytics } = data;
-
-    const userStatsData = [
-      { value: analytics.users.total, label: 'Total', frontColor: '#1e293b' },
-      { value: analytics.users.active, label: 'Active', frontColor: '#0d9488' },
-      { value: analytics.users.disabled, label: 'Suspended', frontColor: '#ef4444' },
-    ];
-
-    return (
-      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-        {/* Stats Grid */}
-        <View style={styles.grid}>
-          <LinearGradient colors={['#f0fdfa', '#ccfbf1']} style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Ionicons name="people-outline" size={22} color="#0d9488" />
-            </View>
-            <Text style={styles.statLabel}>Total Members</Text>
-            <Text style={styles.statValue}>{analytics.users.total}</Text>
-          </LinearGradient>
-          
-          <LinearGradient colors={['#fef3c7', '#fde68a']} style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Ionicons name="flash-outline" size={22} color="#d97706" />
-            </View>
-            <Text style={styles.statLabel}>Active Sessions</Text>
-            <Text style={styles.statValue}>{analytics.content.activeSessions}</Text>
-          </LinearGradient>
-          
-          <LinearGradient colors={['#e0e7ff', '#c7d2fe']} style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Ionicons name="barbell-outline" size={22} color="#4338ca" />
-            </View>
-            <Text style={styles.statLabel}>Total Exercises</Text>
-            <Text style={styles.statValue}>{analytics.content.exercises}</Text>
-          </LinearGradient>
-          
-          <LinearGradient colors={['#fce7f3', '#fbcfe8']} style={styles.statCard}>
-            <View style={styles.statIcon}>
-              <Ionicons name="chatbubbles-outline" size={22} color="#be185d" />
-            </View>
-            <Text style={styles.statLabel}>Community Posts</Text>
-            <Text style={styles.statValue}>{analytics.content.communityPosts}</Text>
-          </LinearGradient>
-        </View>
-
-        {/* Member Distribution Chart */}
-        <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>Member Distribution</Text>
-          <BarChart
-            data={userStatsData}
-            width={SCREEN_WIDTH - 80}
-            height={200}
-            barWidth={50}
-            noOfSections={4}
-            barBorderRadius={8}
-            xAxisThickness={0}
-            yAxisThickness={0}
-            hideRules
-            showGradient
-            gradientColor="#0d9488"
-          />
-        </View>
-
-        {/* Retention Stats */}
-        <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>User Engagement</Text>
-          <View style={styles.retentionRow}>
-            <LinearGradient colors={['#ecfdf5', '#d1fae5']} style={styles.retentionItem}>
-              <Ionicons name="person-add-outline" size={24} color="#059669" />
-              <Text style={styles.retentionValue}>{analytics.retention.newLast7Days}</Text>
-              <Text style={styles.retentionLabel}>New Signups</Text>
-              <Text style={styles.retentionPeriod}>Last 7 days</Text>
-            </LinearGradient>
-            
-            <LinearGradient colors={['#fef3c7', '#fde68a']} style={styles.retentionItem}>
-              <Ionicons name="trending-up-outline" size={24} color="#d97706" />
-              <Text style={styles.retentionValue}>{analytics.retention.activeLast7Days}</Text>
-              <Text style={styles.retentionLabel}>Daily Active</Text>
-              <Text style={styles.retentionPeriod}>7-day avg</Text>
-            </LinearGradient>
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <LinearGradient colors={['#08111f', '#0f172a', '#134e4a']} style={styles.hero}>
+        <View style={styles.heroTopRow}>
+          <View style={styles.badge}>
+            <Ionicons name="shield-checkmark" size={12} color="#0d9488" />
+            <Text style={styles.badgeText}>ADMIN ONLY</Text>
+          </View>
+          <View style={styles.livePill}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveText}>LIVE CONTROL ROOM</Text>
           </View>
         </View>
 
-        {/* Popular Exercises */}
-        <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>Popular Exercises</Text>
-          {analytics.popularExercises.map((ex, i) => (
-            <View key={i} style={styles.popularItem}>
-              <View style={styles.popularRank}>
-                <Text style={styles.popularRankText}>{i + 1}</Text>
-              </View>
-              <Text style={styles.popularName}>{ex.name}</Text>
-              <View style={styles.popularCountBadge}>
-                <Text style={styles.popularCount}>{ex.count} uses</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    );
-  };
-
-  const renderUsers = () => (
-    <FlatList
-      data={data?.users}
-      keyExtractor={(item) => item.id}
-      style={styles.tabContent}
-      showsVerticalScrollIndicator={false}
-      renderItem={({ item }) => (
-        <LinearGradient colors={['#ffffff', '#f8fafc']} style={styles.listItem}>
-          <View style={styles.listAvatar}>
-            <Text style={styles.listAvatarText}>{item.profile.name.charAt(0)}</Text>
-          </View>
-          <View style={styles.listMain}>
-            <Text style={styles.listTitle}>{item.profile.name}</Text>
-            <View style={styles.listMeta}>
-              <Ionicons name="mail-outline" size={12} color="#94a3b8" />
-              <Text style={styles.listSubtitle}>{item.email}</Text>
-            </View>
-          </View>
-          <Pressable 
-            style={[styles.statusBadge, item.deactivatedAt && styles.statusBadgeInactive]}
-            onPress={() => handleToggleUser(item.id, item.profile.name, !item.deactivatedAt)}
-          >
-            <View style={[styles.statusDot, item.deactivatedAt && styles.statusDotInactive]} />
-            <Text style={[styles.statusText, item.deactivatedAt && styles.statusTextInactive]}>
-              {item.deactivatedAt ? 'Suspended' : 'Active'}
-            </Text>
-          </Pressable>
-        </LinearGradient>
-      )}
-    />
-  );
-
-  const renderExercises = () => (
-    <FlatList
-      data={data?.exercises}
-      keyExtractor={(item) => item.id}
-      style={styles.tabContent}
-      showsVerticalScrollIndicator={false}
-      renderItem={({ item }) => (
-        <LinearGradient colors={['#ffffff', '#f8fafc']} style={styles.listItem}>
-          <View style={styles.exerciseIcon}>
-            <Ionicons name="barbell-outline" size={24} color="#0d9488" />
-          </View>
-          <View style={styles.listMain}>
-            <Text style={styles.listTitle}>{item.name}</Text>
-            <View style={styles.exerciseTags}>
-              <View style={styles.exerciseTag}>
-                <Text style={styles.exerciseTagText}>{item.muscleGroup}</Text>
-              </View>
-              <View style={[styles.exerciseTag, styles.exerciseTagDifficulty]}>
-                <Text style={styles.exerciseTagText}>{item.difficulty}</Text>
-              </View>
-            </View>
-          </View>
-          <View style={styles.listActions}>
-            <Pressable onPress={() => Alert.alert('Edit', 'Edit exercise feature coming soon.')} style={styles.actionButton}>
-              <Ionicons name="create-outline" size={18} color="#0d9488" />
-            </Pressable>
-            <Pressable onPress={() => Alert.alert('Delete', 'Delete exercise feature coming soon.')} style={styles.actionButton}>
-              <Ionicons name="trash-outline" size={18} color="#ef4444" />
-            </Pressable>
-          </View>
-        </LinearGradient>
-      )}
-    />
-  );
-
-  const renderLogs = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.logsHeader}>
-        <Text style={styles.cardTitle}>System Logs</Text>
-        <Text style={styles.logsSubtitle}>Recent 50 requests</Text>
-      </View>
-      {data?.system.requestLogs.slice(0, 50).map((log) => (
-        <View key={log.id} style={styles.logItem}>
-          <View style={[styles.logMethodBadge, log.statusCode >= 400 ? styles.logMethodError : styles.logMethodSuccess]}>
-            <Text style={styles.logMethod}>{log.method}</Text>
-          </View>
-          <View style={styles.logContent}>
-            <Text style={styles.logPath} numberOfLines={1}>{log.path}</Text>
-            <View style={styles.logMeta}>
-              <Text style={[styles.logStatusCode, log.statusCode >= 400 ? { color: '#ef4444' } : { color: '#0d9488' }]}>
-                {log.statusCode}
-              </Text>
-              <Text style={styles.logDuration}>• {log.durationMs}ms</Text>
-            </View>
-          </View>
-        </View>
-      ))}
-    </ScrollView>
-  );
-
-  const renderNotify = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      <LinearGradient colors={['#ffffff', '#f8fafc']} style={styles.notifyCard}>
-        <View style={styles.notifyHeader}>
-          <View style={styles.notifyIcon}>
-            <Ionicons name="megaphone-outline" size={28} color="#0d9488" />
-          </View>
-          <Text style={styles.cardTitle}>Global Announcement</Text>
-        </View>
-        <Text style={styles.cardSubtitle}>
-          Send a push notification to all active FITRACK members
+        <Text style={styles.heroTitle}>One dashboard for members, content, and moderation</Text>
+        <Text style={styles.heroCopy}>
+          Keep the fitness system healthy from a single admin view. Review activity, manage users, curate exercises, and send announcements without leaving the app.
         </Text>
-        
-        <View style={styles.inputWrapper}>
-          <Ionicons name="document-text-outline" size={18} color="#64748b" />
-          <TextInput
-            style={styles.input}
-            placeholder="Notification title"
-            placeholderTextColor="#94a3b8"
-            value={broadcastTitle}
-            onChangeText={setBroadcastTitle}
-          />
+
+        <View style={styles.heroStatsRow}>
+          <MetricCard icon="people-outline" label="Members" value={analytics?.users.total ?? 0} tint="#0d9488" />
+          <MetricCard icon="barbell-outline" label="Exercises" value={analytics?.content.exercises ?? 0} tint="#1d4ed8" />
+          <MetricCard icon="flash-outline" label="Sessions" value={analytics?.content.activeSessions ?? 0} tint="#d97706" />
         </View>
-        
-        <View style={[styles.inputWrapper, styles.inputWrapperTextArea]}>
-          <Ionicons name="document-text-outline" size={18} color="#64748b" style={styles.textAreaIcon} />
-          <TextInput
-            style={styles.inputTextArea}
-            placeholder="Message body..."
-            placeholderTextColor="#94a3b8"
-            multiline
-            numberOfLines={4}
-            value={broadcastBody}
-            onChangeText={setBroadcastBody}
-          />
-        </View>
-        
-        <Pressable 
-          style={[styles.broadcastButton, (!broadcastTitle || !broadcastBody) && styles.broadcastButtonDisabled]} 
-          onPress={handleBroadcast}
-          disabled={!broadcastTitle || !broadcastBody}
-        >
-          <LinearGradient
-            colors={!broadcastTitle || !broadcastBody ? ['#cbd5e1', '#cbd5e1'] : ['#0d9488', '#0f766e']}
-            style={styles.broadcastGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="send-outline" size={18} color="#ffffff" />
-            <Text style={styles.broadcastButtonText}>Send Broadcast</Text>
+
+        <Pressable style={styles.refreshButton} onPress={handleRefresh}>
+          <LinearGradient colors={['#0d9488', '#0f766e']} style={styles.refreshGradient}>
+            <Ionicons name="refresh-outline" size={16} color="#fff" />
+            <Text style={styles.refreshText}>Refresh dashboard</Text>
           </LinearGradient>
         </Pressable>
       </LinearGradient>
-    </ScrollView>
-  );
 
-  return (
-    <View style={styles.container}>
-      {/* Header */}
-      <LinearGradient colors={['#0a0f1e', '#0f1c2a']} style={styles.header}>
-        <Text style={styles.headerTitle}>Admin Hub</Text>
-        <Text style={styles.headerSubtitle}>Manage your fitness platform</Text>
-      </LinearGradient>
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Ionicons name="alert-circle-outline" size={18} color="#b91c1c" />
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      ) : null}
 
-      {/* Tab Bar */}
-      <View style={styles.tabBar}>
-        {[
-          { key: 'overview', icon: 'stats-chart-outline', label: 'Overview' },
-          { key: 'users', icon: 'people-outline', label: 'Users' },
-          { key: 'exercises', icon: 'barbell-outline', label: 'Exercises' },
-          { key: 'logs', icon: 'terminal-outline', label: 'Logs' },
-          { key: 'notify', icon: 'notifications-outline', label: 'Notify' },
-        ].map((tab) => (
-          <Pressable
-            key={tab.key}
-            onPress={() => setActiveTab(tab.key as TabType)}
-            style={[styles.tab, activeTab === tab.key && styles.activeTab]}
-          >
-            <Ionicons 
-              name={tab.icon as any} 
-              size={20} 
-              color={activeTab === tab.key ? '#0d9488' : '#64748b'} 
-            />
-            <Text style={[styles.tabLabel, activeTab === tab.key && styles.activeTabLabel]}>
-              {tab.label}
-            </Text>
-          </Pressable>
-        ))}
+      <View style={styles.tabRail}>
+        <TabChip active={activeTab === 'overview'} icon="stats-chart-outline" label="Overview" onPress={() => setActiveTab('overview')} />
+        <TabChip active={activeTab === 'users'} icon="people-outline" label="Users" onPress={() => setActiveTab('users')} />
+        <TabChip active={activeTab === 'exercises'} icon="barbell-outline" label="Exercises" onPress={() => setActiveTab('exercises')} />
+        <TabChip active={activeTab === 'logs'} icon="terminal-outline" label="Logs" onPress={() => setActiveTab('logs')} />
+        <TabChip active={activeTab === 'notify'} icon="notifications-outline" label="Notify" onPress={() => setActiveTab('notify')} />
       </View>
 
-      {/* Content */}
       {isLoading ? (
-        <View style={styles.loading}>
+        <View style={styles.loadingWrap}>
           <ActivityIndicator size="large" color="#0d9488" />
           <Text style={styles.loadingText}>Loading admin data...</Text>
         </View>
       ) : (
-        <>
-          {activeTab === 'overview' && renderOverview()}
-          {activeTab === 'users' && renderUsers()}
-          {activeTab === 'exercises' && renderExercises()}
-          {activeTab === 'logs' && renderLogs()}
-          {activeTab === 'notify' && renderNotify()}
-        </>
+        <View style={styles.sectionWrap}>
+          {activeTab === 'overview' && (
+            <>
+              <View style={styles.grid}>
+                {overviewCards.map((card) => (
+                  <View key={card.label} style={styles.metricCardLarge}>
+                    <View style={[styles.metricIcon, { backgroundColor: card.tint }]}>
+                      <Ionicons name={card.icon} size={18} color="#fff" />
+                    </View>
+                    <Text style={styles.metricLabel}>{card.label}</Text>
+                    <Text style={styles.metricValue}>{card.value}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>Retention snapshot</Text>
+                <View style={styles.retentionRow}>
+                  <View style={[styles.retentionCard, { backgroundColor: '#ecfdf5' }]}>
+                    <Text style={styles.retentionValue}>{analytics?.retention.newLast7Days ?? 0}</Text>
+                    <Text style={styles.retentionLabel}>New signups</Text>
+                  </View>
+                  <View style={[styles.retentionCard, { backgroundColor: '#fef3c7' }]}>
+                    <Text style={styles.retentionValue}>{analytics?.retention.activeLast7Days ?? 0}</Text>
+                    <Text style={styles.retentionLabel}>Active last 7 days</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>Popular exercises</Text>
+                {(analytics?.popularExercises ?? []).map((exercise, index) => (
+                  <View key={`${exercise.name}-${index}`} style={styles.popularRow}>
+                    <View style={styles.rankBubble}>
+                      <Text style={styles.rankText}>{index + 1}</Text>
+                    </View>
+                    <Text style={styles.popularName}>{exercise.name}</Text>
+                    <View style={styles.popularCountBubble}>
+                      <Text style={styles.popularCountText}>{exercise.count}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {activeTab === 'users' && (
+            <FlatList
+              data={data?.users ?? []}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+              renderItem={({ item }) => (
+                <View style={styles.listItem}>
+                  <View style={styles.avatarBubble}>
+                    <Text style={styles.avatarText}>{item.profile.name?.charAt(0)?.toUpperCase() ?? '?'}</Text>
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{item.profile.name}</Text>
+                    <Text style={styles.listMeta}>{item.email || item.phone || 'No contact saved'}</Text>
+                    <Text style={styles.listMetaSmall}>Joined {formatDate(item.createdAt)}</Text>
+                  </View>
+                  <Pressable
+                    style={[styles.actionPill, item.deactivatedAt ? styles.actionPillDanger : styles.actionPillSuccess]}
+                    onPress={() =>
+                      setConfirmState({
+                        type: 'user',
+                        id: item.id,
+                        name: item.profile.name,
+                        nextLabel: item.deactivatedAt ? 'activate' : 'suspend',
+                      })
+                    }
+                  >
+                    <Text style={[styles.actionPillText, item.deactivatedAt ? styles.actionPillTextDanger : styles.actionPillTextSuccess]}>
+                      {item.deactivatedAt ? 'Suspended' : 'Active'}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            />
+          )}
+
+          {activeTab === 'exercises' && (
+            <FlatList
+              data={data?.exercises ?? []}
+              keyExtractor={(item) => item.id}
+              scrollEnabled={false}
+              ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+              renderItem={({ item }) => (
+                <View style={styles.listItem}>
+                  <View style={[styles.avatarBubble, { backgroundColor: '#ecfeff' }]}>
+                    <Ionicons name="barbell-outline" size={18} color="#0d9488" />
+                  </View>
+                  <View style={styles.listCopy}>
+                    <Text style={styles.listTitle}>{item.name}</Text>
+                    <Text style={styles.listMeta}>{item.muscleGroup} • {item.difficulty}</Text>
+                    <Text style={styles.listMetaSmall}>{item.commentCount} comments • {item.favoriteCount} favorites</Text>
+                  </View>
+                  <Pressable
+                    style={[styles.actionPill, styles.actionPillDanger]}
+                    onPress={() => setConfirmState({ type: 'exercise', id: item.id, name: item.name })}
+                  >
+                    <Text style={[styles.actionPillText, styles.actionPillTextDanger]}>Delete</Text>
+                  </Pressable>
+                </View>
+              )}
+            />
+          )}
+
+          {activeTab === 'logs' && (
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>Recent request logs</Text>
+              {(data?.system.requestLogs ?? []).slice(0, 12).map((log) => (
+                <View key={log.id} style={styles.logRow}>
+                  <View style={styles.logCopy}>
+                    <Text style={styles.logRoute}>{log.method} {log.path}</Text>
+                    <Text style={styles.logMeta}>{formatDate(log.timestamp)} • {log.durationMs}ms</Text>
+                  </View>
+                  <View style={[styles.statusChip, log.statusCode >= 400 ? styles.statusChipError : styles.statusChipOk]}>
+                    <Text style={[styles.statusChipText, log.statusCode >= 400 ? styles.statusChipTextError : styles.statusChipTextOk]}>
+                      {log.statusCode}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {activeTab === 'logs' && (
+            <View style={styles.logsStack}>
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>API errors</Text>
+                <Text style={styles.panelSubTitle}>Recent backend failures captured by telemetry.</Text>
+                {(data?.system.apiErrors ?? []).slice(0, 8).length ? (
+                  (data?.system.apiErrors ?? []).slice(0, 8).map((apiError) => (
+                    <View key={apiError.id} style={styles.logRow}>
+                      <View style={styles.logCopy}>
+                        <Text style={styles.logRoute}>{apiError.method} {apiError.path}</Text>
+                        <Text style={styles.logMeta}>{formatDate(apiError.timestamp)} • {apiError.message}</Text>
+                      </View>
+                      <View style={[styles.statusChip, styles.statusChipError]}>
+                        <Text style={[styles.statusChipText, styles.statusChipTextError]}>{apiError.statusCode}</Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.emptyStateText}>No API errors captured.</Text>
+                )}
+              </View>
+
+              <View style={styles.panel}>
+                <Text style={styles.panelTitle}>Recent request logs</Text>
+                {(data?.system.requestLogs ?? []).slice(0, 12).map((log) => (
+                  <View key={log.id} style={styles.logRow}>
+                    <View style={styles.logCopy}>
+                      <Text style={styles.logRoute}>{log.method} {log.path}</Text>
+                      <Text style={styles.logMeta}>{formatDate(log.timestamp)} • {log.durationMs}ms</Text>
+                    </View>
+                    <View style={[styles.statusChip, log.statusCode >= 400 ? styles.statusChipError : styles.statusChipOk]}>
+                      <Text style={[styles.statusChipText, log.statusCode >= 400 ? styles.statusChipTextError : styles.statusChipTextOk]}>
+                        {log.statusCode}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {activeTab === 'notify' && (
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>Global announcement</Text>
+              <Text style={styles.panelSubTitle}>Send a notification to active FITRACK members.</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Notification title"
+                placeholderTextColor="#94a3b8"
+                value={broadcastTitle}
+                onChangeText={setBroadcastTitle}
+              />
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Message body"
+                placeholderTextColor="#94a3b8"
+                multiline
+                value={broadcastBody}
+                onChangeText={setBroadcastBody}
+              />
+
+              <Pressable style={styles.broadcastButton} onPress={handleBroadcast}>
+                <LinearGradient colors={['#0d9488', '#0f766e']} style={styles.broadcastGradient}>
+                  <Ionicons name="send-outline" size={18} color="#fff" />
+                  <Text style={styles.broadcastText}>Send broadcast</Text>
+                </LinearGradient>
+              </Pressable>
+            </View>
+          )}
+        </View>
       )}
 
-      {/* Confirm Modal */}
-      <Modal visible={showConfirmModal} transparent animationType="fade">
+      <Modal visible={Boolean(confirmState)} transparent animationType="fade" onRequestClose={() => setConfirmState(null)}>
         <View style={styles.modalOverlay}>
-          <LinearGradient colors={['#ffffff', '#f8fafc']} style={styles.modalContent}>
+          <View style={styles.modalCard}>
             <View style={styles.modalIcon}>
-              <Ionicons name="alert-circle-outline" size={48} color="#f59e0b" />
+              <Ionicons name="alert-circle-outline" size={42} color="#f59e0b" />
             </View>
-            <Text style={styles.modalTitle}>Confirm Status Change</Text>
-            <Text style={styles.modalMessage}>
-              Are you sure you want to {selectedUser?.isActive ? 'suspend' : 'activate'} {selectedUser?.name}?
+            <Text style={styles.modalTitle}>Confirm action</Text>
+            <Text style={styles.modalText}>
+              {confirmState?.type === 'user' && `Do you want to ${confirmState.nextLabel} ${confirmState.name}?`}
+              {confirmState?.type === 'exercise' && `Delete ${confirmState.name} from the library?`}
+              {confirmState?.type === 'post' && `Delete the post by ${confirmState.author}?`}
             </Text>
             <View style={styles.modalActions}>
-              <Pressable style={[styles.modalButton, styles.modalButtonCancel]} onPress={() => setShowConfirmModal(false)}>
-                <Text style={styles.modalButtonCancelText}>Cancel</Text>
+              <Pressable style={[styles.modalButton, styles.modalButtonSecondary]} onPress={() => setConfirmState(null)}>
+                <Text style={styles.modalButtonSecondaryText}>Cancel</Text>
               </Pressable>
-              <Pressable style={[styles.modalButton, styles.modalButtonConfirm]} onPress={confirmToggleUser}>
-                <Text style={styles.modalButtonConfirmText}>Confirm</Text>
+              <Pressable style={[styles.modalButton, styles.modalButtonPrimary]} onPress={confirmAction}>
+                <Text style={styles.modalButtonPrimaryText}>Confirm</Text>
               </Pressable>
             </View>
-          </LinearGradient>
+          </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  header: {
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#ffffff',
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: 'rgba(255,255,255,0.6)',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    gap: 4,
-  },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  activeTab: {
-    backgroundColor: '#f0fdfa',
-  },
-  tabLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#64748b',
-  },
-  activeTabLabel: {
-    color: '#0d9488',
-  },
-  tabContent: {
-    flex: 1,
-    padding: 16,
-  },
-  loading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#64748b',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: '45%',
-    padding: 16,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#475569',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  statValue: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 4,
-  },
-  chartCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 16,
-    letterSpacing: -0.3,
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    fontWeight: '400',
-    color: '#64748b',
-    marginBottom: 20,
-  },
-  retentionRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  retentionItem: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-  },
-  retentionValue: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 10,
-  },
-  retentionLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#475569',
-    marginTop: 4,
-  },
-  retentionPeriod: {
-    fontSize: 10,
-    fontWeight: '400',
-    color: '#94a3b8',
-    marginTop: 2,
-  },
-  popularItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    gap: 12,
-  },
-  popularRank: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#f1f5f9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  popularRankText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748b',
-  },
-  popularName: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#334155',
-  },
-  popularCountBadge: {
-    backgroundColor: '#f0fdfa',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  popularCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#0d9488',
-  },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 14,
-    borderRadius: 16,
-    marginBottom: 10,
-    gap: 12,
-  },
-  listAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f0fdfa',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  listAvatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#0d9488',
-  },
-  listMain: {
-    flex: 1,
-  },
-  listTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 2,
-  },
-  listMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  listSubtitle: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#64748b',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#ecfdf5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  statusBadgeInactive: {
-    backgroundColor: '#fef2f2',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10b981',
-  },
-  statusDotInactive: {
-    backgroundColor: '#ef4444',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#10b981',
-  },
-  statusTextInactive: {
-    color: '#ef4444',
-  },
-  exerciseIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#f0fdfa',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  exerciseTags: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 4,
-  },
-  exerciseTag: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  exerciseTagDifficulty: {
-    backgroundColor: '#fef3c7',
-  },
-  exerciseTagText: {
-    fontSize: 10,
-    fontWeight: '500',
-    color: '#475569',
-  },
-  listActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    padding: 8,
-    borderRadius: 10,
-    backgroundColor: '#f8fafc',
-  },
-  logsHeader: {
-    marginBottom: 16,
-  },
-  logsSubtitle: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#64748b',
-    marginTop: 2,
-  },
-  logItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    gap: 10,
-  },
-  logMethodBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  logMethodSuccess: {
-    backgroundColor: '#ecfdf5',
-  },
-  logMethodError: {
-    backgroundColor: '#fef2f2',
-  },
-  logMethod: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  logContent: {
-    flex: 1,
-  },
-  logPath: {
-    fontSize: 12,
-    color: '#334155',
-    marginBottom: 2,
-  },
-  logMeta: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  logStatusCode: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  logDuration: {
-    fontSize: 10,
-    color: '#94a3b8',
-  },
-  notifyCard: {
-    borderRadius: 20,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  notifyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  notifyIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f0fdfa',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  inputWrapperTextArea: {
-    alignItems: 'flex-start',
-  },
-  textAreaIcon: {
-    marginTop: 14,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#1e293b',
-    paddingVertical: 14,
-  },
-  inputTextArea: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#1e293b',
-    paddingVertical: 14,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  broadcastButton: {
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  broadcastButtonDisabled: {
-    opacity: 0.6,
-  },
-  broadcastGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-  },
-  broadcastButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    width: SCREEN_WIDTH - 60,
-  },
-  modalIcon: {
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  modalMessage: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#64748b',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalButtonCancel: {
-    backgroundColor: '#f1f5f9',
-  },
-  modalButtonCancelText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#64748b',
-  },
-  modalButtonConfirm: {
-    backgroundColor: '#0d9488',
-  },
-  modalButtonConfirmText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
+  screen: { flex: 1, backgroundColor: '#f8fafc' },
+  content: { paddingBottom: 40 },
+  hero: { marginHorizontal: 14, marginTop: 12, padding: 18, borderRadius: 28 },
+  heroTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.08)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
+  badgeText: { color: '#d1fae5', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.06)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e' },
+  liveText: { color: '#e2e8f0', fontSize: 10, fontWeight: '700', letterSpacing: 1 },
+  heroTitle: { color: '#fff', fontSize: 28, lineHeight: 34, fontWeight: '800', letterSpacing: -0.5, marginBottom: 8 },
+  heroCopy: { color: 'rgba(255,255,255,0.75)', lineHeight: 20, fontSize: 13, marginBottom: 16 },
+  heroStatsRow: { flexDirection: 'row', gap: 10 },
+  refreshButton: { borderRadius: 18, overflow: 'hidden', marginTop: 14, alignSelf: 'flex-start' },
+  refreshGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 11 },
+  refreshText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  errorBanner: { marginHorizontal: 14, marginTop: 12, backgroundColor: '#fef2f2', borderColor: '#fecaca', borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  errorBannerText: { color: '#991b1b', flex: 1, fontSize: 12, lineHeight: 16 },
+  metricCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 18, padding: 12 },
+  metricCardLarge: { flex: 1, minWidth: '45%', backgroundColor: '#fff', borderRadius: 20, padding: 16, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  metricIcon: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  metricLabel: { color: '#64748b', fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
+  metricValue: { color: '#0f172a', fontSize: 24, fontWeight: '800' },
+  tabRail: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, paddingTop: 12 },
+  tabChip: { flexGrow: 1, minWidth: '31%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#fff', borderRadius: 16, paddingVertical: 11, paddingHorizontal: 12, borderWidth: 1, borderColor: 'rgba(15,23,42,0.06)' },
+  tabChipActive: { backgroundColor: '#ecfdf5', borderColor: 'rgba(13,148,136,0.25)' },
+  tabChipLabel: { color: '#64748b', fontSize: 12, fontWeight: '600' },
+  tabChipLabelActive: { color: '#0d9488', fontWeight: '800' },
+  loadingWrap: { minHeight: 260, justifyContent: 'center', alignItems: 'center', gap: 12, paddingTop: 20 },
+  loadingText: { color: '#64748b', fontSize: 14 },
+  sectionWrap: { paddingHorizontal: 14, paddingTop: 12, gap: 14 },
+  logsStack: { gap: 14 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  panel: { backgroundColor: '#fff', borderRadius: 24, padding: 18, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  panelTitle: { color: '#0f172a', fontSize: 18, fontWeight: '800', marginBottom: 12 },
+  panelSubTitle: { color: '#64748b', fontSize: 13, marginBottom: 14, lineHeight: 18 },
+  emptyStateText: { color: '#64748b', fontSize: 13, lineHeight: 18 },
+  retentionRow: { flexDirection: 'row', gap: 12 },
+  retentionCard: { flex: 1, padding: 16, borderRadius: 18 },
+  retentionValue: { fontSize: 24, fontWeight: '800', color: '#0f172a', marginBottom: 4 },
+  retentionLabel: { color: '#475569', fontSize: 12, fontWeight: '600' },
+  popularRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  rankBubble: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' },
+  rankText: { color: '#64748b', fontSize: 12, fontWeight: '800' },
+  popularName: { flex: 1, color: '#0f172a', fontSize: 14, fontWeight: '600' },
+  popularCountBubble: { backgroundColor: '#f0fdfa', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  popularCountText: { color: '#0d9488', fontSize: 12, fontWeight: '800' },
+  listItem: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 18, padding: 14 },
+  avatarBubble: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#f0fdfa', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#0d9488', fontWeight: '800', fontSize: 17 },
+  listCopy: { flex: 1 },
+  listTitle: { color: '#0f172a', fontSize: 15, fontWeight: '800', marginBottom: 2 },
+  listMeta: { color: '#64748b', fontSize: 12, marginBottom: 2 },
+  listMetaSmall: { color: '#94a3b8', fontSize: 11 },
+  actionPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  actionPillSuccess: { backgroundColor: '#ecfdf5' },
+  actionPillDanger: { backgroundColor: '#fef2f2' },
+  actionPillText: { fontSize: 12, fontWeight: '800' },
+  actionPillTextSuccess: { color: '#15803d' },
+  actionPillTextDanger: { color: '#b91c1c' },
+  logRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  logCopy: { flex: 1 },
+  logRoute: { color: '#0f172a', fontSize: 13, fontWeight: '700', marginBottom: 3 },
+  logMeta: { color: '#64748b', fontSize: 11 },
+  statusChip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
+  statusChipOk: { backgroundColor: '#ecfdf5' },
+  statusChipError: { backgroundColor: '#fef2f2' },
+  statusChipText: { fontSize: 12, fontWeight: '800' },
+  statusChipTextOk: { color: '#15803d' },
+  statusChipTextError: { color: '#b91c1c' },
+  input: { backgroundColor: '#f8fafc', borderRadius: 16, borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 14, paddingVertical: 12, color: '#0f172a', marginBottom: 12 },
+  textArea: { minHeight: 110, textAlignVertical: 'top' },
+  broadcastButton: { borderRadius: 18, overflow: 'hidden', marginTop: 4 },
+  broadcastGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+  broadcastText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'center', padding: 20 },
+  modalCard: { backgroundColor: '#fff', borderRadius: 26, padding: 20, alignItems: 'center' },
+  modalIcon: { marginBottom: 10 },
+  modalTitle: { color: '#0f172a', fontSize: 20, fontWeight: '800', marginBottom: 8 },
+  modalText: { color: '#475569', fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 18 },
+  modalActions: { flexDirection: 'row', gap: 10, width: '100%' },
+  modalButton: { flex: 1, borderRadius: 16, paddingVertical: 13, alignItems: 'center' },
+  modalButtonSecondary: { backgroundColor: '#e2e8f0' },
+  modalButtonPrimary: { backgroundColor: '#0d9488' },
+  modalButtonSecondaryText: { color: '#0f172a', fontWeight: '800' },
+  modalButtonPrimaryText: { color: '#fff', fontWeight: '800' },
 });

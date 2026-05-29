@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WorkoutPlan } from '@/types/workout';
@@ -12,6 +12,9 @@ export function WorkoutCard({
   selected?: boolean;
   onPress?: () => void;
 }) {
+  const { width } = useWindowDimensions();
+  const compact = width < 380;
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'beginner': return '#10b981';
@@ -22,28 +25,55 @@ export function WorkoutCard({
   };
 
   const difficultyColor = getDifficultyColor(workout.difficulty);
+  const gradient = selected
+    ? ['#0f172a', '#0f766e', '#14b8a6']
+    : [`${difficultyColor}18`, '#ffffff'];
+
+  const isGradientLight = gradient.some(c => {
+    try {
+      return c.toLowerCase().includes('ffffff') || c.toLowerCase().startsWith('#fff');
+    } catch (e) {
+      return false;
+    }
+  });
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
+        compact ? styles.cardCompact : null,
         selected && styles.cardSelected,
         pressed && styles.cardPressed,
       ]}>
-      <LinearGradient
-        colors={selected ? ['#0d9488', '#0f766e'] : ['#ffffff', '#f8fafc']}
-        style={styles.cardGradient}
+        <LinearGradient
+          colors={gradient}
+          style={[styles.cardGradient, compact ? styles.cardGradientCompact : null]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
+
+      <View style={[styles.accentStrip, { backgroundColor: difficultyColor }]} />
       
       <View style={styles.header}>
         <View style={styles.titleSection}>
-          <Text style={[styles.title, selected && styles.titleSelected]}>{workout.name}</Text>
-          <View style={[styles.difficultyBadge, { backgroundColor: `${difficultyColor}15` }]}>
+          <Text
+            style={[
+              styles.title,
+              compact ? styles.titleCompact : null,
+              (selected && !isGradientLight) ? styles.titleSelected : null,
+            ]}
+          >
+            {workout.name}
+          </Text>
+          <View
+            style={[
+              styles.difficultyBadge,
+              { backgroundColor: selected ? 'rgba(255,255,255,0.14)' : `${difficultyColor}15` },
+            ]}
+          >
             <View style={[styles.difficultyDot, { backgroundColor: difficultyColor }]} />
-            <Text style={[styles.difficultyText, { color: difficultyColor }]}>
+            <Text style={[styles.difficultyText, { color: (selected && !isGradientLight) ? '#ffffff' : difficultyColor }]}> 
               {workout.difficulty}
             </Text>
           </View>
@@ -56,20 +86,27 @@ export function WorkoutCard({
         )}
       </View>
 
-      <Text style={[styles.description, selected && styles.descriptionSelected]} numberOfLines={2}>
+      <Text
+        style={[
+          styles.description,
+          compact ? styles.descriptionCompact : null,
+          (selected && !isGradientLight) ? styles.descriptionSelected : null,
+        ]}
+        numberOfLines={3}
+      >
         {workout.description || 'Custom workout plan designed for your fitness journey'}
       </Text>
 
-      <View style={styles.stats}>
+      <View style={[styles.stats, compact ? styles.statsCompact : null]}>
         <View style={styles.statItem}>
-          <Ionicons name="repeat-outline" size={14} color={selected ? 'rgba(255,255,255,0.7)' : '#64748b'} />
-          <Text style={[styles.statText, selected && styles.statTextSelected]}>
+          <Ionicons name="repeat-outline" size={14} color={(selected && !isGradientLight) ? 'rgba(255,255,255,0.7)' : '#64748b'} />
+          <Text style={[styles.statText, (selected && !isGradientLight) ? styles.statTextSelected : null]}>
             {workout.exercises.length} exercises
           </Text>
         </View>
         <View style={styles.statItem}>
-          <Ionicons name="time-outline" size={14} color={selected ? 'rgba(255,255,255,0.7)' : '#64748b'} />
-          <Text style={[styles.statText, selected && styles.statTextSelected]}>
+          <Ionicons name="time-outline" size={14} color={(selected && !isGradientLight) ? 'rgba(255,255,255,0.7)' : '#64748b'} />
+          <Text style={[styles.statText, (selected && !isGradientLight) ? styles.statTextSelected : null]}>
             {workout.estimatedDurationMinutes} min
           </Text>
         </View>
@@ -97,7 +134,6 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
     marginBottom: 12,
-    marginHorizontal: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -117,6 +153,21 @@ const styles = StyleSheet.create({
   },
   cardGradient: {
     padding: 16,
+    minHeight: 112,
+  },
+  cardCompact: {
+    marginHorizontal: 0,
+  },
+  cardGradientCompact: {
+    padding: 14,
+  },
+  accentStrip: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 5,
+    opacity: 0.95,
   },
   header: {
     flexDirection: 'row',
@@ -133,6 +184,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1e293b',
     letterSpacing: -0.3,
+  },
+  titleCompact: {
+    fontSize: 16,
   },
   titleSelected: {
     color: '#ffffff',
@@ -154,7 +208,7 @@ const styles = StyleSheet.create({
   difficultyText: {
     fontSize: 11,
     fontWeight: '500',
-    textTransform: 'capitalize',
+    color: '#0f172a',
   },
   selectedBadge: {
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -164,17 +218,25 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 13,
     fontWeight: '400',
-    color: '#64748b',
+    color: '#475569',
     lineHeight: 18,
     marginBottom: 12,
+  },
+  descriptionCompact: {
+    lineHeight: 17,
+    marginBottom: 10,
   },
   descriptionSelected: {
     color: 'rgba(255,255,255,0.8)',
   },
   stats: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 16,
     marginBottom: 8,
+  },
+  statsCompact: {
+    gap: 12,
   },
   statItem: {
     flexDirection: 'row',
@@ -184,7 +246,7 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 12,
     fontWeight: '400',
-    color: '#64748b',
+    color: '#475569',
   },
   statTextSelected: {
     color: 'rgba(255,255,255,0.7)',

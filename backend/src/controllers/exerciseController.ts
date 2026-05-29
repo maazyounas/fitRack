@@ -319,6 +319,8 @@ const defaultExercises = [
   },
 ] as const;
 
+let defaultExercisesSeedPromise: Promise<void> | null = null;
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -332,28 +334,49 @@ function uniqueTrimmed(values: string[] = []) {
 }
 
 async function ensureDefaultExercises() {
-  const count = await ExerciseModel.countDocuments();
-  if (count > 0) {
-    return;
+  if (!defaultExercisesSeedPromise) {
+    defaultExercisesSeedPromise = (async () => {
+      const count = await ExerciseModel.countDocuments();
+      if (count > 0) {
+        return;
+      }
+
+      let adminUser = await UserModel.findOne({ isAdmin: true });
+      if (!adminUser) {
+        adminUser = await UserModel.findOne().sort({ createdAt: 1 });
+      }
+
+      if (!adminUser) {
+        return;
+      }
+
+      await ExerciseModel.bulkWrite(
+        defaultExercises.map((exercise) => {
+          const exerciseDocument = {
+            ...exercise,
+            targetMuscles: [...exercise.targetMuscles],
+            instructions: [...exercise.instructions],
+            demoVideos: exercise.demoVideos.map((video) => ({ ...video })),
+            slug: slugify(exercise.name),
+            createdBy: adminUser!._id,
+            updatedBy: adminUser!._id,
+          };
+
+          return {
+            updateOne: {
+              filter: { slug: exerciseDocument.slug },
+              update: { $setOnInsert: exerciseDocument },
+              upsert: true,
+            },
+          };
+        }) as any
+      );
+    })().finally(() => {
+      defaultExercisesSeedPromise = null;
+    });
   }
 
-  let adminUser = await UserModel.findOne({ isAdmin: true });
-  if (!adminUser) {
-    adminUser = await UserModel.findOne().sort({ createdAt: 1 });
-  }
-
-  if (!adminUser) {
-    return;
-  }
-
-  await ExerciseModel.insertMany(
-    defaultExercises.map((exercise) => ({
-      ...exercise,
-      slug: slugify(exercise.name),
-      createdBy: adminUser!._id,
-      updatedBy: adminUser!._id,
-    }))
-  );
+  return defaultExercisesSeedPromise;
 }
 
 function getAverageRating(ratings: Array<{ score: number }>) {

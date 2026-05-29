@@ -1,257 +1,217 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  Platform,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Button } from '@/components/ui/Button';
-import { TemplateSelector } from '@/components/workouts/TemplateSelector';
-import { WorkoutCard } from '@/components/workouts/WorkoutCard';
-import { useWorkoutStore } from '@/store/workoutStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { AppHeader } from '@/components/common/AppHeader';
-
-function formatShortDate(date: Date) {
-  return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
-}
-
-function getWeekDates(baseIso: string) {
-  const baseDate = new Date(baseIso);
-  const day = baseDate.getDay();
-  const sunday = new Date(baseDate);
-  sunday.setDate(baseDate.getDate() - day);
-
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(sunday);
-    date.setDate(sunday.getDate() + index);
-    return date;
-  });
-}
-
-function isSameDay(first: string, second: string) {
-  return new Date(first).toDateString() === new Date(second).toDateString();
-}
+import { TemplateSelector } from '@/components/workouts/TemplateSelector';
+import { WorkoutTemplate } from '@/types/workout';
+import { Button } from '@/components/ui/Button';
+import { useWorkoutStore } from '@/store/workoutStore';
+import { useAuthStore } from '@/store/authStore';
 
 export default function WorkoutsScreen() {
   const router = useRouter();
-  const {
-    plans,
-    templates,
-    selectedDate,
-    selectedPlanId,
-    isLoading,
-    initialize,
-    setSelectedDate,
-    setSelectedPlanId,
-    schedulePlan,
-    markCompleted,
-    applyTemplate,
-    refreshAiReview,
-    deletePlan,
-  } = useWorkoutStore();
-  const [activeTab, setActiveTab] = useState<'plans' | 'templates'>('plans');
+  const { plans, templates, initialize, deletePlan, schedulePlan, applyTemplate } = useWorkoutStore();
+  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const user = useAuthStore((state) => state.user);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerPlanId, setDatePickerPlanId] = useState<string | null>(null);
+  const [pickedDate, setPickedDate] = useState<Date>(new Date());
+  const bootedRef = useRef(false);
 
   useEffect(() => {
-    void initialize();
-  }, [initialize]);
-
-  const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
-  const selectedPlan = plans.find((plan) => plan.id === selectedPlanId) ?? plans[0] ?? null;
-  const scheduledForSelectedDate = useMemo(
-    () =>
-      plans.flatMap((plan) =>
-        plan.schedule
-          .filter((entry) => isSameDay(entry.scheduledDate, selectedDate))
-          .map((entry) => ({ plan, entry }))
-      ),
-    [plans, selectedDate]
-  );
-
-  const handleSchedule = async () => {
-    if (!selectedPlan) {
-      Alert.alert('Select a workout', 'Choose a workout plan before scheduling it.');
+    if (!isHydrated || !user || bootedRef.current) {
       return;
     }
 
+    bootedRef.current = true;
+    void initialize();
+  }, [initialize, isHydrated, user]);
+
+  const handleSchedule = (planId: string) => {
+    setDatePickerPlanId(planId);
+    setPickedDate(new Date());
+    setShowDatePicker(true);
+  };
+
+  const handleUseTemplate = async (template: WorkoutTemplate) => {
     try {
-      await schedulePlan(selectedPlan.id, selectedDate);
-      Alert.alert('Workout scheduled', 'Your workout was added to the calendar.');
+      const newPlan = await applyTemplate(template.key ?? template.id);
+      router.push({ pathname: '/(modals)/workout-builder', params: { planId: newPlan.id } } as never);
     } catch (error) {
-      Alert.alert('Schedule failed', error instanceof Error ? error.message : 'Please try again.');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to apply template.');
     }
   };
 
-  const handleAiReview = async () => {
-    if (!selectedPlan) {
-      return;
-    }
-
-    try {
-      const review = await refreshAiReview(selectedPlan.id);
-      Alert.alert('AI review ready', `${review.intensityAdjustment}\n\n${review.outdatedReason}`);
-    } catch (error) {
-      Alert.alert('AI review failed', error instanceof Error ? error.message : 'Please try again.');
-    }
+  const handleDeletePlan = (planId: string, planName: string) => {
+    Alert.alert('Delete workout?', `Remove "${planName}" permanently?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          void (async () => {
+            try {
+              await deletePlan(planId);
+              Alert.alert('Deleted', `"${planName}" was removed successfully.`);
+            } catch (error) {
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete workout.');
+            }
+          })();
+        },
+      },
+    ]);
   };
 
   return (
     <View style={styles.page}>
-      <AppHeader title="Workout Planning" />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.subHeader}>
-          <Text style={styles.subtitle}>
-            Build routines, schedule them weekly, and let AI flag stale plans.
-          </Text>
+      <AppHeader title="Workouts" />
+
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>Your Workouts</Text>
+            <Text style={styles.subtitle}>{plans.length} total • Quick create or edit</Text>
+          </View>
           <Pressable
             onPress={() => router.push('/(modals)/workout-builder' as never)}
-            style={styles.addButton}
+            style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
           >
-            <Ionicons color="#fff" name="add" size={24} />
+            <LinearGradient colors={['#0d9488', '#0f766e']} style={styles.fabGradient}>
+              <Ionicons name="add" size={28} color="#fff" />
+            </LinearGradient>
           </Pressable>
         </View>
 
-      <View style={styles.calendarCard}>
-        <View style={styles.sectionTopRow}>
-          <Text style={styles.sectionTitle}>Weekly Schedule</Text>
-          <Button label="Schedule Selected" onPress={handleSchedule} tone="secondary" />
-        </View>
-        <View style={styles.weekRow}>
-          {weekDates.map((date) => {
-            const iso = date.toISOString();
-            const active = isSameDay(iso, selectedDate);
-            return (
-              <Pressable
-                key={iso}
-                onPress={() => setSelectedDate(iso)}
-                style={[styles.dayChip, active ? styles.dayChipActive : null]}
-              >
-                <Text style={[styles.dayChipText, active ? styles.dayChipTextActive : null]}>
-                  {formatShortDate(date)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {scheduledForSelectedDate.length ? (
-          scheduledForSelectedDate.map(({ plan, entry }) => (
-            <View key={`${plan.id}-${entry._id ?? entry.scheduledDate}`} style={styles.scheduleItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.scheduleTitle}>{plan.name}</Text>
-                <Text style={styles.scheduleMeta}>
-                  {entry.status} |{' '}
-                  {new Date(entry.scheduledDate).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-              </View>
-              {!entry.completed ? (
-                <Button
-                  label="Complete"
-                  onPress={() => void markCompleted(plan.id, entry._id ?? '')}
-                  tone="primary"
-                />
-              ) : (
-                <Text style={styles.completeLabel}>Done</Text>
-              )}
-            </View>
-          ))
-        ) : (
-          <Text style={styles.emptyText}>No workouts scheduled for this day yet.</Text>
-        )}
-      </View>
-
-      {selectedPlan ? (
-        <View style={styles.aiCard}>
-          <View style={styles.sectionTopRow}>
-            <Text style={styles.sectionTitle}>AI Coach Placeholder</Text>
-            <Button label="Analyze Plan" onPress={handleAiReview} />
-          </View>
-          <Text style={styles.aiHeading}>{selectedPlan.name}</Text>
-          <Text style={styles.aiCopy}>
-            {selectedPlan.aiReview?.intensityAdjustment ??
-              'Run AI review to get intensity adjustments, exercise swaps, and outdated-plan detection.'}
-          </Text>
-          {selectedPlan.aiReview?.exerciseVariations?.map((variation) => (
-            <Text key={variation.exerciseName} style={styles.aiVariation}>
-              {variation.exerciseName}: {variation.suggestion}
-            </Text>
-          ))}
-        </View>
-      ) : null}
-
-      <View style={styles.toggleRow}>
-        <Button
-          label="My Plans"
-          onPress={() => setActiveTab('plans')}
-          tone={activeTab === 'plans' ? 'primary' : 'secondary'}
-        />
-        <Button
-          label="Templates"
-          onPress={() => setActiveTab('templates')}
-          tone={activeTab === 'templates' ? 'primary' : 'secondary'}
-        />
-      </View>
-
-      {activeTab === 'plans' ? (
-        <View>
-          {plans.map((plan) => (
-            <View key={plan.id}>
-              <WorkoutCard
-                workout={plan}
-                selected={plan.id === selectedPlanId}
-                onPress={() => setSelectedPlanId(plan.id)}
-              />
-              {plan.id === selectedPlanId ? (
-                <View style={styles.planActions}>
-                  <Button
-                    label="Edit"
+        <FlatList
+          data={plans}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            templates.length > 0 ? (
+              <TemplateSelector templates={templates} onUseTemplate={handleUseTemplate} />
+            ) : null
+          }
+          renderItem={({ item: plan }) => (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>{plan.name}</Text>
+                  <Text style={styles.cardMeta}>
+                    {plan.difficulty} • {plan.exercises?.length || 0} exercises • {plan.estimatedDurationMinutes}min
+                  </Text>
+                </View>
+                <View style={styles.cardActions}>
+                  <Pressable
                     onPress={() =>
                       router.push({
                         pathname: '/(modals)/workout-builder',
                         params: { planId: plan.id },
                       } as never)
                     }
-                    tone="secondary"
-                  />
-                  <Button
-                    label="Delete"
-                    onPress={() =>
-                      Alert.alert('Delete workout', 'This removes the workout plan from your library.', [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Delete',
-                          style: 'destructive',
-                          onPress: () => void deletePlan(plan.id),
-                        },
-                      ])
-                    }
-                    tone="danger"
-                  />
+                    style={styles.iconButton}
+                  >
+                    <Ionicons name="pencil" size={18} color="#0f766e" />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleDeletePlan(plan.id, plan.name)}
+                    style={styles.iconButton}
+                  >
+                    <Ionicons name="trash" size={18} color="#ef4444" />
+                  </Pressable>
                 </View>
-              ) : null}
+              </View>
+
+              {plan.description && <Text style={styles.cardDesc}>{plan.description}</Text>}
+
+              <View style={styles.cardActions}>
+                <Button 
+                  label="Start Workout" 
+                  onPress={() => router.push({ pathname: '/(modals)/workout-execution', params: { workoutId: plan.id } } as never)} 
+                  tone="primary" 
+                  stretch 
+                />
+                <Button label="Schedule" onPress={() => handleSchedule(plan.id)} tone="primary" stretch />
+              </View>
             </View>
-          ))}
-          {!plans.length && !isLoading ? (
-            <Text style={styles.emptyText}>No custom plans yet. Create one to begin.</Text>
-          ) : null}
-        </View>
-      ) : (
-        <TemplateSelector
-          templates={templates}
-          onUseTemplate={(template) => {
-            void applyTemplate(template.key ?? template.id)
-              .then(() =>
-                Alert.alert('Template added', `${template.name} is now editable in your plans.`)
-              )
-              .catch((error) =>
-                Alert.alert(
-                  'Template failed',
-                  error instanceof Error ? error.message : 'Please try again.'
-                )
-              );
+          )}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Ionicons name="barbell-outline" size={48} color="#cbd5e1" />
+              <Text style={styles.emptyText}>No workouts yet</Text>
+              <Text style={styles.emptySubtext}>Tap the + button to create your first workout</Text>
+            </View>
+          }
+          contentContainerStyle={styles.list}
+        />
+      </View>
+
+      {showDatePicker && Platform.OS === 'android' && (
+        <DateTimePicker
+          value={pickedDate}
+          minimumDate={new Date()}
+          mode="date"
+          onChange={async (_, date) => {
+            setShowDatePicker(false);
+            if (date && datePickerPlanId) {
+              setPickedDate(date);
+              try {
+                await schedulePlan(datePickerPlanId, date.toISOString().split('T')[0]);
+                Alert.alert('Scheduled', `Workout scheduled for ${date.toLocaleDateString()}.`);
+              } catch (error) {
+                Alert.alert('Error', error instanceof Error ? error.message : 'Failed to schedule.');
+              }
+            }
           }}
         />
       )}
-      </ScrollView>
+
+      {Platform.OS === 'ios' && (
+        <Modal visible={showDatePicker} transparent animationType="fade">
+          <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+            <View style={{ backgroundColor: 'white', paddingBottom: 20 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 16 }}>
+                <Pressable onPress={() => setShowDatePicker(false)}>
+                  <Text style={{ color: 'red', fontSize: 16 }}>Cancel</Text>
+                </Pressable>
+                <Pressable onPress={async () => {
+                  setShowDatePicker(false);
+                  if (datePickerPlanId) {
+                    try {
+                      await schedulePlan(datePickerPlanId, pickedDate.toISOString().split('T')[0]);
+                      Alert.alert('Scheduled', `Workout scheduled for ${pickedDate.toLocaleDateString()}.`);
+                    } catch (error) {
+                      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to schedule.');
+                    }
+                  }
+                }}>
+                  <Text style={{ color: '#0d9488', fontSize: 16, fontWeight: 'bold' }}>Confirm</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={pickedDate}
+                minimumDate={new Date()}
+                mode="date"
+                display="spinner"
+                onChange={(_, date) => {
+                  if (date) setPickedDate(date);
+                }}
+              />
+            </View>
+          </View>
+        </Modal>
+      )}
+
     </View>
   );
 }
@@ -261,132 +221,179 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f4f7f5',
   },
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 40,
   },
-  subHeader: {
-    alignItems: 'center',
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 18,
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  title: {
+    color: '#0f172a',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: -0.4,
   },
   subtitle: {
-    color: '#475569',
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 6,
-    maxWidth: 280,
-  },
-  addButton: {
-    alignItems: 'center',
-    backgroundColor: '#0f766e',
-    borderRadius: 18,
-    height: 52,
-    justifyContent: 'center',
-    width: 52,
-  },
-  calendarCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 24,
-    marginBottom: 16,
-    padding: 18,
-  },
-  sectionTopRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    color: '#0f172a',
-    fontSize: 19,
-    fontWeight: '800',
-  },
-  weekRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  dayChip: {
-    backgroundColor: '#e2e8f0',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  dayChipActive: {
-    backgroundColor: '#0f766e',
-  },
-  dayChipText: {
-    color: '#334155',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  dayChipTextActive: {
-    color: '#f8fafc',
-  },
-  scheduleItem: {
-    alignItems: 'center',
-    backgroundColor: '#ecfeff',
-    borderRadius: 18,
-    flexDirection: 'row',
-    marginTop: 10,
-    padding: 14,
-  },
-  scheduleTitle: {
-    color: '#0f172a',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  scheduleMeta: {
-    color: '#475569',
+    color: '#64748b',
     fontSize: 13,
     marginTop: 4,
-    textTransform: 'capitalize',
   },
-  completeLabel: {
-    color: '#0f766e',
-    fontSize: 14,
-    fontWeight: '800',
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
   },
-  aiCard: {
-    backgroundColor: '#ecfccb',
-    borderRadius: 24,
-    marginBottom: 16,
-    padding: 18,
+  fabPressed: {
+    transform: [{ scale: 0.95 }],
   },
-  aiHeading: {
-    color: '#365314',
-    fontSize: 18,
-    fontWeight: '800',
+  fabGradient: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#0d9488',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  aiCopy: {
-    color: '#4d7c0f',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 10,
+  list: {
+    paddingBottom: 100,
   },
-  aiVariation: {
-    color: '#3f6212',
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#0d9488',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  cardTitle: {
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  cardMeta: {
+    color: '#64748b',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  cardActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cardDesc: {
+    color: '#475569',
     fontSize: 13,
-    marginTop: 8,
+    lineHeight: 18,
+    marginBottom: 10,
   },
-  toggleRow: {
-    gap: 10,
-    marginBottom: 16,
+  iconButton: {
+    padding: 6,
   },
-  planActions: {
-    gap: 10,
-    marginBottom: 16,
-    marginTop: -2,
+  empty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 80,
   },
   emptyText: {
+    color: '#0f172a',
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 16,
+  },
+  emptySubtext: {
     color: '#64748b',
     fontSize: 14,
-    lineHeight: 20,
+    marginTop: 8,
+  },
+  modal: {
+    flex: 1,
+    backgroundColor: '#f4f7f5',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  modalTitle: {
+    color: '#0f172a',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  modalFooter: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingTop: 12,
+  },
+  formGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: '#0f172a',
+  },
+  textarea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  difficultyRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  difficultyButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+  },
+  difficultyButtonActive: {
+    borderColor: '#0d9488',
+    backgroundColor: '#f0fdfb',
+  },
+  difficultyButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  difficultyButtonTextActive: {
+    color: '#0d9488',
   },
 });
 

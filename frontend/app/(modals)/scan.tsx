@@ -45,7 +45,7 @@ const GUIDANCE_MESSAGES: GuidanceMessage[] = [
 
 export default function ScanScreen() {
   const router = useRouter();
-  const { imageConsent, loadImageConsent } = useAuthStore();
+  const { imageConsent, loadImageConsent, tokens, isHydrated } = useAuthStore();
   const [permission, requestPermission] = useCameraPermissions();
   const [captureMode, setCaptureMode] = useState<CaptureMode>('body');
   const [preview, setPreview] = useState<AnalysisImage | null>(null);
@@ -59,29 +59,21 @@ export default function ScanScreen() {
   const fabScale = useSharedValue(1);
 
   useEffect(() => {
-    void loadImageConsent();
+    if (isHydrated && tokens) {
+      void loadImageConsent().catch((error) => {
+        console.warn('[ScanScreen] Skipping consent load:', error);
+      });
+    }
+
     // Rotate guidance messages every 3s
     const interval = setInterval(() => {
       setGuidanceIdx((i: number) => (i + 1) % GUIDANCE_MESSAGES.length);
     }, 3000);
     return () => clearInterval(interval);
-  }, [loadImageConsent]);
-
-  const checkConsent = () => {
-    if (!imageConsent?.consentGiven || !imageConsent?.usageExplanationAccepted) {
-      Alert.alert(
-        'Consent Required',
-        'Please enable Image Consent in Settings → Privacy before scanning.',
-        [{ text: 'OK' }]
-      );
-      return false;
-    }
-    return true;
-  };
+  }, [isHydrated, loadImageConsent, tokens]);
 
   // ── Camera capture ──────────────────────────────────────────────────────────
   const handleCapture = async () => {
-    if (!checkConsent()) return;
     if (!cameraRef.current) return;
 
     fabScale.value = withSpring(0.88, { damping: 8 }, () => {
@@ -103,7 +95,6 @@ export default function ScanScreen() {
 
   // ── Gallery pick ────────────────────────────────────────────────────────────
   const handleGalleryPick = async () => {
-    if (!checkConsent()) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
       mediaTypes: ['images'],
@@ -145,6 +136,14 @@ export default function ScanScreen() {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  // DEV helper: trigger analysis with a non-human repo asset to validate no-body fallback
+  const testNonHuman = async () => {
+    setPreview({ uri: '/assets/images/icon.png', width: 400, height: 400 });
+    // small delay to ensure preview state is applied before analysis
+    await new Promise((r) => setTimeout(r, 200));
+    await handleAnalyze();
   };
 
   const fabStyle = useAnimatedStyle(() => ({ transform: [{ scale: fabScale.value }] }));
@@ -220,6 +219,13 @@ export default function ScanScreen() {
 
       {/* ── Bottom Controls ──────────────────────────────────────────────────── */}
       <View style={styles.controls}>
+        {__DEV__ && (
+          <View style={{ paddingHorizontal: 24, marginBottom: 8 }}>
+            <Pressable onPress={testNonHuman} style={{ backgroundColor: '#fff', padding: 10, borderRadius: 8, alignItems: 'center' }}>
+              <Text style={{ color: '#0d9488', fontWeight: '700' }}>Dev: Test Non-Human</Text>
+            </Pressable>
+          </View>
+        )}
         {preview ? (
           // Preview mode: Retake or Analyze
           <View style={styles.previewControls}>

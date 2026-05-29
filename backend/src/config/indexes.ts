@@ -36,7 +36,22 @@ export async function createIndexes() {
 
     // ── NutritionProfiles ────────────────────────────────────────────────
     const nutrition = db.collection('nutritionprofiles');
-    await nutrition.createIndex({ userId: 1 }, { unique: true, background: true });
+    // Ensure index is on the current field name (ownerId). Remove legacy userId index if present.
+    try {
+      const indexes = await nutrition.indexes();
+      const hasUserIdIndex = indexes.some((idx: any) => idx.key && idx.key.userId === 1);
+      if (hasUserIdIndex) {
+        try {
+          await nutrition.dropIndex('userId_1');
+          console.log('Dropped legacy nutritionprofiles.userId_1 index');
+        } catch (err) {
+          // ignore drop errors
+        }
+      }
+    } catch (err) {
+      // ignore index listing errors
+    }
+    await nutrition.createIndex({ ownerId: 1 }, { unique: true, background: true });
 
     // ── SocialPosts ──────────────────────────────────────────────────────
     const posts = db.collection('socialposts');

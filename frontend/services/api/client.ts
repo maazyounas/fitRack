@@ -7,6 +7,7 @@
  *                        and resolved together after a single refresh call.
  */
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { Platform } from 'react-native';
 import { API_BASE_URL } from '@/constants/config';
 
 // ─── Axios Instance ──────────────────────────────────────────────────────────
@@ -14,7 +15,6 @@ import { API_BASE_URL } from '@/constants/config';
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    'Content-Type': 'application/json',
     Accept: 'application/json',
   },
   timeout: 15000,
@@ -54,6 +54,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+    const requestUrl = originalRequest?.url ?? '';
+    const isAuthRoute = /\/auth\/(login|refresh|register|verify|resend-otp|forgot-password|reset-password|logout)/.test(requestUrl);
+
+    if (originalRequest.headers?.['x-skip-auth-refresh'] === '1' || isAuthRoute) {
+      return Promise.reject(extractApiError(error));
+    }
 
     if (error.response?.status !== 401 || originalRequest._retry) {
       return Promise.reject(extractApiError(error));
@@ -100,6 +106,11 @@ function extractApiError(error: AxiosError): Error {
     typeof data?.message === 'string'
       ? data.message
       : error.message || 'Request failed.';
+  // If this was a network-level error (no response), include the API base URL to help debugging
+  if (!error.response) {
+    return new Error(`${message} (API_BASE_URL=${API_BASE_URL})`);
+  }
+
   return new Error(message);
 }
 
@@ -112,14 +123,23 @@ export async function apiRequest<T>(
     body?: unknown;
     accessToken?: string | null;
     isFormData?: boolean;
+    skipAuthRefresh?: boolean;
   } = {}
 ): Promise<T> {
   const headers: Record<string, string> = {};
   if (options.accessToken) {
     headers.Authorization = `Bearer ${options.accessToken}`;
   }
+  if (!options.isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
   if (options.isFormData) {
-    headers['Content-Type'] = 'multipart/form-data';
+    if (Platform.OS !== 'web') {
+      headers['Content-Type'] = 'multipart/form-data';
+    }
+  }
+  if (options.skipAuthRefresh) {
+    headers['x-skip-auth-refresh'] = '1';
   }
 
   const response = await apiClient.request<T>({

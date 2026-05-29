@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -233,12 +233,27 @@ function FoodItemCard({
 export default function MealLoggerModal() {
   const router = useRouter();
   const { mealId } = useLocalSearchParams<{ mealId?: string }>();
-  const { meals, addMeal, editMeal, isSaving } = useNutritionStore();
+  const { meals, addMeal, editMeal, initialize, isLoading, isSaving } = useNutritionStore();
   const existingMeal = meals.find((entry) => entry.id === mealId);
   const [name, setName] = useState(existingMeal?.name ?? '');
   const [mealType, setMealType] = useState<MealType>(existingMeal?.mealType ?? 'breakfast');
   const [notes, setNotes] = useState(existingMeal?.notes ?? '');
   const [foods, setFoods] = useState<FoodItem[]>(existingMeal?.foods.length ? existingMeal.foods : []);
+
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    if (!existingMeal) {
+      return;
+    }
+
+    setName(existingMeal.name);
+    setMealType(existingMeal.mealType);
+    setNotes(existingMeal.notes ?? '');
+    setFoods(existingMeal.foods.length ? existingMeal.foods : []);
+  }, [existingMeal?.id]);
 
   const totals = useMemo(
     () =>
@@ -336,6 +351,11 @@ export default function MealLoggerModal() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.screen}
     >
+      {isLoading && !meals.length ? (
+        <View style={styles.loadingOverlay}>
+          <Text style={styles.loadingText}>Loading meal data...</Text>
+        </View>
+      ) : null}
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -743,5 +763,21 @@ const styles = StyleSheet.create({
   },
   spacer: {
     height: 20,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    backgroundColor: 'rgba(248, 250, 252, 0.92)',
+  },
+  loadingText: {
+    color: '#0f766e',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

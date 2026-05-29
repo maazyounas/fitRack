@@ -1,4 +1,5 @@
-import { Alert } from 'react-native';
+import { useEffect } from 'react';
+import { Alert, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { WorkoutBuilder } from '@/components/workouts/WorkoutBuilder';
 import { useWorkoutStore } from '@/store/workoutStore';
@@ -6,8 +7,24 @@ import { useWorkoutStore } from '@/store/workoutStore';
 export default function WorkoutBuilderModal() {
   const router = useRouter();
   const params = useLocalSearchParams<{ planId?: string }>();
-  const { plans, createPlan, updatePlan, isLoading } = useWorkoutStore();
+  const { plans, createPlan, updatePlan, initialize, isLoading } = useWorkoutStore();
+
+  useEffect(() => {
+    if (params.planId && plans.length === 0) {
+      void initialize();
+    }
+  }, [initialize, params.planId, plans.length]);
+
   const selectedPlan = plans.find((plan) => plan.id === params.planId) ?? null;
+
+  const closeModal = () => {
+    if (Platform.OS === 'web') {
+      router.replace('/workouts');
+      return;
+    }
+
+    router.back();
+  };
 
   return (
     <WorkoutBuilder
@@ -19,7 +36,7 @@ export default function WorkoutBuilderModal() {
           } else {
             await createPlan(payload);
           }
-          router.back();
+          closeModal();
         } catch (error) {
           Alert.alert('Save failed', error instanceof Error ? error.message : 'Please try again.');
         }

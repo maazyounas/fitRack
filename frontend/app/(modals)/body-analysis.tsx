@@ -69,14 +69,6 @@ export default function BodyAnalysisModal() {
   }, [loadImageConsent]);
 
   async function pickImage() {
-    if (!imageConsent?.usageExplanationAccepted || !imageConsent?.consentGiven) {
-      Alert.alert(
-        'Consent required',
-        'Review and enable Image Upload Consent in Settings before selecting an image.'
-      );
-      return;
-    }
-
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert('Permission needed', 'Allow photo library access to pick a body or wrist image.');

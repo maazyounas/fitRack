@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { CalorieProgress } from '../../components/nutrition/CalorieProgress';
@@ -7,9 +7,12 @@ import { MicronutrientGrid } from '../../components/nutrition/MicronutrientGrid'
 import { TrendChart } from '../../components/nutrition/TrendChart';
 import { useNutritionStore } from '../../store/nutritionStore';
 import { AppHeader } from '@/components/common/AppHeader';
+import { useAuthStore } from '@/store/authStore';
 
 export default function NutritionScreen() {
   const router = useRouter();
+  const isHydrated = useAuthStore((state) => state.isHydrated);
+  const user = useAuthStore((state) => state.user);
   const {
     meals,
     goals,
@@ -22,10 +25,16 @@ export default function NutritionScreen() {
     error,
     initialize,
   } = useNutritionStore();
+  const bootedRef = useRef(false);
 
   useEffect(() => {
+    if (!isHydrated || !user || bootedRef.current) {
+      return;
+    }
+
+    bootedRef.current = true;
     initialize();
-  }, [initialize]);
+  }, [initialize, isHydrated, user]);
 
   return (
     <View style={styles.page}>
