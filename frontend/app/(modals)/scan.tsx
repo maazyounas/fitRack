@@ -30,10 +30,7 @@ import { CameraOverlay, type GuidanceMessage } from '@/components/CameraOverlay'
 import { runBodyAnalysis } from '@/services/ai/bodyAnalysis';
 import { saveBodyAnalysis } from '@/services/api/bodyAnalysisApi';
 import { useAuthStore } from '@/store/authStore';
-import type { AnalysisCaptureMode, AnalysisImage } from '@/types/bodyAnalysis';
-
-type ScanMode = 'camera' | 'gallery';
-type CaptureMode = AnalysisCaptureMode;
+import type { AnalysisImage } from '@/types/bodyAnalysis';
 
 const GUIDANCE_MESSAGES: GuidanceMessage[] = [
   { text: 'Center your body in the frame', severity: 'ok', icon: 'body-outline' },
@@ -43,15 +40,21 @@ const GUIDANCE_MESSAGES: GuidanceMessage[] = [
   { text: 'Hold still', severity: 'ok', icon: 'hand-right-outline' },
 ];
 
+const SCAN_TIPS = [
+  'Stand in front of a plain background with good lighting.',
+  'Keep your full body visible from head to feet.',
+  'Hold still for a second before tapping Analyze.',
+];
+
 export default function ScanScreen() {
   const router = useRouter();
   const { imageConsent, loadImageConsent, tokens, isHydrated } = useAuthStore();
   const [permission, requestPermission] = useCameraPermissions();
-  const [captureMode, setCaptureMode] = useState<CaptureMode>('body');
   const [preview, setPreview] = useState<AnalysisImage | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [guidanceIdx, setGuidanceIdx] = useState(0);
+  const analysisErrorMessage = 'We could not analyze this image. Please try a clearer full-body photo.';
 
   const cameraRef = useRef<CameraView>(null);
 
@@ -112,7 +115,7 @@ export default function ScanScreen() {
     setIsAnalyzing(true);
     try {
       const result = await runBodyAnalysis({
-        mode: captureMode,
+        mode: 'body',
         image: preview,
         consentToStore: imageConsent?.storageAllowed ?? false,
       });
@@ -132,7 +135,8 @@ export default function ScanScreen() {
         params: { resultJson: JSON.stringify(result) },
       });
     } catch (err) {
-      Alert.alert('Analysis failed', err instanceof Error ? err.message : 'Please try again.');
+      console.warn('[ScanScreen] Analysis failed:', err);
+      Alert.alert('Analysis failed', analysisErrorMessage);
     } finally {
       setIsAnalyzing(false);
     }
@@ -150,6 +154,10 @@ export default function ScanScreen() {
 
   const guidance = GUIDANCE_MESSAGES[guidanceIdx];
 
+  const showTips = () => {
+    Alert.alert('Body Scan Tips', SCAN_TIPS.join('\n\n'));
+  };
+
   // ── Camera permission ───────────────────────────────────────────────────────
   if (!permission) {
     return <View style={styles.safe} />;
@@ -165,19 +173,8 @@ export default function ScanScreen() {
           <Ionicons name="chevron-back" size={24} color="#fff" />
         </Pressable>
         <Text style={styles.headerTitle}>AI Body Scan</Text>
-        {/* Mode toggle pill */}
-        <View style={styles.modeToggle}>
-          {(['body', 'wrist'] as CaptureMode[]).map((m) => (
-            <Pressable
-              key={m}
-              onPress={() => { setCaptureMode(m); setPreview(null); }}
-              style={[styles.modePill, captureMode === m && styles.modePillActive]}
-            >
-              <Text style={[styles.modePillText, captureMode === m && styles.modePillTextActive]}>
-                {m.charAt(0).toUpperCase() + m.slice(1)}
-              </Text>
-            </Pressable>
-          ))}
+        <View style={styles.modeBadge}>
+          <Text style={styles.modeBadgeText}>Body only</Text>
         </View>
       </View>
 
@@ -195,6 +192,18 @@ export default function ScanScreen() {
             <Pressable onPress={requestPermission} style={styles.permBtn}>
               <Text style={styles.permBtnText}>Allow Camera</Text>
             </Pressable>
+          </View>
+        )}
+
+        {!preview && (
+          <View style={styles.flowCard}>
+            <View style={styles.flowHeader}>
+              <Ionicons name="body-outline" size={16} color="#0f766e" />
+              <Text style={styles.flowTitle}>Body scan flow</Text>
+            </View>
+            <Text style={styles.flowText}>
+              Capture a clear full-body photo, then analyze it to get body type, posture, and workout guidance.
+            </Text>
           </View>
         )}
 
@@ -268,7 +277,7 @@ export default function ScanScreen() {
             </Animated.View>
 
             {/* Flip (placeholder) */}
-            <Pressable style={styles.sideBtn}>
+            <Pressable onPress={showTips} style={styles.sideBtn}>
               <Ionicons name="information-circle-outline" size={26} color="#fff" />
               <Text style={styles.sideBtnLabel}>Tips</Text>
             </Pressable>
@@ -300,6 +309,20 @@ const styles = StyleSheet.create({
   bottomFade: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 },
   controls: { paddingBottom: 36, paddingTop: 20, paddingHorizontal: 24, backgroundColor: '#000' },
   cameraControls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  flowCard: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    backgroundColor: 'rgba(15,23,42,0.75)',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  flowHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  flowTitle: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  flowText: { color: 'rgba(255,255,255,0.72)', fontSize: 12, lineHeight: 18 },
   sideBtn: { alignItems: 'center', gap: 4, width: 64 },
   sideBtnLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '600' },
   fab: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: '#fff' },

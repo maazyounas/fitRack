@@ -6,8 +6,14 @@ import { ProgressTrendPoint } from '@/types/progress';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export function PerformanceChart({ points }: { points: ProgressTrendPoint[] }) {
-  const compact = SCREEN_WIDTH < 380;
+export function PerformanceChart({
+  points,
+  compact: compactOverride,
+}: {
+  points: ProgressTrendPoint[];
+  compact?: boolean;
+}) {
+  const compact = compactOverride ?? SCREEN_WIDTH < 380;
 
   if (!points || points.length === 0) {
     return (

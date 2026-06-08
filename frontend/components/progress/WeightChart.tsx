@@ -6,8 +6,16 @@ import { ProgressTrendPoint } from '@/types/progress';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export function WeightChart({ title, points }: { title: string; points: ProgressTrendPoint[] }) {
-  const compact = SCREEN_WIDTH < 380;
+export function WeightChart({
+  title,
+  points,
+  compact: compactOverride,
+}: {
+  title: string;
+  points: ProgressTrendPoint[];
+  compact?: boolean;
+}) {
+  const compact = compactOverride ?? SCREEN_WIDTH < 380;
 
   if (!points || points.length === 0) {
     return (

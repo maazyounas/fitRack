@@ -61,6 +61,7 @@ export default function BodyAnalysisModal() {
   const [consentToStore, setConsentToStore] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<BodyAnalysisResult | null>(null);
+  const analysisErrorMessage = 'We could not analyze this image. Please try a clearer full-body photo.';
 
   const guidance = useMemo(() => (mode === 'body' ? bodyAngleTips : wristAngleTips), [mode]);
 
@@ -119,7 +120,8 @@ export default function BodyAnalysisModal() {
       });
       setResult(analysis);
     } catch (error) {
-      Alert.alert('Analysis failed', error instanceof Error ? error.message : 'Please try again.');
+      console.warn('[BodyAnalysisModal] Analysis failed:', error);
+      Alert.alert('Analysis failed', analysisErrorMessage);
     } finally {
       setIsAnalyzing(false);
     }

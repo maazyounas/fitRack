@@ -29,13 +29,14 @@ export async function runBodyAnalysis(input: AnalysisInput): Promise<BodyAnalysi
   const activityLevel = onboarding.metrics?.activityLevel || 'moderate';
   const experience = onboarding.metrics?.experience || 'beginner';
   const goals = onboarding.goals || [];
+  const userFacingError = 'We could not analyze this image. Please try a clearer full-body photo.';
 
   try {
     // 1. Run real pose detection on the captured image.
     const detection = await detectLandmarks(input.image.uri, input.image.width, input.image.height);
 
     if (detection.detectedPoses === 0 || detection.landmarks.length === 0 || detection.confidence < 0.15) {
-      throw new Error('No body detected. Please use a clear photo with a full human body visible in the frame.');
+      throw new Error(userFacingError);
     }
 
     // 2. Classify Body Type
@@ -98,6 +99,6 @@ export async function runBodyAnalysis(input: AnalysisInput): Promise<BodyAnalysi
     return result;
   } catch (error) {
     console.error('[runBodyAnalysis] Error:', error);
-    throw error instanceof Error ? error : new Error('Analysis failed. Please try again.');
+    throw error instanceof Error ? error : new Error(userFacingError);
   }
 }

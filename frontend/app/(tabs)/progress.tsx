@@ -225,15 +225,15 @@ export default function ProgressScreen() {
 
       {activeChart === 'weight' && (
         <>
-          <WeightChart title="Daily Weight History" points={dailyTrend} compact={isCompact} />
-          <WeightChart title="30-Day Trend" points={monthlyTrend} compact={isCompact} />
+          <WeightChart title="Daily Weight History" points={dailyTrend} />
+          <WeightChart title="30-Day Trend" points={monthlyTrend} />
         </>
       )}
       {activeChart === 'body' && (
-        <BodyMeasurementChart title="Body Composition History" points={weeklyTrend} compact={isCompact} />
+        <BodyMeasurementChart title="Body Composition History" points={weeklyTrend} />
       )}
       {activeChart === 'strength' && (
-        <PerformanceChart points={monthlyTrend} compact={isCompact} />
+        <PerformanceChart points={monthlyTrend} />
       )}
 
       <View style={[styles.card, isCompact ? styles.cardCompact : null]}>

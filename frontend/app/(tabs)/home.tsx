@@ -16,16 +16,15 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { useAuthStore } from '../../store/authStore';
-import { fetchWorkoutRecommendations } from '../../services/api/ai';
+import { fetchAiCoachSummary, fetchWorkoutRecommendations } from '../../services/api/ai';
 import { AnimatedProgressRing } from '@/components/ui/AnimatedProgressRing';
-import { useOnboardingStore } from '@/store/onboardingStore';
-import { useNutritionStore } from '@/store/nutritionStore';
 import { AppHeader } from '@/components/common/AppHeader';
+import type { AiCoachDataPoints, AiCoachSummary } from '@/types/ai';
 
 const { width } = Dimensions.get('window');
 
 const getQuickActions = () => [
-  { icon: 'barbell', label: 'Start Workout', route: '/(modals)/workout-builder', gradient: ['#0d9488', '#0f766e'] as const },
+  { icon: 'barbell', label: 'Start Workout', route: '/workout', gradient: ['#0d9488', '#0f766e'] as const },
   { icon: 'body', label: 'Body Scan', route: '/(modals)/scan', gradient: ['#7c3aed', '#6d28d9'] as const },
   { icon: 'restaurant', label: 'Log Meal', route: '/(modals)/meal-logger', gradient: ['#e11d48', '#be123c'] as const },
   { icon: 'analytics', label: 'Progress', route: '/progress', gradient: ['#2563eb', '#1d4ed8'] as const },
@@ -37,32 +36,37 @@ const getQuickActions = () => [
 export default function HomeScreen() {
   const router = useRouter();
   const { user, tokens } = useAuthStore();
-  const { goals } = useOnboardingStore();
-  const { dailyReport, goals: nutritionGoals, initialize: initNutrition } = useNutritionStore();
+  const [summary, setSummary] = useState<AiCoachSummary | null>(null);
+  const [dataPoints, setDataPoints] = useState<AiCoachDataPoints | null>(null);
   const [recommendation, setRecommendation] = useState<any>(null);
-  const [, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       if (!tokens?.accessToken) return;
-      setLoading(true);
+      setIsLoading(true);
       try {
-        const [recRes] = await Promise.all([
+        const [coachRes, recRes] = await Promise.all([
+          fetchAiCoachSummary(tokens.accessToken),
           fetchWorkoutRecommendations(tokens.accessToken),
-          initNutrition(),
         ]);
+        setSummary(coachRes.summary);
+        setDataPoints(coachRes.dataPoints);
         setRecommendation(recRes.recommendation ?? null);
       } catch (err) {
         console.error('Failed to load dashboard AI data', err);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     }
     void loadData();
-  }, [tokens?.accessToken, initNutrition]);
+  }, [tokens?.accessToken]);
 
   const quickActions = getQuickActions();
-  const caloriesConsumed = Math.round(dailyReport.totals.calories || 0);
+  const caloriesConsumed = Math.round(dataPoints?.nutrition.calories || 0);
+  const fitnessScore = Math.round(summary?.recovery.recoveryScore ?? 0);
+  const weeklyGoal = user?.fitnessGoals?.workoutFrequencyPerWeek ?? dataPoints?.recentWorkouts.length ?? 0;
+  const streakDays = dataPoints?.progress.streakDays ?? 0;
 
   return (
     <ScrollView
@@ -76,12 +80,12 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           <View style={styles.ringWrap}>
             <AnimatedProgressRing
-              progress={0.72}
+              progress={fitnessScore / 100}
               size={100}
               strokeWidth={9}
               useGradient
               trackColor="rgba(255,255,255,0.1)"
-              label="72"
+              label={String(fitnessScore || 0)}
               sublabel="score"
               labelColor="#fff"
               duration={1400}
@@ -91,7 +95,7 @@ export default function HomeScreen() {
 
           <View style={styles.miniStats}>
             <View style={styles.miniStat}>
-              <Text style={styles.miniStatVal}>{goals.length || user?.fitnessGoals?.workoutFrequencyPerWeek || 0}</Text>
+              <Text style={styles.miniStatVal}>{weeklyGoal}</Text>
               <Text style={styles.miniStatLabel}>Weekly Goal</Text>
             </View>
             <View style={styles.miniDivider} />
@@ -101,14 +105,14 @@ export default function HomeScreen() {
             </View>
             <View style={styles.miniDivider} />
             <View style={styles.miniStat}>
-              <Text style={styles.miniStatVal}>3</Text>
-              <Text style={styles.miniStatLabel}>Streak ðŸ”¥</Text>
+              <Text style={styles.miniStatVal}>{streakDays}</Text>
+              <Text style={styles.miniStatLabel}>Streak 🔥</Text>
             </View>
           </View>
         </View>
       </LinearGradient>
 
-      {recommendation?.banner && (
+      {!isLoading && recommendation?.banner && (
         <Animated.View entering={FadeInDown.delay(100).springify()}>
           <Pressable
             onPress={() => router.push('/coach' as any)}

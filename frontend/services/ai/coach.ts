@@ -146,44 +146,6 @@ function getMissedCount(plan: WorkoutPlan) {
     return plan.missedCount;
   }
 
-  if (/(gain muscle|build muscle|muscle gain|bulk|hypertrophy|get bigger|size up)/.test(normalized)) {
-    const proteinGap = Math.max(0, Math.round(data.nutrition.proteinGoal - data.nutrition.protein));
-    const calorieGap = Math.max(0, Math.round(data.nutrition.calorieGoal - data.nutrition.calories));
-
-    return {
-      reply: `For muscle gain, use progressive overload, keep your reps mostly in the 6 to 12 range, and eat in a small calorie surplus. You are about ${proteinGap} g protein and ${calorieGap} kcal short of today's targets, so push a protein-heavy meal plus a quality lifting session.`,
-      followUps: ['Give me a muscle gain workout', 'What should I eat to bulk cleanly?'],
-    };
-  }
-
-  if (/(cut|fat loss|lose fat|lose weight|lean down|shred|define|definition)/.test(normalized)) {
-    return {
-      reply: 'For fat loss, keep protein high, keep lifting heavy enough to hold muscle, and use a small calorie deficit instead of starving yourself. Add steps or short cardio sessions, but do not drop strength training.',
-      followUps: ['Make me a fat loss workout', 'How much should I eat on a cut?'],
-    };
-  }
-
-  if (/(split|push pull legs|ppl|bro split|upper lower|program|routine|schedule)/.test(normalized)) {
-    return {
-      reply: 'A good split depends on your recovery and how many days you can train. For most people, push/pull/legs or upper/lower works better than random workouts because volume and recovery are easier to control.',
-      followUps: ['Build me a 4-day split', 'Give me a push/pull/legs plan'],
-    };
-  }
-
-  if (/(sets|reps|volume|failure|progressive overload|strength|1rm|one rep|max)/.test(normalized)) {
-    return {
-      reply: 'For muscle growth, use enough weekly volume, train close to failure on accessories, and keep 1 to 3 reps in reserve on most big lifts. Progress by adding reps first, then load, while keeping form strict.',
-      followUps: ['How many sets per muscle?', 'What reps are best for hypertrophy?'],
-    };
-  }
-
-  if (/(chest|back|legs|shoulders|arms|biceps|triceps|core|abs|glutes|hamstrings|quads)/.test(normalized)) {
-    return {
-      reply: 'Train the muscle with 2 to 4 exercises, start with a compound movement, then finish with 1 to 2 isolation moves. Keep total weekly volume consistent and recover with sleep, protein, and enough calories.',
-      followUps: ['Give me exercises for that muscle', 'How many times per week should I train it?'],
-    };
-  }
-
   return plan.schedule.filter((entry) => entry.status === 'missed').length;
 }
 
