@@ -371,6 +371,19 @@ export async function login(req: Request, res: Response) {
     throw new HttpError(400, 'Identifier and password are required.');
   }
 
+  // Debug logging for login attempts (dev only)
+  try {
+    if (env.nodeEnv !== 'production') {
+      console.log('[AUTH] Login attempt:', JSON.stringify({
+        ts: new Date().toISOString(),
+        ip: req.ip,
+        identifier: identifier ? identifier.substring(0, 3) + '***' : null,
+      }));
+    }
+  } catch (e) {
+    // ignore logging failures
+  }
+
   const normalizedIdentifier = normalizeIdentifier(identifier);
   const identifierHash = hashIdentifier(identifier);
   const adminHash = hashIdentifier(ADMIN_EMAIL);
@@ -409,14 +422,23 @@ export async function login(req: Request, res: Response) {
   }
 
   if (!user) {
+    if (env.nodeEnv !== 'production') {
+      console.warn('[AUTH] Login failed: user not found for identifier hash', identifierHash.slice(0, 8) + '...');
+    }
     throw new HttpError(401, 'Invalid credentials.');
   }
 
   if (user.deactivatedAt) {
+    if (env.nodeEnv !== 'production') {
+      console.warn('[AUTH] Login failed: account deactivated for user', user.id);
+    }
     throw new HttpError(403, 'Account is deactivated.');
   }
 
   if (user.lockUntil && user.lockUntil.getTime() > Date.now()) {
+    if (env.nodeEnv !== 'production') {
+      console.warn('[AUTH] Login failed: account locked until', user.lockUntil, 'for user', user.id);
+    }
     throw new HttpError(423, 'Account is temporarily locked due to failed login attempts.');
   }
 
@@ -425,9 +447,15 @@ export async function login(req: Request, res: Response) {
     : await verifyPassword(password, user.passwordHash);
 
   if (!validPassword) {
+    if (env.nodeEnv !== 'production') {
+      console.warn('[AUTH] Login failed: wrong password for user', user.id, '(attempts:', user.failedLoginAttempts + 1, ')');
+    }
     user.failedLoginAttempts += 1;
     if (user.failedLoginAttempts >= 5) {
       user.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+      if (env.nodeEnv !== 'production') {
+        console.warn('[AUTH] Account locked for 15 minutes for user', user.id);
+      }
     }
     await user.save();
     throw new HttpError(401, 'Invalid credentials.');
@@ -439,6 +467,10 @@ export async function login(req: Request, res: Response) {
   await user.save();
 
   const { accessToken, refreshToken, sessionSecret } = await createAuthSession(user, req);
+
+  if (env.nodeEnv !== 'production') {
+    console.log('[AUTH] Login successful for user', user.id, '(', (user as any).profile?.name, ')');
+  }
 
   res.json({
     message: 'Login successful.',

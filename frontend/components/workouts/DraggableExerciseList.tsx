@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { deleteExercise } from '@/services/api/exercise';
+
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
 import { WorkoutExercise } from '@/types/workout';
 import { useAppPalette } from '@/hooks/useAppPalette';
+import { useAuthStore } from '@/store/authStore';
 
 interface DraggableExerciseListProps {
   exercises: WorkoutExercise[];
@@ -21,9 +24,33 @@ export const DraggableExerciseList: React.FC<DraggableExerciseListProps> = ({
   onDelete,
   onEdit,
 }) => {
+  const { tokens } = useAuthStore();
+  const accessToken = tokens?.accessToken;
   const palette = useAppPalette();
   const [currentExercises, setCurrentExercises] = useState(exercises);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+  const handleDelete = async (exerciseId: string) => {
+    Alert.alert('Delete Exercise', 'Are you sure you want to delete this exercise?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            if (accessToken) {
+              await deleteExercise(accessToken, exerciseId);
+            }
+          } catch (e) {
+            console.error('Failed to delete exercise:', e);
+          }
+          const updated = currentExercises.filter(ex => ex._id !== exerciseId);
+          setCurrentExercises(updated);
+          onDelete?.(exerciseId);
+        },
+      },
+    ]);
+  };
 
   useEffect(() => {
     setCurrentExercises(exercises);
@@ -117,9 +144,13 @@ export const DraggableExerciseList: React.FC<DraggableExerciseListProps> = ({
               </Pressable>
             )}
             {onDelete && (
-              <Pressable
-                onPress={() => onDelete(item._id)}
-                style={styles.actionButton}>
+                <Pressable
+                  onPress={() => {
+                if (item._id) {
+                  handleDelete(item._id);
+                }
+              }}
+                  style={styles.actionButton}>
                 <Ionicons name="trash-outline" size={18} color="#ef4444" />
               </Pressable>
             )}

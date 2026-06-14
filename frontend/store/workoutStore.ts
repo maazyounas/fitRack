@@ -4,7 +4,6 @@ import {
   createWorkoutFromTemplate,
   createWorkoutPlan,
   deleteWorkoutPlan,
-  fetchWorkoutAiReview,
   refreshWorkoutAiReview,
   fetchWorkoutPlans,
   fetchWorkoutTemplates,
@@ -53,11 +52,15 @@ function requireAccessToken() {
 async function syncWorkoutNotifications(plans: WorkoutPlan[]) {
   const authState = useAuthStore.getState();
   const notificationState = useNotificationStore.getState();
-  await notificationState.syncWithContext({
-    notificationsEnabled: authState.user?.preferences.notificationsEnabled ?? false,
-    hydrationReminder: notificationState.settings.hydrationAlert,
-    workouts: plans,
-  });
+  try {
+    await notificationState.syncWithContext({
+      notificationsEnabled: authState.user?.preferences.notificationsEnabled ?? false,
+      hydrationReminder: notificationState.settings.hydrationAlert,
+      workouts: plans,
+    });
+  } catch (error) {
+    console.warn('Workout notification sync failed:', error);
+  }
 }
 
 export const useWorkoutStore = create<WorkoutState>((set, get) => ({
@@ -222,7 +225,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
   },
   applyTemplate: async (templateKey) => {
     const accessToken = requireAccessToken();
-    const response = await createWorkoutFromTemplate(accessToken, templateKey, true);
+    const response = await createWorkoutFromTemplate(accessToken, templateKey, false);
     set((state) => ({
       plans: [response.workout, ...state.plans],
       selectedPlanId: response.workout.id,

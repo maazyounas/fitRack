@@ -46,6 +46,42 @@ function normalizeExercises(exercises?: WorkoutExercise[]) {
     .map((exercise, index) => createExercise(index + 1, exercise));
 }
 
+function normalizeExerciseForComparison(exercise: WorkoutExercise) {
+  return {
+    name: exercise.name.trim(),
+    muscleGroup: exercise.muscleGroup.trim(),
+    equipment: exercise.equipment.trim(),
+    sets: Number(exercise.sets) || 0,
+    reps: Number(exercise.reps) || 0,
+    restSeconds: Number(exercise.restSeconds) || 0,
+    notes: exercise.notes.trim(),
+    intensity: exercise.intensity,
+    order: exercise.order,
+  };
+}
+
+function buildPlanSnapshot({
+  name,
+  description,
+  difficulty,
+  estimatedDurationMinutes,
+  exercises,
+}: {
+  name: string;
+  description: string;
+  difficulty: WorkoutDifficulty;
+  estimatedDurationMinutes: string;
+  exercises: WorkoutExercise[];
+}) {
+  return {
+    name: name.trim(),
+    description: description.trim(),
+    difficulty,
+    estimatedDurationMinutes: Number(estimatedDurationMinutes) || 0,
+    exercises: exercises.map(normalizeExerciseForComparison),
+  };
+}
+
 export function WorkoutBuilder({
   initialPlan,
   onSave,
@@ -65,6 +101,37 @@ export function WorkoutBuilder({
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
   const isTablet = width >= 768;
+  const initialSnapshot = useMemo(
+    () =>
+      initialPlan
+        ? buildPlanSnapshot({
+            name: initialPlan.name,
+            description: initialPlan.description,
+            difficulty: initialPlan.difficulty,
+            estimatedDurationMinutes: String(initialPlan.estimatedDurationMinutes ?? 45),
+            exercises: normalizeExercises(initialPlan.exercises),
+          })
+        : null,
+    [initialPlan]
+  );
+  const currentSnapshot = useMemo(
+    () =>
+      buildPlanSnapshot({
+        name,
+        description,
+        difficulty,
+        estimatedDurationMinutes,
+        exercises,
+      }),
+    [name, description, difficulty, estimatedDurationMinutes, exercises]
+  );
+  const hasChanges = useMemo(() => {
+    if (!initialSnapshot) {
+      return true;
+    }
+
+    return JSON.stringify(initialSnapshot) !== JSON.stringify(currentSnapshot);
+  }, [currentSnapshot, initialSnapshot]);
 
   useEffect(() => {
     setName(initialPlan?.name ?? '');
@@ -75,6 +142,10 @@ export function WorkoutBuilder({
   }, [initialPlan]);
 
   const canSave = useMemo(() => name.trim().length > 0 && exercises.length > 0, [exercises.length, name]);
+  const shouldPersistAsTemplate = useMemo(
+    () => Boolean(initialPlan?.isTemplate && !initialPlan?.sourceTemplateKey),
+    [initialPlan]
+  );
 
   const updateExercise = (index: number, field: keyof WorkoutExercise, value: string) => {
     setExercises((current) =>
@@ -132,6 +203,11 @@ export function WorkoutBuilder({
       return;
     }
 
+    if (initialPlan && !hasChanges) {
+      Alert.alert('No changes yet', 'Make at least one change before updating this workout.');
+      return;
+    }
+
     const orderedExercises = exercises.map((exercise, index) => ({
       ...exercise,
       order: index + 1,
@@ -143,7 +219,7 @@ export function WorkoutBuilder({
         description: description.trim(),
         difficulty,
         estimatedDurationMinutes: Number(estimatedDurationMinutes) || 45,
-        isTemplate: initialPlan?.isTemplate,
+        isTemplate: shouldPersistAsTemplate,
         sourceTemplateKey: initialPlan?.sourceTemplateKey,
         exercises: orderedExercises,
       },
@@ -165,22 +241,39 @@ export function WorkoutBuilder({
         showsVerticalScrollIndicator={false}
       >
         <LinearGradient
-          colors={['#ecfeff', '#f8fafc']}
+          colors={['#ecfeff', '#f8fafc', '#f1f5f9']}
           style={[styles.heroSection, isCompact && styles.heroSectionCompact]}
         >
+          <View style={styles.heroPill}>
+            <Ionicons name={initialPlan ? 'create-outline' : 'sparkles-outline'} size={14} color="#0f766e" />
+            <Text style={styles.heroPillText}>
+              {initialPlan ? 'Editing workout' : 'Building a new routine'}
+            </Text>
+          </View>
           <Text style={[styles.title, { fontSize: isCompact ? 24 : isTablet ? 32 : 28 }]}>
             {initialPlan ? 'Edit Workout' : 'Create Custom Workout'}
           </Text>
           <Text style={styles.subtitle}>
-          {initialPlan 
-            ? 'Adjust the workout and save the changes.' 
-            : 'Add a name, pick a difficulty, and build the exercise list.'}
+            {initialPlan
+              ? 'Make your changes, then update the workout once it is ready.'
+              : 'Add a name, choose a difficulty, and shape the exercise list to fit your goal.'}
           </Text>
+          {initialPlan?.sourceTemplateKey ? (
+            <View style={styles.templateNote}>
+              <Ionicons name="layers-outline" size={14} color="#0d9488" />
+              <Text style={styles.templateNoteText}>Started from a popular template</Text>
+            </View>
+          ) : null}
         </LinearGradient>
 
         <View style={styles.formSection}>
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Basic Information</Text>
+            <View style={styles.cardHeaderRow}>
+              <View>
+                <Text style={styles.cardTitle}>Basic Information</Text>
+                <Text style={styles.cardSubtitle}>Keep the workout name and description clear.</Text>
+              </View>
+            </View>
 
             <View style={styles.inputWrapper}>
               <Ionicons name="create-outline" size={18} color="#64748b" />
@@ -208,7 +301,12 @@ export function WorkoutBuilder({
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Difficulty Level</Text>
+            <View style={styles.cardHeaderRow}>
+              <View>
+                <Text style={styles.cardTitle}>Difficulty Level</Text>
+                <Text style={styles.cardSubtitle}>Match the intensity to the user&apos;s current pace.</Text>
+              </View>
+            </View>
             <View style={[styles.difficultyRow, isCompact && styles.difficultyRowCompact]}>
               {difficultyOptions.map((option) => (
                 <Pressable
@@ -232,7 +330,12 @@ export function WorkoutBuilder({
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Estimated Duration</Text>
+            <View style={styles.cardHeaderRow}>
+              <View>
+                <Text style={styles.cardTitle}>Estimated Duration</Text>
+                <Text style={styles.cardSubtitle}>A realistic estimate helps keep the routine manageable.</Text>
+              </View>
+            </View>
             <View style={[styles.durationWrapper, isCompact && styles.durationWrapperCompact]}>
               <TextInput
                 keyboardType="number-pad"
@@ -248,7 +351,9 @@ export function WorkoutBuilder({
             <View style={styles.exercisesHeader}>
               <View>
                 <Text style={styles.sectionTitle}>Exercises</Text>
-                <Text style={styles.sectionSubtitle}>{exercises.length} exercises added</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {exercises.length} exercises added. Drag, duplicate, or remove as needed.
+                </Text>
               </View>
               <Pressable onPress={addExercise} style={styles.secondaryActionButton}>
                 <Ionicons name="add" size={18} color="#0d9488" />
@@ -294,24 +399,37 @@ export function WorkoutBuilder({
       </ScrollView>
 
       <View style={[styles.stickyFooter, isCompact && styles.stickyFooterCompact]}>
-        <Pressable style={[styles.saveButton, (!canSave || saving) && styles.saveButtonDisabled]} onPress={handleSave}>
-          <LinearGradient
-            colors={['#0d9488', '#0f766e']}
-            style={styles.saveButtonGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}>
-            {saving ? (
-              <Text style={styles.saveButtonText}>Saving...</Text>
-            ) : (
-              <>
-                <Text style={styles.saveButtonText}>
-                  {initialPlan ? 'Update Workout' : 'Save Workout'}
-                </Text>
-                <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
-              </>
-            )}
-          </LinearGradient>
-        </Pressable>
+        <View style={styles.footerCard}>
+          {initialPlan && !hasChanges ? (
+            <View style={styles.footerHint}>
+              <Ionicons name="information-circle-outline" size={18} color="#0d9488" />
+              <Text style={styles.footerHintText}>Make a change to enable the update button.</Text>
+            </View>
+          ) : (
+            <Pressable
+              style={[styles.saveButton, (!canSave || saving) && styles.saveButtonDisabled]}
+              onPress={handleSave}
+              disabled={!canSave || saving}
+            >
+              <LinearGradient
+                colors={['#0d9488', '#0f766e']}
+                style={styles.saveButtonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}>
+                {saving ? (
+                  <Text style={styles.saveButtonText}>Saving...</Text>
+                ) : (
+                  <>
+                    <Text style={styles.saveButtonText}>
+                      {initialPlan ? 'Update Workout' : 'Save Workout'}
+                    </Text>
+                    <Ionicons name="checkmark-circle" size={20} color="#ffffff" />
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
+          )}
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -327,16 +445,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
   heroSection: {
-    paddingTop: 32,
-    paddingBottom: 28,
+    paddingTop: 30,
+    paddingBottom: 26,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   heroSectionCompact: {
     paddingTop: 22,
     paddingBottom: 22,
     paddingHorizontal: 16,
+  },
+  heroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: 'rgba(13, 148, 136, 0.12)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 12,
+  },
+  heroPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0f766e',
   },
   title: {
     color: '#0f172a',
@@ -350,6 +484,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
     lineHeight: 20,
+  },
+  templateNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    marginTop: 12,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#d1fae5',
+  },
+  templateNoteText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0f766e',
   },
   formSection: {
     padding: 16,
@@ -365,12 +517,20 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  cardHeaderRow: {
+    marginBottom: 14,
+  },
   cardTitle: {
     fontSize: 15,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 14,
     letterSpacing: -0.3,
+  },
+  cardSubtitle: {
+    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#64748b',
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -559,6 +719,30 @@ const styles = StyleSheet.create({
     left: 12,
     right: 12,
     bottom: 10,
+  },
+  footerCard: {
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 20,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  footerHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  footerHintText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#475569',
   },
   saveButtonText: {
     fontSize: 16,

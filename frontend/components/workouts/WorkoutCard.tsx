@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WorkoutPlan } from '@/types/workout';
+import { useAppPalette } from '@/hooks/useAppPalette';
 
 export function WorkoutCard({
   workout,
@@ -13,6 +14,7 @@ export function WorkoutCard({
   onPress?: () => void;
 }) {
   const { width } = useWindowDimensions();
+  const palette = useAppPalette();
   const compact = width < 380;
 
   const getDifficultyColor = (difficulty: string) => {
@@ -32,101 +34,108 @@ export function WorkoutCard({
   const isGradientLight = gradient.some(c => {
     try {
       return c.toLowerCase().includes('ffffff') || c.toLowerCase().startsWith('#fff');
-    } catch (e) {
-      return false;
-    }
+    } catch (e) { return false; }
   });
 
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.card,
-        compact ? styles.cardCompact : null,
-        selected && styles.cardSelected,
-        pressed && styles.cardPressed,
-      ]}>
-        <LinearGradient
-          colors={gradient}
-          style={[styles.cardGradient, compact ? styles.cardGradientCompact : null]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+  const scale = new Animated.Value(1);
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
 
-      <View style={[styles.accentStrip, { backgroundColor: difficultyColor }]} />
-      
-      <View style={styles.header}>
-        <View style={styles.titleSection}>
+  return (
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Pressable
+          onPress={onPress}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          style={({ pressed }) => [
+            styles.card,
+            compact ? styles.cardCompact : null,
+            selected && styles.cardSelected,
+            pressed && styles.cardPressed,
+          ]}
+        >
+          <LinearGradient
+            colors={gradient}
+            style={[styles.cardGradient, compact ? styles.cardGradientCompact : null]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          />
+
+          <View style={[styles.accentStrip, { backgroundColor: difficultyColor }]} />
+
+          <View style={styles.header}>
+            <View style={styles.titleSection}>
+              <Text
+                style={[
+                  styles.title,
+                  compact ? styles.titleCompact : null,
+                  (selected && !isGradientLight) ? styles.titleSelected : null,
+                ]}
+              >
+                {workout.name}
+              </Text>
+              <View
+                style={[
+                  styles.difficultyBadge,
+                  { backgroundColor: selected ? 'rgba(255,255,255,0.14)' : `${difficultyColor}15` },
+                ]}
+              >
+                <View style={[styles.difficultyDot, { backgroundColor: difficultyColor }]} />
+                <Text style={[styles.difficultyText, { color: (selected && !isGradientLight) ? '#ffffff' : difficultyColor }]}> 
+                  {workout.difficulty}
+                </Text>
+              </View>
+            </View>
+
+            {selected && (
+              <View style={styles.selectedBadge}>
+                <Ionicons name="checkmark-circle" size={20} color="#0d9488" />
+              </View>
+            )}
+          </View>
+
           <Text
             style={[
-              styles.title,
-              compact ? styles.titleCompact : null,
-              (selected && !isGradientLight) ? styles.titleSelected : null,
+              styles.description,
+              compact ? styles.descriptionCompact : null,
+              (selected && !isGradientLight) ? styles.descriptionSelected : null,
             ]}
+            numberOfLines={3}
           >
-            {workout.name}
+            {workout.description || 'Custom workout plan designed for your fitness journey'}
           </Text>
-          <View
-            style={[
-              styles.difficultyBadge,
-              { backgroundColor: selected ? 'rgba(255,255,255,0.14)' : `${difficultyColor}15` },
-            ]}
-          >
-            <View style={[styles.difficultyDot, { backgroundColor: difficultyColor }]} />
-            <Text style={[styles.difficultyText, { color: (selected && !isGradientLight) ? '#ffffff' : difficultyColor }]}> 
-              {workout.difficulty}
-            </Text>
+
+          <View style={[styles.stats, compact ? styles.statsCompact : null]}>
+            <View style={styles.statItem}>
+              <Ionicons name="repeat-outline" size={14} color={(selected && !isGradientLight) ? 'rgba(255,255,255,0.7)' : '#64748b'} />
+              <Text style={[styles.statText, (selected && !isGradientLight) ? styles.statTextSelected : null]}>
+                {workout.exercises.length} exercises
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Ionicons name="time-outline" size={14} color={(selected && !isGradientLight) ? 'rgba(255,255,255,0.7)' : '#64748b'} />
+              <Text style={[styles.statText, (selected && !isGradientLight) ? styles.statTextSelected : null]}>
+                {workout.estimatedDurationMinutes} min
+              </Text>
+            </View>
           </View>
-        </View>
-        
-        {selected && (
-          <View style={styles.selectedBadge}>
-            <Ionicons name="checkmark-circle" size={20} color="#0d9488" />
-          </View>
-        )}
-      </View>
 
-      <Text
-        style={[
-          styles.description,
-          compact ? styles.descriptionCompact : null,
-          (selected && !isGradientLight) ? styles.descriptionSelected : null,
-        ]}
-        numberOfLines={3}
-      >
-        {workout.description || 'Custom workout plan designed for your fitness journey'}
-      </Text>
+          {workout.missedCount ? (
+            <View style={styles.warningContainer}>
+              <Ionicons name="alert-circle" size={14} color="#f59e0b" />
+              <Text style={styles.warningText}>
+                {workout.missedCount} missed {workout.missedCount === 1 ? 'notification' : 'notifications'}
+              </Text>
+            </View>
+          ) : null}
 
-      <View style={[styles.stats, compact ? styles.statsCompact : null]}>
-        <View style={styles.statItem}>
-          <Ionicons name="repeat-outline" size={14} color={(selected && !isGradientLight) ? 'rgba(255,255,255,0.7)' : '#64748b'} />
-          <Text style={[styles.statText, (selected && !isGradientLight) ? styles.statTextSelected : null]}>
-            {workout.exercises.length} exercises
-          </Text>
-        </View>
-        <View style={styles.statItem}>
-          <Ionicons name="time-outline" size={14} color={(selected && !isGradientLight) ? 'rgba(255,255,255,0.7)' : '#64748b'} />
-          <Text style={[styles.statText, (selected && !isGradientLight) ? styles.statTextSelected : null]}>
-            {workout.estimatedDurationMinutes} min
-          </Text>
-        </View>
-      </View>
-
-      {workout.missedCount ? (
-        <View style={styles.warningContainer}>
-          <Ionicons name="alert-circle" size={14} color="#f59e0b" />
-          <Text style={styles.warningText}>
-            {workout.missedCount} missed {workout.missedCount === 1 ? 'notification' : 'notifications'}
-          </Text>
-        </View>
-      ) : null}
-
-      {selected && (
-        <View style={styles.selectIndicator}>
-          <Ionicons name="checkmark" size={16} color="#ffffff" />
-        </View>
-      )}
-    </Pressable>
+          {selected && (
+            <View style={styles.selectIndicator}>
+              <Ionicons name="checkmark" size={16} color="#ffffff" />
+            </View>
+          )}
+        </Pressable>
+      </Animated.View>
   );
 }
 

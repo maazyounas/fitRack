@@ -28,6 +28,7 @@ export default function WorkoutsScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [datePickerPlanId, setDatePickerPlanId] = useState<string | null>(null);
   const [pickedDate, setPickedDate] = useState<Date>(new Date());
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
   const bootedRef = useRef(false);
 
   useEffect(() => {
@@ -62,11 +63,15 @@ export default function WorkoutsScreen() {
         style: 'destructive',
         onPress: () => {
           void (async () => {
+            setDeletingPlanId(planId);
             try {
               await deletePlan(planId);
+              await initialize();
               Alert.alert('Deleted', `"${planName}" was removed successfully.`);
             } catch (error) {
               Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete workout.');
+            } finally {
+              setDeletingPlanId((current) => (current === planId ? null : current));
             }
           })();
         },
@@ -125,7 +130,12 @@ export default function WorkoutsScreen() {
                   </Pressable>
                   <Pressable
                     onPress={() => handleDeletePlan(plan.id, plan.name)}
-                    style={styles.iconButton}
+                    disabled={deletingPlanId === plan.id}
+                    style={({ pressed }) => [
+                      styles.iconButton,
+                      deletingPlanId === plan.id && styles.iconButtonDisabled,
+                      pressed && styles.iconButtonPressed,
+                    ]}
                   >
                     <Ionicons name="trash" size={18} color="#ef4444" />
                   </Pressable>
@@ -302,6 +312,12 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 6,
+  },
+  iconButtonPressed: {
+    opacity: 0.7,
+  },
+  iconButtonDisabled: {
+    opacity: 0.45,
   },
   empty: {
     alignItems: 'center',

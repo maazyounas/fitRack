@@ -5,11 +5,35 @@ import path from 'path';
 // Load env vars
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
 const DEFAULT_FROM_EMAIL = 'onboarding@resend.dev';
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || DEFAULT_FROM_EMAIL;
 
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    return null;
+  }
+
+  if (!resendClient) {
+    resendClient = new Resend(apiKey);
+  }
+
+  return resendClient;
+}
+
 async function sendWithFallback(params: { to: string; subject: string; html: string }) {
+  const resend = getResendClient();
+
+  if (!resend) {
+    return {
+      error: {
+        message: 'Missing RESEND_API_KEY',
+      },
+    };
+  }
+
   const primaryResponse = await resend.emails.send({
     from: FROM_EMAIL,
     to: params.to,

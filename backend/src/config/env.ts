@@ -16,9 +16,17 @@ for (const key of required) {
   }
 }
 
+function parsePort(value: string | undefined, fallback: number) {
+  const parsed = Number(value ?? fallback);
+  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 65535) {
+    throw new Error(`Invalid PORT value: ${value ?? fallback}`);
+  }
+  return parsed;
+}
+
 export const env = {
   nodeEnv: (process.env.NODE_ENV ?? 'development') as 'development' | 'production' | 'test',
-  port: Number(process.env.PORT ?? 4000),
+  port: parsePort(process.env.PORT, 4000),
   mongodbUri: process.env.MONGODB_URI as string,
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET as string,
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET as string,

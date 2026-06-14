@@ -119,6 +119,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       useUiStore.getState().setPreferences(storedSession.user.preferences);
 
+      // Helper: detect whether an error is a network/connectivity issue
+      // vs a genuine auth rejection (401/403). Network errors should not
+      // clear the session — the backend may just be restarting.
+      const isNetworkError = (error: unknown): boolean => {
+        if (!error) return false;
+        const msg = error instanceof Error ? error.message : String(error);
+        // Axios network errors, fetch failures, timeouts
+        if (msg.includes('Network Error') || msg.includes('ECONNREFUSED') ||
+            msg.includes('ENOTFOUND') || msg.includes('timeout') ||
+            msg.includes('API_BASE_URL=')) {
+          return true;
+        }
+        // If there's no HTTP status code it's likely a connectivity issue
+        const status = (error as any)?.response?.status;
+        if (!status) return true;
+        return false;
+      };
+
+      const isAuthError = (error: unknown): boolean => {
+        const status = (error as any)?.response?.status;
+        return status === 401 || status === 403;
+      };
+
       try {
         const { user } = await fetchCurrentUser(storedSession.tokens.accessToken);
         let imageConsent: ImageConsent | null = null;
@@ -132,8 +155,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         useUiStore.getState().setPreferences(user.preferences);
         set({ user, imageConsent, isHydrated: true });
         await persistSession({ user, tokens: storedSession.tokens });
-      } catch {
-        await get().refreshAccessToken();
+      } catch (fetchErr) {
+        // If this is a network error (backend restarting/down), keep the
+        // stored session so the user stays logged in. They can use the app
+        // once the backend is back.
+        if (isNetworkError(fetchErr) && !isAuthError(fetchErr)) {
+          console.warn('[Auth] Backend unavailable during init — keeping cached session.');
+          set({ isHydrated: true });
+          return;
+        }
+
+        // Access token expired or rejected — try to refresh
+        try {
+          await get().refreshAccessToken();
+        } catch (refreshErr) {
+          // If refresh also fails due to network, keep the cached session
+          if (isNetworkError(refreshErr) && !isAuthError(refreshErr)) {
+            console.warn('[Auth] Backend unavailable during token refresh — keeping cached session.');
+            set({ isHydrated: true });
+            return;
+          }
+          // True auth failure (invalid/expired refresh token) — clear session
+          throw refreshErr;
+        }
+
         const nextTokens = get().tokens;
         if (!nextTokens) {
           throw new Error('Session unavailable.');
@@ -153,7 +198,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         await persistSession({ user, tokens: nextTokens });
       }
     } catch (err) {
-      console.error('Auth initialization error:', err);
+      // Only clear the session for genuine auth failures, not network issues.
+      // This prevents logging users out just because the backend was restarting.
+      const isNetworkErr = (() => {
+        if (!err) return false;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes('Network Error') || msg.includes('ECONNREFUSED') ||
+            msg.includes('ENOTFOUND') || msg.includes('timeout') ||
+            msg.includes('API_BASE_URL=')) {
+          return true;
+        }
+        const status = (err as any)?.response?.status;
+        if (!status) return true;
+        return false;
+      })();
+
+      if (isNetworkErr) {
+        console.warn('[Auth] Network error during initialization — keeping cached session if available.');
+        // Keep whatever session we already have in state (set earlier)
+        set({ isHydrated: true });
+        return;
+      }
+
+      console.error('Auth initialization error (clearing session):', err);
       try {
         await persistSession(null);
       } catch (storageErr) {

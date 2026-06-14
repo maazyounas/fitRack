@@ -1,5 +1,6 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
+import { listenOnAvailablePort } from '../src/utils/port';
 
 async function main() {
   // Start an in-memory MongoDB and set env vars before importing the app
@@ -26,11 +27,10 @@ async function main() {
     await seedDevelopmentData();
     initializeScheduledJobs();
 
-    const port = Number(process.env.PORT || 4000);
-    const server = app.listen(port, '0.0.0.0', () => {
-      // eslint-disable-next-line no-console
-      console.log(`Memory-backed server listening at http://localhost:${port}`);
-    });
+    const listening = await listenOnAvailablePort((port, host) => app.listen(port, host), Number(process.env.PORT || 4000));
+    const server = listening.server;
+    // eslint-disable-next-line no-console
+    console.log(`Memory-backed server listening at http://localhost:${listening.port}`);
 
     process.on('SIGINT', async () => {
       console.log('Shutting down memory-backed server...');

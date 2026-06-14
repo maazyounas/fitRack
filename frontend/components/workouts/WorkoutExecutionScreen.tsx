@@ -49,6 +49,7 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
   const exercises = useMemo(() => workout?.exercises ?? [], [workout?.exercises]);
   const currentExercise = exercises[currentExerciseIndex];
   const completedExerciseCount = useMemo(() => new Set(completedExercises).size, [completedExercises]);
+  const returnToWorkouts = () => router.replace('/workouts' as never);
 
   useEffect(() => {
     let cancelled = false;
@@ -210,7 +211,7 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
       {
         text: 'End',
         style: 'destructive',
-        onPress: () => router.back(),
+        onPress: returnToWorkouts,
       },
     ]);
   };
@@ -422,7 +423,7 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
       </Modal>
 
       {/* Completion Modal */}
-      <CompletionModal
+        <CompletionModal
         visible={showCompletion}
         workoutName={workout.name}
         duration={duration}
@@ -430,12 +431,7 @@ export const WorkoutExecutionScreen: React.FC<WorkoutExecutionScreenProps> = ({ 
         streak={workoutStreak}
         onClose={() => {
           setShowCompletion(false);
-          if (Platform.OS === 'web') {
-            router.replace('/workouts');
-            return;
-          }
-
-          router.back();
+          returnToWorkouts();
         }}
       />
 
