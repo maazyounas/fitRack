@@ -33,6 +33,10 @@ const mealTypeConfig = {
   snack: { icon: 'cafe-outline', color: '#8b5cf6', label: 'Snack' },
 };
 
+function createFoodId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 function FoodItemCard({ 
   food, 
   index, 
@@ -238,7 +242,12 @@ export default function MealLoggerModal() {
   const [name, setName] = useState(existingMeal?.name ?? '');
   const [mealType, setMealType] = useState<MealType>(existingMeal?.mealType ?? 'breakfast');
   const [notes, setNotes] = useState(existingMeal?.notes ?? '');
-  const [foods, setFoods] = useState<FoodItem[]>(existingMeal?.foods.length ? existingMeal.foods : []);
+  const [foods, setFoods] = useState<FoodItem[]>(
+    (existingMeal?.foods.length ? existingMeal.foods : []).map((food) => ({
+      ...food,
+      id: food.id ?? createFoodId(),
+    }))
+  );
 
   useEffect(() => {
     void initialize();
@@ -252,8 +261,13 @@ export default function MealLoggerModal() {
     setName(existingMeal.name);
     setMealType(existingMeal.mealType);
     setNotes(existingMeal.notes ?? '');
-    setFoods(existingMeal.foods.length ? existingMeal.foods : []);
-  }, [existingMeal?.id]);
+    setFoods(
+      (existingMeal.foods.length ? existingMeal.foods : []).map((food) => ({
+        ...food,
+        id: food.id ?? createFoodId(),
+      }))
+    );
+  }, [existingMeal]);
 
   const totals = useMemo(
     () =>
@@ -278,7 +292,7 @@ export default function MealLoggerModal() {
   );
 
   function addFood(food: FoodItem) {
-    setFoods((current) => [...current, food]);
+    setFoods((current) => [...current, { ...food, id: food.id ?? createFoodId() }]);
   }
 
   function removeFood(index: number) {
@@ -323,28 +337,36 @@ export default function MealLoggerModal() {
       return;
     }
 
-    const payload: MealPayload = {
-      name: name.trim(),
-      mealType,
-      notes: notes.trim(),
-      consumedAt: existingMeal?.consumedAt ?? new Date().toISOString(),
-      foods: foods.map((food) => ({
-        name: food.name,
-        quantity: food.quantity,
-        unit: food.unit,
-        nutrients: food.nutrients,
-      })),
-    };
-
-    if (existingMeal) {
-      await editMeal(existingMeal.id, payload);
-    } else {
-      await addMeal(payload);
+    const invalidFood = foods.find((food) => !food.name.trim());
+    if (invalidFood) {
+      Alert.alert('Missing food name', 'Each food item needs a name before you can save the meal.');
+      return;
     }
-    router.back();
-  }
 
-  const mealConfig = mealTypeConfig[mealType];
+    try {
+      const payload: MealPayload = {
+        name: name.trim(),
+        mealType,
+        notes: notes.trim(),
+        consumedAt: existingMeal?.consumedAt ?? new Date().toISOString(),
+        foods: foods.map((food) => ({
+          name: food.name.trim(),
+          quantity: Number.isFinite(food.quantity) ? food.quantity : 0,
+          unit: food.unit.trim() || 'serving',
+          nutrients: food.nutrients,
+        })),
+      };
+
+      if (existingMeal) {
+        await editMeal(existingMeal.id, payload);
+      } else {
+        await addMeal(payload);
+      }
+      router.back();
+    } catch (error) {
+      Alert.alert('Could not save meal', error instanceof Error ? error.message : 'Please try again.');
+    }
+  }
 
   return (
     <KeyboardAvoidingView 
@@ -396,7 +418,6 @@ export default function MealLoggerModal() {
 
         {/* Food Search */}
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>Add food</Text>
           <FoodSearch onSelect={addFood} />
           
           <Pressable
@@ -424,7 +445,7 @@ export default function MealLoggerModal() {
             </View>
             {foods.map((food, index) => (
               <FoodItemCard
-                key={`${food.name}-${index}`}
+                key={food.id ?? `${index}`}
                 food={food}
                 index={index}
                 onUpdate={updateFood}

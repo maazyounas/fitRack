@@ -18,11 +18,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { PremiumButton } from '@/components/ui/PremiumButton';
 import { useAuthStore } from '@/store/authStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
-import { validateNumberRange, validateRequired } from '@/utils/validators';
 import { AppHeader } from '@/components/common/AppHeader';
 
 // Stat Pill Component
@@ -87,29 +84,21 @@ function ShortcutCard({
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, updateProfile, isLoading, logout, touchActivity } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { resetOnboarding } = useOnboardingStore();
 
-  const [name, setName] = useState(user?.profile.name ?? '');
   const [age, setAge] = useState(user?.profile.age ? String(user.profile.age) : '');
-  const [gender, setGender] = useState<'male' | 'female' | 'other'>(user?.profile.gender ?? 'male');
   const [heightCm, setHeightCm] = useState(user?.profile.heightCm ? String(user.profile.heightCm) : '');
   const [weightKg, setWeightKg] = useState(user?.profile.weightKg ? String(user.profile.weightKg) : '');
   const [profilePictureUrl, setProfilePictureUrl] = useState(user?.profile.profilePictureUrl ?? '');
-  const [editing, setEditing] = useState(false);
   const uploadProgress = useAuthStore((s) => s.uploadProgress);
 
   useEffect(() => {
-    if (!editing) {
-      setName(user?.profile.name ?? '');
-      setAge(user?.profile.age ? String(user.profile.age) : '');
-      setGender(user?.profile.gender ?? 'male');
-      setHeightCm(user?.profile.heightCm ? String(user.profile.heightCm) : '');
-      setWeightKg(user?.profile.weightKg ? String(user.profile.weightKg) : '');
-    }
-
+    setAge(user?.profile.age ? String(user.profile.age) : '');
+    setHeightCm(user?.profile.heightCm ? String(user.profile.heightCm) : '');
+    setWeightKg(user?.profile.weightKg ? String(user.profile.weightKg) : '');
     setProfilePictureUrl(user?.profile.profilePictureUrl ?? '');
-  }, [editing, user]);
+  }, [user]);
 
   const h = Number(heightCm);
   const w = Number(weightKg);
@@ -141,35 +130,6 @@ export default function ProfileScreen() {
       } catch (error) {
         Alert.alert('Upload failed', error instanceof Error ? error.message : 'Could not upload picture.');
       }
-    }
-  };
-
-  const handleSave = async () => {
-    const issues = [
-      validateRequired(name, 'Name'),
-      validateNumberRange(age, 'Age', 1, 120),
-      validateNumberRange(heightCm, 'Height', 50, 300),
-      validateNumberRange(weightKg, 'Weight', 20, 500),
-    ].filter(Boolean);
-
-    if (issues.length) {
-      Alert.alert('Check your profile', issues.join('\n'));
-      return;
-    }
-
-    try {
-      touchActivity();
-      await updateProfile({
-        name: name.trim(),
-        age: age ? Number(age) : undefined,
-        gender,
-        heightCm: heightCm ? Number(heightCm) : undefined,
-        weightKg: weightKg ? Number(weightKg) : undefined,
-      });
-      setEditing(false);
-      Alert.alert('✓ Saved', 'Your profile has been updated.');
-    } catch (error) {
-      Alert.alert('Update failed', error instanceof Error ? error.message : 'Please try again.');
     }
   };
 
@@ -280,53 +240,17 @@ export default function ProfileScreen() {
 
         {/* Edit Profile Section */}
         <Animated.View entering={FadeInDown.delay(120).springify()} style={styles.card}>
-          <View style={styles.cardHeaderRow}>
-            <SectionHeader icon="person-outline" title="Personal Information" />
-            {!editing && (
-              <TouchableOpacity onPress={() => setEditing(true)} style={styles.editBtn}>
-                <Ionicons name="create-outline" size={16} color="#0d9488" />
-                <Text style={styles.editBtnText}>Edit</Text>
-              </TouchableOpacity>
-            )}
+          <SectionHeader icon="person-outline" title="Personal Information" />
+          <View style={styles.infoGrid}>
+            <InfoRow label="Name" value={user?.profile.name || '—'} />
+            <InfoRow label="Age" value={user?.profile.age ? `${user.profile.age} years` : '—'} />
+            <InfoRow label="Gender" value={user?.profile.gender ? user.profile.gender.charAt(0).toUpperCase() + user.profile.gender.slice(1) : '—'} />
+            <InfoRow label="Height" value={user?.profile.heightCm ? `${user.profile.heightCm} cm` : '—'} />
+            <InfoRow label="Weight" value={user?.profile.weightKg ? `${user.profile.weightKg} kg` : '—'} />
+            <InfoRow label="Body Type" value={user?.profile.bodyType ? user.profile.bodyType.charAt(0).toUpperCase() + user.profile.bodyType.slice(1) : '—'} />
+            <InfoRow label="Primary Goal" value={user?.fitnessGoals?.primaryGoal ? user.fitnessGoals.primaryGoal.replace('_', ' ') : '—'} />
+            <InfoRow label="Workout Frequency" value={user?.fitnessGoals?.workoutFrequencyPerWeek ? `${user.fitnessGoals.workoutFrequencyPerWeek} days/week` : '—'} />
           </View>
-
-          {editing ? (
-            <View style={styles.editForm}>
-              <Input label="Full name" onChangeText={setName} value={name} placeholder="Enter your name" />
-              <Input keyboardType="number-pad" label="Age" onChangeText={setAge} value={age} placeholder="Enter your age" />
-
-              <Text style={styles.fieldLabel}>Gender</Text>
-              <View style={styles.genderRow}>
-                {(['male', 'female', 'other'] as const).map((g) => (
-                  <Pressable
-                    key={g}
-                    onPress={() => setGender(g)}
-                    style={[styles.genderBtn, gender === g && styles.genderBtnActive]}
-                  >
-                    <Text style={[styles.genderText, gender === g && styles.genderTextActive]}>
-                      {g.charAt(0).toUpperCase() + g.slice(1)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <Input keyboardType="decimal-pad" label="Height (cm)" onChangeText={setHeightCm} value={heightCm} placeholder="e.g., 175" />
-              <Input keyboardType="decimal-pad" label="Weight (kg)" onChangeText={setWeightKg} value={weightKg} placeholder="e.g., 70" />
-
-              <View style={styles.editActions}>
-                <PremiumButton label="Save Changes" loading={isLoading} onPress={handleSave} />
-                <PremiumButton label="Cancel" tone="ghost" size="md" onPress={() => setEditing(false)} />
-              </View>
-            </View>
-          ) : (
-            <View style={styles.infoGrid}>
-              <InfoRow label="Name" value={user?.profile.name || '—'} />
-              <InfoRow label="Age" value={age ? `${age} years` : '—'} />
-              <InfoRow label="Gender" value={gender ? gender.charAt(0).toUpperCase() + gender.slice(1) : '—'} />
-              <InfoRow label="Height" value={heightCm ? `${heightCm} cm` : '—'} />
-              <InfoRow label="Weight" value={weightKg ? `${weightKg} kg` : '—'} />
-            </View>
-          )}
         </Animated.View>
 
         {/* AI Preferences */}

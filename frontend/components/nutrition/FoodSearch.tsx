@@ -26,13 +26,6 @@ export function FoodSearch({ onSelect }: { onSelect: (food: FoodItem) => void })
     <View style={styles.wrapper}>
       <View style={styles.headerRow}>
         <Text style={styles.label}>Add food</Text>
-        <Pressable 
-          onPress={() => Alert.alert('Coming soon', 'Barcode scanning will be available in a future update!')}
-          style={styles.barcodeBtn}
-        >
-          <Ionicons name="scan-outline" size={18} color="#0d9488" />
-          <Text style={styles.barcodeText}>Scan</Text>
-        </Pressable>
       </View>
 
       <View style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}>

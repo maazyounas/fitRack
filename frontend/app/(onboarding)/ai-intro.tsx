@@ -26,7 +26,6 @@ import Animated, {
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useAuthStore } from '@/store/authStore';
 import { PremiumButton } from '@/components/ui/PremiumButton';
-import { saveOnboardingToBackend } from '@/services/api/bodyAnalysisApi';
 
 // ─── Scanning Animation ───────────────────────────────────────────────────────
 function ScanAnimation() {
@@ -97,31 +96,43 @@ const scanStyles = StyleSheet.create({
 // ─── Screen ───────────────────────────────────────────────────────────────────
 export default function AiIntroScreen() {
   const router = useRouter();
-  const { completeOnboarding, metrics, gender, goals } = useOnboardingStore();
-  const { updateProfile } = useAuthStore();
+  const { completeOnboarding, metrics, gender, goals, bodyType } = useOnboardingStore();
+  const { saveOnboardingProfile } = useAuthStore();
+
+  const primaryGoal =
+    goals.includes('lose_weight')
+      ? 'weight_loss'
+      : goals.some((goal) => goal === 'build_muscle' || goal === 'gain_strength')
+        ? 'muscle_gain'
+        : goals.includes('conditioning')
+          ? 'general_fitness'
+          : 'general_fitness';
 
   const syncData = async () => {
-    await completeOnboarding();
     try {
       if (metrics && gender) {
-        await updateProfile({
+        await saveOnboardingProfile({
           gender,
           heightCm: metrics.heightCm,
           weightKg: metrics.weightKg,
           age: metrics.age,
-        });
-
-        await saveOnboardingToBackend({
-          gender,
-          heightCm: metrics.heightCm,
-          weightKg: metrics.weightKg,
-          age: metrics.age,
-          activityLevel: metrics.activityLevel,
-          experience: metrics.experience,
-          goals,
+          bodyType: bodyType ?? undefined,
+          primaryGoal,
+          workoutFrequencyPerWeek:
+            metrics.activityLevel === 'sedentary'
+              ? 1
+              : metrics.activityLevel === 'light'
+                ? 2
+                : metrics.activityLevel === 'moderate'
+                  ? 3
+                  : metrics.activityLevel === 'active'
+                    ? 5
+                    : 6,
           wristCm: metrics.wristCm,
+          onboardingCompleted: true,
         });
       }
+      await completeOnboarding();
     } catch (err) {
       console.warn('Backend sync failed, locally completed:', err);
     }

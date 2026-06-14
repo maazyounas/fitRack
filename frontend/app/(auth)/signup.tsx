@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
+import { useOnboardingStore } from '@/store/onboardingStore';
 import { AUTH_THEME } from '@/utils/authTheme';
 import { getAuthResponsiveMetrics } from '@/utils/responsive';
 import {
@@ -127,6 +128,7 @@ export default function SignupScreen() {
 
     try {
       touchActivity();
+      await useOnboardingStore.getState().resetOnboarding();
       const response = await register({
         name: name.trim(),
         email: email.trim() || undefined,
@@ -165,7 +167,7 @@ export default function SignupScreen() {
         purpose: verificationPurpose,
       });
       await useAuthStore.getState().login(identifier, password, true);
-      router.replace('/(tabs)/home');
+      router.replace('/(onboarding)/gender');
     } catch (error) {
       Alert.alert('Verification failed', error instanceof Error ? error.message : 'Try again.');
     }

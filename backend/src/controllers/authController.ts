@@ -29,6 +29,8 @@ function buildUserResponse(user: any) {
     phone: decryptValue(user.phoneEncrypted),
     profile: user.profile,
     preferences: user.preferences,
+    fitnessGoals: user.fitnessGoals,
+    onboardingCompleted: Boolean(user.onboardingCompleted),
     verification: user.verification,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,

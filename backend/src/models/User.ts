@@ -33,6 +33,11 @@ const profileSchema = new Schema(
     heightCm: { type: Number, min: 50, max: 300 },
     weightKg: { type: Number, min: 20, max: 500 },
     dailyCalories: { type: Number, default: null },
+    bodyType: {
+      type: String,
+      enum: ['ectomorph', 'mesomorph', 'endomorph', 'balanced'],
+      default: 'balanced',
+    },
     profilePictureUrl: { type: String, default: '' },
   },
   { _id: false }
@@ -97,6 +102,7 @@ const userSchema = new Schema(
     profile: { type: profileSchema, required: true },
     preferences: { type: preferencesSchema, default: () => ({}) },
     fitnessGoals: { type: fitnessGoalsSchema, default: () => ({}) },
+    onboardingCompleted: { type: Boolean, default: false },
     notificationSettings: { type: notificationSettingsSchema, default: () => ({}) },
     verification: {
       emailVerified: { type: Boolean, default: false },

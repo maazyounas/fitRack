@@ -5,6 +5,7 @@ import {
   getNotificationSettings,
   getFitnessGoals,
   getMe,
+  saveOnboardingProfile,
   updateFitnessGoals,
   updateNotificationSettings,
   updatePreferences,
@@ -28,6 +29,7 @@ userRoutes.patch('/profile', updateProfile);
 userRoutes.post('/profile/picture', uploadProfileImage.single('image'), uploadProfilePicture);
 userRoutes.get('/fitness-goals', getFitnessGoals);
 userRoutes.put('/fitness-goals', updateFitnessGoals);
+userRoutes.put('/onboarding', saveOnboardingProfile);
 userRoutes.patch('/preferences', updatePreferences);
 userRoutes.get('/notification-settings', getNotificationSettings);
 userRoutes.patch('/notification-settings', updateNotificationSettings);

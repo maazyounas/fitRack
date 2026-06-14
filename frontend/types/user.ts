@@ -10,6 +10,7 @@ export type UserProfile = {
   heightCm?: number;
   weightKg?: number;
   dailyCalories?: number | null;
+  bodyType?: 'ectomorph' | 'mesomorph' | 'endomorph' | 'balanced';
   profilePictureUrl?: string;
 };
 
@@ -47,6 +48,7 @@ export type User = {
   profile: UserProfile;
   preferences: UserPreferences;
   fitnessGoals: FitnessGoals;
+  onboardingCompleted?: boolean;
   notificationSettings?: ReminderSettings;
   verification: UserVerification;
   createdAt: string;

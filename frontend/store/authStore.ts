@@ -17,6 +17,7 @@ import {
   updateUserProfile,
   uploadProfilePicture as uploadProfilePictureApi,
   updateFitnessGoals as updateFitnessGoalsApi,
+  saveOnboardingProfile as saveOnboardingProfileApi,
   verifyRegistrationOtp,
 } from '@/services/api/auth';
 import { SESSION_TIMEOUT_MS, SESSION_WARNING_MS } from '@/constants/config';
@@ -32,6 +33,7 @@ import {
   FitnessGoals,
 } from '@/types/user';
 import { useUiStore } from './uiStore';
+import { useOnboardingStore } from './onboardingStore';
 
 const sessionStorageKey = 'session';
 const rememberMeKey = 'rememberMe';
@@ -63,6 +65,18 @@ type AuthState = {
   updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
   updatePreferences: (payload: UpdatePreferencesPayload) => Promise<void>;
   updateFitnessGoals: (payload: Partial<FitnessGoals>) => Promise<void>;
+  saveOnboardingProfile: (payload: {
+    gender?: 'male' | 'female' | 'other';
+    heightCm?: number;
+    weightKg?: number;
+    age?: number;
+    primaryGoal?: FitnessGoals['primaryGoal'];
+    targetWeightKg?: number;
+    workoutFrequencyPerWeek?: number;
+    wristCm?: number;
+    bodyType?: 'ectomorph' | 'mesomorph' | 'endomorph' | 'balanced';
+    onboardingCompleted?: boolean;
+  }) => Promise<void>;
   uploadProfilePicture: (imageUri: string) => Promise<void>;
   uploadProgress: number | null;
   setUploadProgress: (p: number | null) => void;
@@ -153,6 +167,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         useUiStore.getState().setPreferences(user.preferences);
+        useOnboardingStore.getState().setOnboardingCompleted(Boolean(user.onboardingCompleted));
         set({ user, imageConsent, isHydrated: true });
         await persistSession({ user, tokens: storedSession.tokens });
       } catch (fetchErr) {
@@ -194,6 +209,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         useUiStore.getState().setPreferences(user.preferences);
+        useOnboardingStore.getState().setOnboardingCompleted(Boolean(user.onboardingCompleted));
         set({ user, imageConsent, isHydrated: true });
         await persistSession({ user, tokens: nextTokens });
       }
@@ -276,6 +292,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       useUiStore.getState().setPreferences(response.user.preferences);
+      useOnboardingStore.getState().setOnboardingCompleted(Boolean(response.user.onboardingCompleted));
       set({
         user: response.user,
         tokens,
@@ -299,6 +316,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     await persistSession(null);
     useUiStore.getState().reset();
+    useOnboardingStore.getState().resetOnboarding().catch(() => {});
     set({
       user: null,
       tokens: null,
@@ -392,6 +410,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const response = await updateFitnessGoalsApi(tokens.accessToken, payload);
+      if (get().rememberMe) {
+        await persistSession({ user: response.user, tokens });
+      }
+      set({ user: response.user, lastActivityAt: Date.now() });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  saveOnboardingProfile: async (payload) => {
+    const tokens = get().tokens;
+    if (!tokens) throw new Error('You need to log in first.');
+
+    set({ isLoading: true });
+    try {
+      const response = await saveOnboardingProfileApi(tokens.accessToken, payload);
       if (get().rememberMe) {
         await persistSession({ user: response.user, tokens });
       }

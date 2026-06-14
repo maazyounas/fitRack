@@ -115,6 +115,28 @@ export function updateFitnessGoals(accessToken: string, payload: Partial<Fitness
   });
 }
 
+export function saveOnboardingProfile(
+  accessToken: string,
+  payload: {
+    gender?: 'male' | 'female' | 'other';
+    heightCm?: number;
+    weightKg?: number;
+    age?: number;
+    primaryGoal?: FitnessGoals['primaryGoal'];
+    targetWeightKg?: number;
+    workoutFrequencyPerWeek?: number;
+    wristCm?: number;
+    bodyType?: 'ectomorph' | 'mesomorph' | 'endomorph' | 'balanced';
+    onboardingCompleted?: boolean;
+  }
+) {
+  return apiRequest<{ message: string; user: User }>('/users/onboarding', {
+    method: 'PUT',
+    accessToken,
+    body: payload,
+  });
+}
+
 export function updateUserPreferences(accessToken: string, payload: UpdatePreferencesPayload) {
   return apiRequest<{ message: string; user: User }>('/users/preferences', {
     method: 'PATCH',

@@ -18,8 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import Animated from 'react-native-reanimated';
-import { useOnboardingStore, type ActivityLevel, type ExperienceLevel } from '@/store/onboardingStore';
+import { useOnboardingStore, type ActivityLevel, type BodyType, type ExperienceLevel } from '@/store/onboardingStore';
 import { PremiumButton } from '@/components/ui/PremiumButton';
 
 const { width } = Dimensions.get('window');
@@ -194,9 +193,25 @@ const EXPERIENCE_OPTIONS: { key: ExperienceLevel; label: string }[] = [
   { key: 'advanced', label: 'Advanced' },
 ];
 
+function getBodyType({
+  height,
+  weight,
+  wrist,
+}: {
+  height: number;
+  weight: number;
+  wrist?: number;
+}): BodyType {
+  const bmi = weight / Math.pow(height / 100, 2);
+  if (wrist !== undefined && wrist < 15.5) return 'ectomorph';
+  if (bmi < 20 || (wrist !== undefined && wrist < 17)) return 'ectomorph';
+  if (bmi >= 27 || (wrist !== undefined && wrist >= 19)) return 'endomorph';
+  return 'mesomorph';
+}
+
 export default function MetricsScreen() {
   const router = useRouter();
-  const { metrics, setMetrics } = useOnboardingStore();
+  const { metrics, setMetrics, setBodyType } = useOnboardingStore();
 
   const [height, setHeight] = useState(metrics?.heightCm ?? 170);
   const [weight, setWeight] = useState(metrics?.weightKg ?? 70);
@@ -206,6 +221,11 @@ export default function MetricsScreen() {
   const [wrist, setWrist] = useState(metrics?.wristCm ? String(metrics.wristCm) : '');
 
   const canContinue = activity !== null && experience !== null;
+  const bodyType = getBodyType({
+    height,
+    weight,
+    wrist: wrist ? Number(wrist) : undefined,
+  });
 
   const handleContinue = () => {
     setMetrics({
@@ -216,6 +236,7 @@ export default function MetricsScreen() {
       experience: experience!,
       wristCm: wrist ? Number(wrist) : undefined,
     });
+    setBodyType(bodyType);
     router.push('/(onboarding)/goals');
   };
 

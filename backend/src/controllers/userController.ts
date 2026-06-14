@@ -25,6 +25,7 @@ function serializeUser(user: any) {
     profile: user.profile,
     preferences: user.preferences,
     fitnessGoals: user.fitnessGoals,
+    onboardingCompleted: Boolean(user.onboardingCompleted),
     notificationSettings: user.notificationSettings,
     verification: user.verification,
     createdAt: user.createdAt,
@@ -56,6 +57,22 @@ function normalizeHydrationReminder(reminder: any, fallback: { enabled: boolean;
     startHour: reminder?.startHour ?? fallback.startHour,
     endHour: reminder?.endHour ?? fallback.endHour,
   };
+}
+
+function inferBodyType(metrics: { heightCm?: number; weightKg?: number; wristCm?: number } | undefined) {
+  const heightCm = Number(metrics?.heightCm ?? 0);
+  const weightKg = Number(metrics?.weightKg ?? 0);
+  const wristCm = Number(metrics?.wristCm ?? 0);
+
+  if (!heightCm || !weightKg) {
+    return 'balanced';
+  }
+
+  const bmi = weightKg / Math.pow(heightCm / 100, 2);
+  if (wristCm && wristCm < 15.5) return 'ectomorph';
+  if (bmi < 20 || (wristCm && wristCm < 17)) return 'ectomorph';
+  if (bmi >= 27 || (wristCm && wristCm >= 19)) return 'endomorph';
+  return 'mesomorph';
 }
 
 export async function getMe(req: Request & { userId?: string }, res: Response) {
@@ -143,6 +160,69 @@ export async function updateFitnessGoals(req: Request & { userId?: string }, res
 
   await user.save();
   res.json({ message: 'Fitness goals updated.', user: serializeUser(user) });
+}
+
+export async function saveOnboardingProfile(req: Request & { userId?: string }, res: Response) {
+  const user = await UserModel.findById(req.userId);
+  if (!user) {
+    throw new HttpError(404, 'User not found.');
+  }
+
+  const {
+    gender,
+    heightCm,
+    weightKg,
+    age,
+    bodyType,
+    primaryGoal,
+    targetWeightKg,
+    workoutFrequencyPerWeek,
+    wristCm,
+    onboardingCompleted,
+  } = req.body as {
+    gender?: 'male' | 'female' | 'other';
+    heightCm?: number;
+    weightKg?: number;
+    age?: number;
+    bodyType?: 'ectomorph' | 'mesomorph' | 'endomorph' | 'balanced';
+    primaryGoal?: 'weight_loss' | 'muscle_gain' | 'maintenance' | 'general_fitness';
+    targetWeightKg?: number;
+    workoutFrequencyPerWeek?: number;
+    wristCm?: number;
+    onboardingCompleted?: boolean;
+  };
+
+  if (gender !== undefined) user.profile.gender = gender;
+  if (heightCm !== undefined) user.profile.heightCm = heightCm;
+  if (weightKg !== undefined) user.profile.weightKg = weightKg;
+  if (age !== undefined) user.profile.age = age;
+  if (heightCm !== undefined || weightKg !== undefined || age !== undefined || gender !== undefined) {
+    user.profile.dailyCalories = calculateDailyCalories({
+      age: user.profile.age ?? undefined,
+      heightCm: user.profile.heightCm ?? undefined,
+      weightKg: user.profile.weightKg ?? undefined,
+      gender: user.profile.gender ?? undefined,
+    });
+  }
+
+  if (heightCm !== undefined || weightKg !== undefined || wristCm !== undefined) {
+    user.profile.bodyType = inferBodyType({ heightCm, weightKg, wristCm }) as any;
+  }
+  if (bodyType !== undefined) {
+    user.profile.bodyType = bodyType;
+  }
+
+  if (primaryGoal !== undefined) user.fitnessGoals.primaryGoal = primaryGoal;
+  if (targetWeightKg !== undefined) user.fitnessGoals.targetWeightKg = targetWeightKg;
+  if (workoutFrequencyPerWeek !== undefined) user.fitnessGoals.workoutFrequencyPerWeek = workoutFrequencyPerWeek;
+
+  if (onboardingCompleted !== undefined) {
+    user.onboardingCompleted = onboardingCompleted;
+  }
+  user.fitnessGoals.setupCompleted = onboardingCompleted ?? true;
+
+  await user.save();
+  res.json({ message: 'Onboarding profile saved.', user: serializeUser(user) });
 }
 
 export async function updatePreferences(req: Request & { userId?: string }, res: Response) {

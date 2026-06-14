@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
+import { useOnboardingStore } from '@/store/onboardingStore';
 import { AUTH_THEME } from '@/utils/authTheme';
 import { getAuthResponsiveMetrics } from '@/utils/responsive';
 import { validateRequired } from '@/utils/validators';
@@ -46,7 +47,14 @@ export default function LoginScreen() {
       touchActivity();
       await login(identifier.trim(), password, rememberMe);
       const currentUser = useAuthStore.getState().user;
-      router.replace(currentUser?.isAdmin ? '/(tabs)/admin' : '/(tabs)/home');
+      const onboardingDone = useOnboardingStore.getState().onboardingCompleted;
+      router.replace(
+        currentUser?.isAdmin
+          ? '/(tabs)/admin'
+          : onboardingDone
+            ? '/(tabs)/home'
+            : '/(onboarding)/gender'
+      );
     } catch (error) {
       Alert.alert('Login failed', error instanceof Error ? error.message : 'Unable to log in.');
     }
@@ -126,7 +134,7 @@ export default function LoginScreen() {
           </Pressable>
 
           <Pressable onPress={() => router.push('/signup')} style={styles.footerWrap}>
-            <Text style={[styles.footer, { fontSize: metrics.footerTextSize }]}>Don't have an account? <Text style={styles.footerAccent}>Sign up</Text></Text>
+            <Text style={[styles.footer, { fontSize: metrics.footerTextSize }]}>Don&apos;t have an account? <Text style={styles.footerAccent}>Sign up</Text></Text>
           </Pressable>
         </View>
       </ScrollView>

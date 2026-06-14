@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
+import { TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken';
 import { UserModel } from '../models/User';
 import { SessionModel } from '../models/Session';
 import { HttpError } from '../utils/http';
@@ -27,6 +28,10 @@ export async function requireAuth(
     req.isAdmin = Boolean((user as any).isAdmin);
     next();
   } catch (error) {
+    if (error instanceof TokenExpiredError || error instanceof JsonWebTokenError) {
+      next(new HttpError(401, 'Authentication expired. Please sign in again.'));
+      return;
+    }
     next(error);
   }
 }
