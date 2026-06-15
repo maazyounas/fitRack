@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,8 +19,7 @@ import { fetchAiCoachSummary, fetchWorkoutRecommendations } from '../../services
 import { AnimatedProgressRing } from '@/components/ui/AnimatedProgressRing';
 import { AppHeader } from '@/components/common/AppHeader';
 import type { AiCoachDataPoints, AiCoachSummary } from '@/types/ai';
-
-const { width } = Dimensions.get('window');
+import { Layout, Radius, Shadows, Typography } from '@/constants/designSystem';
 
 const getQuickActions = () => [
   { icon: 'barbell', label: 'Start Workout', route: '/workout', gradient: ['#0d9488', '#0f766e'] as const },
@@ -159,28 +157,20 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    paddingBottom: 40,
+    paddingBottom: Layout.floatingBottomPadding,
   },
 
   // ───────────────── Stats Section ─────────────────
   statsGradient: {
     marginTop: 10,
-    marginHorizontal: 16,
+    marginHorizontal: Layout.screenPadding,
 
     paddingTop: 22,
     paddingBottom: 24,
     paddingHorizontal: 18,
 
-    borderRadius: 26,
-
-    shadowColor: '#0f172a',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    elevation: 8,
+    borderRadius: Radius.xxl,
+    ...Shadows.lg,
   },
 
   statsRow: {
@@ -289,14 +279,13 @@ const styles = StyleSheet.create({
 
   // ───────────────── Sections ─────────────────
   sectionWrap: {
-    paddingHorizontal: 16,
+    paddingHorizontal: Layout.screenPadding,
     marginBottom: 18,
   },
 
   sectionTitle: {
     color: '#0f172a',
-    fontSize: 18,
-    fontWeight: '700',
+    ...Typography.h3,
     marginBottom: 14,
     letterSpacing: 0.2,
   },
@@ -319,7 +308,7 @@ const styles = StyleSheet.create({
 
     backgroundColor: '#ffffff',
 
-    borderRadius: 22,
+    borderRadius: Radius.xl,
 
     paddingVertical: 18,
     paddingHorizontal: 10,
@@ -327,14 +316,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
 
-    shadowColor: '#0f172a',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 5,
+    ...Shadows.md,
 
     borderWidth: 1,
     borderColor: 'rgba(226,232,240,0.7)',
@@ -343,7 +325,7 @@ const styles = StyleSheet.create({
   quickIcon: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: Radius.full,
 
     justifyContent: 'center',
     alignItems: 'center',
@@ -353,8 +335,7 @@ const styles = StyleSheet.create({
 
   quickLabel: {
     color: '#0f172a',
-    fontSize: 12,
-    fontWeight: '600',
+    ...Typography.caption,
     textAlign: 'center',
     lineHeight: 16,
   },

@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useOnboardingStore, type ActivityLevel, type BodyType, type ExperienceLevel } from '@/store/onboardingStore';
 import { PremiumButton } from '@/components/ui/PremiumButton';
+import { Layout, Radius, Shadows, Typography } from '@/constants/designSystem';
 
 const { width } = Dimensions.get('window');
 const SLIDER_W = width - 48;
@@ -106,22 +107,22 @@ function MetricSlider({
 }
 
 const sliderStyles = StyleSheet.create({
-  wrap: { marginBottom: 24 },
+  wrap: { marginBottom: Layout.sectionGap },
   labelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  label: { color: '#334155', fontSize: 14, fontWeight: '700' },
+  label: { color: '#334155', ...Typography.label },
   valueControl: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  adjustButton: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e6fffb', borderWidth: 1, borderColor: '#99f6e4' },
+  adjustButton: { width: 30, height: 30, borderRadius: Radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e6fffb', borderWidth: 1, borderColor: '#99f6e4' },
   adjustButtonPressed: { opacity: 0.75, transform: [{ scale: 0.96 }] },
   adjustButtonText: { color: '#0d9488', fontSize: 18, fontWeight: '800', lineHeight: 18, marginTop: -1 },
-  valuePill: { flexDirection: 'row', alignItems: 'baseline', backgroundColor: '#f0fdfa', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, gap: 3, borderWidth: 1, borderColor: '#ccfbf1' },
+  valuePill: { flexDirection: 'row', alignItems: 'baseline', backgroundColor: '#f0fdfa', borderRadius: Radius.full, paddingHorizontal: 12, paddingVertical: 4, gap: 3, borderWidth: 1, borderColor: '#ccfbf1' },
   value: { color: '#0d9488', fontSize: 20, fontWeight: '800' },
   unit: { color: '#0d9488', fontSize: 12, fontWeight: '600', opacity: 0.7 },
   track: { height: 32, position: 'relative', justifyContent: 'center' },
   trackBg: { height: 6, backgroundColor: '#e2e8f0', borderRadius: 3, width: '100%' },
   fill: { position: 'absolute', height: 6, borderRadius: 3, left: 0 },
-  thumb: { position: 'absolute', width: 28, height: 28, borderRadius: 14, backgroundColor: '#fff', borderWidth: 2, borderColor: '#0d9488', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 },
+  thumb: { position: 'absolute', width: 28, height: 28, borderRadius: Radius.full, backgroundColor: '#fff', borderWidth: 2, borderColor: '#0d9488', ...Shadows.sm },
   rangeRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  rangeLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '600' },
+  rangeLabel: { color: '#94a3b8', ...Typography.caption },
 });
 
 // ─── Chip Selector ─────────────────────────────────────────────────────────────
@@ -168,12 +169,12 @@ function ChipGroup<T extends string>({
 }
 
 const chipStyles = StyleSheet.create({
-  wrap: { marginBottom: 24 },
-  groupLabel: { color: '#334155', fontSize: 14, fontWeight: '700', marginBottom: 12 },
+  wrap: { marginBottom: Layout.sectionGap },
+  groupLabel: { color: '#334155', ...Typography.label, marginBottom: 12 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', gap: 6 },
+  chip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.lg, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', gap: 6 },
   chipActive: { backgroundColor: '#0d9488', borderColor: '#0d9488' },
-  chipLabel: { color: '#64748b', fontSize: 14, fontWeight: '600' },
+  chipLabel: { color: '#64748b', ...Typography.label },
   chipLabelActive: { color: '#fff' },
 });
 
@@ -356,9 +357,9 @@ const styles = StyleSheet.create({
   hero: {
     paddingTop: 20,
     paddingBottom: 60,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingHorizontal: Layout.screenPaddingWide,
+    borderBottomLeftRadius: Radius.xxxl,
+    borderBottomRightRadius: Radius.xxxl,
   },
   heroContent: { marginTop: 20 },
   progressWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24 },
@@ -366,9 +367,9 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 2 },
   progressLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700' },
   eyebrow: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase' },
-  title: { color: '#fff', fontSize: 32, fontWeight: '800', lineHeight: 38, marginBottom: 10 },
-  subtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 14, lineHeight: 20, maxWidth: '90%' },
-  card: { backgroundColor: '#fff', borderRadius: 24, marginHorizontal: 20, marginTop: -40, padding: 24, shadowColor: '#0f172a', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 8 },
+  title: { color: '#fff', ...Typography.h1, marginBottom: 10 },
+  subtitle: { color: 'rgba(255,255,255,0.8)', ...Typography.body, maxWidth: '90%' },
+  card: { backgroundColor: '#fff', borderRadius: Radius.xxl, marginHorizontal: Layout.screenPadding, marginTop: -40, padding: 24, ...Shadows.lg },
   scrollContent: { paddingTop: 0 },
   bmiSection: { marginBottom: 20 },
   bmiHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
@@ -376,12 +377,12 @@ const styles = StyleSheet.create({
   bmiBadge: { backgroundColor: '#f0fdfa', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   bmiBadgeText: { color: '#0d9488', fontSize: 11, fontWeight: '700' },
   bmiValue: { color: '#1e293b', fontSize: 36, fontWeight: '800' },
-  divider: { height: 1, backgroundColor: '#f1f5f9', marginVertical: 24 },
+  divider: { height: 1, backgroundColor: '#f1f5f9', marginVertical: Layout.sectionGap },
   wristSection: { marginBottom: 8 },
   optionalLabel: { color: '#334155', fontSize: 14, fontWeight: '700', marginBottom: 6 },
   optionalSub: { color: '#64748b', fontSize: 12, lineHeight: 18, marginBottom: 14 },
   wristInput: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#f8fafc', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1.5, borderColor: '#e2e8f0' },
   wristField: { flex: 1, color: '#1e293b', fontSize: 16, fontWeight: '600' },
   wristUnit: { color: '#94a3b8', fontSize: 14, fontWeight: '600' },
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingBottom: 40, paddingTop: 16, backgroundColor: '#f1f5f9' },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: Layout.screenPaddingWide, paddingBottom: 40, paddingTop: 16, backgroundColor: '#f1f5f9' },
 });

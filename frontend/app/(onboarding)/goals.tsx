@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useOnboardingStore, type OnboardingGoal } from '@/store/onboardingStore';
 import { PremiumButton } from '@/components/ui/PremiumButton';
+import { Layout, Radius, Shadows, Typography } from '@/constants/designSystem';
 
 // Use percent widths in styles for responsive layout instead of fixed CARD_W
 
@@ -147,9 +148,9 @@ const styles = StyleSheet.create({
   hero: {
     paddingTop: 20,
     paddingBottom: 60,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingHorizontal: Layout.screenPaddingWide,
+    borderBottomLeftRadius: Radius.xxxl,
+    borderBottomRightRadius: Radius.xxxl,
   },
   heroContent: { marginTop: 20 },
   progressWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24 },
@@ -157,20 +158,20 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 2 },
   progressLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700' },
   eyebrow: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase' },
-  title: { color: '#fff', fontSize: 32, fontWeight: '800', lineHeight: 38, marginBottom: 10 },
-  subtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 14, lineHeight: 20, maxWidth: '90%' },
-  card: { backgroundColor: '#fff', borderRadius: 24, marginHorizontal: 20, marginTop: -20, padding: 20, shadowColor: '#0f172a', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 8 },
+  title: { color: '#fff', ...Typography.h1, marginBottom: 10 },
+  subtitle: { color: 'rgba(255,255,255,0.8)', ...Typography.body, maxWidth: '90%' },
+  card: { backgroundColor: '#fff', borderRadius: Radius.xxl, marginHorizontal: Layout.screenPadding, marginTop: -20, padding: 20, ...Shadows.lg },
   scrollContent: { paddingTop: 0 },
   countPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f0fdfa', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 16, alignSelf: 'flex-start', borderWidth: 1, borderColor: '#ccfbf1' },
-  countText: { color: '#0d9488', fontSize: 13, fontWeight: '700' },
+  countText: { color: '#0d9488', ...Typography.label },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 8 },
   cardWrapper: { width: '48%', maxWidth: '48%', minWidth: 140, marginBottom: 12, alignSelf: 'flex-start', overflow: 'hidden' },
   glowBorder: { borderRadius: 22, padding: 2 },
-  cardInner: { backgroundColor: '#f8fafc', borderRadius: 21, borderWidth: 1.5, borderColor: '#e2e8f0', padding: 12, alignItems: 'center', gap: 8, minHeight: 128, justifyContent: 'center' },
+  cardInner: { backgroundColor: '#f8fafc', borderRadius: Radius.xl, borderWidth: 1.5, borderColor: '#e2e8f0', padding: 12, alignItems: 'center', gap: 8, minHeight: 128, justifyContent: 'center' },
   cardSelected: { backgroundColor: '#f0fdfa', borderColor: '#0d9488' },
   iconBg: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  cardLabel: { color: '#475569', fontSize: 14, fontWeight: '800', textAlign: 'center', flexShrink: 1 },
-  cardDesc: { color: '#94a3b8', fontSize: 11, textAlign: 'center', lineHeight: 14, flexShrink: 1 },
+  cardLabel: { color: '#475569', ...Typography.label, fontWeight: '800', textAlign: 'center', flexShrink: 1 },
+  cardDesc: { color: '#94a3b8', ...Typography.caption, textAlign: 'center', lineHeight: 14, flexShrink: 1 },
   checkMark: { position: 'absolute', top: 8, right: 8, width: 20, height: 20, borderRadius: 10, backgroundColor: '#0d9488', alignItems: 'center', justifyContent: 'center' },
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingBottom: 40, paddingTop: 16, backgroundColor: '#f1f5f9' },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: Layout.screenPaddingWide, paddingBottom: 40, paddingTop: 16, backgroundColor: '#f1f5f9' },
 });

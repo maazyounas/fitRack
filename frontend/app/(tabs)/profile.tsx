@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { AppHeader } from '@/components/common/AppHeader';
+import { Layout, Radius, Shadows } from '@/constants/designSystem';
 
 // Stat Pill Component
 function StatPill({ icon, label, value }: { icon: React.ComponentProps<typeof Ionicons>['name']; label: string; value: string }) {
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
     flex: 1 
   },
   content: { 
-    paddingBottom: 40, 
+    paddingBottom: Layout.floatingBottomPadding, 
     paddingTop: 8 
   },
 
@@ -329,7 +330,7 @@ const styles = StyleSheet.create({
   heroCard: { 
     paddingTop: 32, 
     paddingBottom: 28, 
-    paddingHorizontal: 24, 
+    paddingHorizontal: Layout.screenPaddingWide, 
     alignItems: 'center', 
     marginBottom: 16 
   },
@@ -340,25 +341,25 @@ const styles = StyleSheet.create({
   avatarBorder: { 
     width: 100, 
     height: 100, 
-    borderRadius: 50, 
+    borderRadius: Radius.full, 
     padding: 2 
   },
   avatar: { 
     width: 96, 
     height: 96, 
-    borderRadius: 48 
+    borderRadius: Radius.full 
   },
   avatarFallback: { 
     width: 96, 
     height: 96, 
-    borderRadius: 48, 
+    borderRadius: Radius.full, 
     alignItems: 'center', 
     justifyContent: 'center' 
   },
   avatarLetter: { 
     color: '#fff', 
-    fontSize: 40, 
-    fontWeight: '400' 
+    fontSize: 40,
+    fontWeight: '700' 
   },
   cameraBtn: { 
     position: 'absolute', 
@@ -468,9 +469,9 @@ const styles = StyleSheet.create({
 
   // Scan CTA
   scanCta: { 
-    marginHorizontal: 16, 
+    marginHorizontal: Layout.screenPadding, 
     marginBottom: 16, 
-    borderRadius: 16, 
+    borderRadius: Radius.xl, 
     overflow: 'hidden' 
   },
   scanCtaInner: { 
@@ -480,12 +481,12 @@ const styles = StyleSheet.create({
     padding: 14, 
     borderWidth: 1, 
     borderColor: 'rgba(13,148,136,0.15)', 
-    borderRadius: 16 
+    borderRadius: Radius.xl 
   },
   scanCtaIcon: { 
     width: 44, 
     height: 44, 
-    borderRadius: 22, 
+    borderRadius: Radius.xl, 
     alignItems: 'center', 
     justifyContent: 'center' 
   },
@@ -522,11 +523,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, 
     padding: 20, 
     marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2
+    ...Shadows.sm
   },
   cardHeaderRow: { 
     flexDirection: 'row', 
@@ -549,7 +546,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     gap: 6, 
     backgroundColor: '#f0fdfa', 
-    borderRadius: 20, 
+    borderRadius: Radius.full, 
     paddingHorizontal: 14, 
     paddingVertical: 6 
   },

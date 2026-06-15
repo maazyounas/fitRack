@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { StyleSheet, View, Text, Dimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useEffect } from 'react';
+import { Layout, Radius } from '@/constants/designSystem';
 
 const { width } = Dimensions.get('window');
 
@@ -33,7 +34,13 @@ function OnboardingProgressBar({ step }: { step: number }) {
 
 export default function OnboardingLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: 'slide_from_right',
+        contentStyle: { backgroundColor: '#f1f5f9' },
+      }}
+    >
       <Stack.Screen name="gender" />
       <Stack.Screen name="metrics" />
       <Stack.Screen name="goals" />
@@ -44,7 +51,7 @@ export default function OnboardingLayout() {
 
 const styles = StyleSheet.create({
   barWrap: {
-    paddingHorizontal: 24,
+    paddingHorizontal: Layout.screenPadding,
     paddingTop: 12,
     paddingBottom: 4,
     flexDirection: 'row',
@@ -56,13 +63,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     backgroundColor: '#e2e8f0',
-    borderRadius: 2,
+    borderRadius: Radius.full,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
     backgroundColor: '#0d9488',
-    borderRadius: 2,
+    borderRadius: Radius.full,
   },
   stepLabel: {
     color: '#64748b',

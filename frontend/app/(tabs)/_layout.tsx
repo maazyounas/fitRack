@@ -7,6 +7,7 @@ import { useAppPalette } from '@/hooks/useAppPalette';
 import { useTranslation } from '@/hooks/useTranslation';
 import { useUiStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
+import { Layout, Radius, Shadows } from '@/constants/designSystem';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -20,7 +21,7 @@ export default function TabLayout() {
 
   const isAdmin = user?.isAdmin === true;
   const isCompact = SCREEN_WIDTH < 390;
-  const tabBarHeight = isCompact ? 64 : 72;
+  const tabBarHeight = isCompact ? 64 : Layout.tabBarHeight;
   const tabIconSize = isCompact ? 20 : 22;
   const tabLabelSize = isCompact ? 9 : Math.min(11 * fontScale, 13);
   const hideTabBar = pathname === '/admin';
@@ -37,9 +38,9 @@ export default function TabLayout() {
 
         tabBarStyle: {
           position: 'absolute',
-          left: 16,
-          right: 16,
-          bottom: 16,
+          left: Layout.screenPadding,
+          right: Layout.screenPadding,
+          bottom: Layout.tabBarBottomGap,
 
           height: tabBarHeight,
 
@@ -50,16 +51,8 @@ export default function TabLayout() {
 
           borderTopWidth: 0,
 
-          borderRadius: 28,
-
-          shadowColor: '#0f172a',
-          shadowOffset: {
-            width: 0,
-            height: 8,
-          },
-          shadowOpacity: 0.1,
-          shadowRadius: 20,
-          elevation: 12,
+          borderRadius: Radius.xxxl,
+          ...Shadows.lg,
 
           // For better visual separation
           borderWidth: 1,

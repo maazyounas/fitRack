@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import { Components, Typography } from '@/constants/designSystem';
 
 type InputProps = TextInputProps & {
   /** Optional — when omitted the label line is hidden (for inline/custom layouts) */
@@ -26,23 +27,22 @@ const styles = StyleSheet.create({
   },
   label: {
     color: '#0f172a',
-    fontSize: 14,
-    fontWeight: '600',
+    ...Typography.label,
     marginBottom: 8,
   },
   input: {
     backgroundColor: '#fff',
     borderColor: '#cbd5e1',
-    borderRadius: 14,
+    borderRadius: Components.input.radius,
     borderWidth: 1,
     color: '#0f172a',
-    fontSize: 16,
+    fontSize: Typography.body.fontSize,
     flexGrow: 1,
     flexShrink: 1,
     includeFontPadding: false,
     minWidth: 0,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: Components.input.paddingX,
+    paddingVertical: Components.input.paddingY,
     textAlignVertical: 'center',
   },
   inputError: {
@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#dc2626',
-    fontSize: 12,
+    ...Typography.caption,
     marginTop: 6,
   },
 });

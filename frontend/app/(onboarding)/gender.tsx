@@ -24,6 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useOnboardingStore, type OnboardingGender } from '@/store/onboardingStore';
 import { PremiumButton } from '@/components/ui/PremiumButton';
+import { Layout, Radius, Shadows, Typography } from '@/constants/designSystem';
 
 type GenderOption = {
   key: OnboardingGender;
@@ -198,9 +199,9 @@ const styles = StyleSheet.create({
   hero: {
     paddingTop: 20,
     paddingBottom: 60,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingHorizontal: Layout.screenPaddingWide,
+    borderBottomLeftRadius: Radius.xxxl,
+    borderBottomRightRadius: Radius.xxxl,
   },
   heroContent: {
     marginTop: 20,
@@ -236,30 +237,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textTransform: 'uppercase',
   },
-  title: {
-    color: '#fff',
-    fontSize: 32,
-    fontWeight: '800',
-    lineHeight: 38,
-    marginBottom: 10,
-  },
-  subtitle: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    lineHeight: 20,
-    maxWidth: '90%',
-  },
+  title: { color: '#fff', ...Typography.h1, marginBottom: 10 },
+  subtitle: { color: 'rgba(255,255,255,0.8)', ...Typography.body, maxWidth: '90%' },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 24,
-    marginHorizontal: 14,
+    borderRadius: Radius.xxl,
+    marginHorizontal: Layout.screenPadding,
     marginTop: -40,
     padding: 18,
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 8,
+    ...Shadows.lg,
   },
   cardsRow: {
     flexDirection: 'row',
@@ -283,7 +269,7 @@ const styles = StyleSheet.create({
   },
   cardInner: {
     backgroundColor: '#f8fafc',
-    borderRadius: 22,
+    borderRadius: Radius.xl,
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
     padding: 16,
@@ -341,14 +327,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-    paddingTop: 16,
-    backgroundColor: '#f1f5f9',
-  },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: Layout.screenPaddingWide, paddingBottom: 40, paddingTop: 16, backgroundColor: '#f1f5f9' },
 });

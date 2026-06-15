@@ -26,6 +26,7 @@ import Animated, {
 import { useOnboardingStore } from '@/store/onboardingStore';
 import { useAuthStore } from '@/store/authStore';
 import { PremiumButton } from '@/components/ui/PremiumButton';
+import { Layout, Radius, Shadows, Spacing, Typography } from '@/constants/designSystem';
 
 // ─── Scanning Animation ───────────────────────────────────────────────────────
 function ScanAnimation() {
@@ -83,13 +84,13 @@ function ScanAnimation() {
 }
 
 const scanStyles = StyleSheet.create({
-  container: { width: 200, height: 240, alignSelf: 'center', position: 'relative', alignItems: 'center', justifyContent: 'center', marginVertical: 24 },
+  container: { width: 200, height: 240, alignSelf: 'center', position: 'relative', alignItems: 'center', justifyContent: 'center', marginVertical: Layout.sectionGap },
   silhouetteBox: { alignItems: 'center', justifyContent: 'center' },
   corner: { position: 'absolute', width: 24, height: 24, borderColor: '#0d9488', borderWidth: 3 },
-  tl: { top: 0, left: 0, borderBottomWidth: 0, borderRightWidth: 0, borderTopLeftRadius: 6 },
-  tr: { top: 0, right: 0, borderBottomWidth: 0, borderLeftWidth: 0, borderTopRightRadius: 6 },
-  bl: { bottom: 0, left: 0, borderTopWidth: 0, borderRightWidth: 0, borderBottomLeftRadius: 6 },
-  br: { bottom: 0, right: 0, borderTopWidth: 0, borderLeftWidth: 0, borderBottomRightRadius: 6 },
+  tl: { top: 0, left: 0, borderBottomWidth: 0, borderRightWidth: 0, borderTopLeftRadius: Radius.sm },
+  tr: { top: 0, right: 0, borderBottomWidth: 0, borderLeftWidth: 0, borderTopRightRadius: Radius.sm },
+  bl: { bottom: 0, left: 0, borderTopWidth: 0, borderRightWidth: 0, borderBottomLeftRadius: Radius.sm },
+  br: { bottom: 0, right: 0, borderTopWidth: 0, borderLeftWidth: 0, borderBottomRightRadius: Radius.sm },
   scanLine: { position: 'absolute', left: 0, right: 0, height: 2, zIndex: 10 },
 });
 
@@ -240,9 +241,9 @@ const styles = StyleSheet.create({
   hero: {
     paddingTop: 20,
     paddingBottom: 60,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingHorizontal: Layout.screenPaddingWide,
+    borderBottomLeftRadius: Radius.xxxl,
+    borderBottomRightRadius: Radius.xxxl,
   },
   heroContent: { marginTop: 20 },
   progressWrap: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24 },
@@ -250,14 +251,14 @@ const styles = StyleSheet.create({
   progressFill: { height: '100%', backgroundColor: '#fff', borderRadius: 2 },
   progressLabel: { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '700' },
   eyebrow: { color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700', letterSpacing: 2, marginBottom: 8, textTransform: 'uppercase' },
-  title: { color: '#fff', fontSize: 32, fontWeight: '800', lineHeight: 38, marginBottom: 10 },
-  subtitle: { color: 'rgba(255,255,255,0.8)', fontSize: 14, lineHeight: 20, maxWidth: '90%' },
-  card: { backgroundColor: '#fff', borderRadius: 24, marginHorizontal: 20, marginTop: -40, padding: 24, shadowColor: '#0f172a', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 8 },
+  title: { color: '#fff', ...Typography.h1, marginBottom: 10 },
+  subtitle: { color: 'rgba(255,255,255,0.8)', ...Typography.body, maxWidth: '90%' },
+  card: { backgroundColor: '#fff', borderRadius: Radius.xxl, marginHorizontal: Layout.screenPadding, marginTop: -40, padding: 24, ...Shadows.lg },
   scrollContent: { paddingTop: 0 },
-  features: { gap: 16, marginTop: 12 },
+  features: { gap: Spacing.base, marginTop: 12 },
   featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
   featureIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#f0fdfa', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#ccfbf1' },
-  featureTitle: { color: '#1e293b', fontSize: 15, fontWeight: '700', marginBottom: 3 },
-  featureDesc: { color: '#64748b', fontSize: 13, lineHeight: 18 },
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 24, paddingBottom: 40, paddingTop: 16, backgroundColor: '#f1f5f9' },
+  featureTitle: { color: '#1e293b', ...Typography.h3, marginBottom: 3 },
+  featureDesc: { color: '#64748b', ...Typography.body, fontSize: 13, lineHeight: 18 },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: Layout.screenPaddingWide, paddingBottom: 40, paddingTop: 16, backgroundColor: '#f1f5f9' },
 });

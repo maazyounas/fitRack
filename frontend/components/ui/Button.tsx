@@ -3,6 +3,7 @@ import { useAppPalette } from '@/hooks/useAppPalette';
 import { useFontScale } from '@/hooks/useFontScale';
 import { useUiStore } from '@/store/uiStore';
 import { useWindowDimensions } from 'react-native';
+import { Components, Typography } from '@/constants/designSystem';
 
 type ButtonProps = {
   label: string;
@@ -29,7 +30,6 @@ export function Button({
   const isCompact = width < 380;
   const isTablet = width >= 768;
   const buttonMinHeight = isCompact ? 48 : isTablet ? 56 : 52;
-  const buttonPaddingHorizontal = isCompact ? 16 : isTablet ? 24 : 18;
   const buttonPaddingVertical = isCompact ? 12 : 14;
   const labelSize = (isCompact ? 15 : isTablet ? 17 : 16) * fontScale;
 
@@ -44,10 +44,10 @@ export function Button({
           width: stretch ? '100%' : undefined,
           backgroundColor: palette.backgroundColor,
           opacity: pressed ? 0.88 : 1,
-          minHeight: buttonMinHeight,
-          paddingHorizontal: buttonPaddingHorizontal,
+          minHeight: Math.max(buttonMinHeight, Components.button.minHeight),
+          paddingHorizontal: Components.button.paddingX,
           paddingVertical: buttonPaddingVertical,
-          borderRadius: isTablet ? 16 : 14,
+          borderRadius: Components.button.radius,
         },
         disabled || loading ? styles.disabled : null,
       ]}
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    fontWeight: '700',
+    ...Typography.button,
   },
   disabled: {
     opacity: 0.6,

@@ -6,8 +6,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Platform,
-  StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,7 +17,9 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/store/authStore';
+import { Layout, Radius, Shadows, Typography } from '@/constants/designSystem';
 
 // ─────────────────────────────────────────────────────────────
 // Pulse Notification Dot
@@ -57,6 +57,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 }) => {
   const router = useRouter();
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   const avatarUrl = user?.profile?.profilePictureUrl;
 
@@ -65,10 +66,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       colors={['#0f766e', '#115e59', '#134e4a']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={styles.headerContainer}
+      style={[styles.headerContainer, { paddingTop: insets.top + 12 }]}
     >
-      {/* Top Row */}
-      <View style={styles.headerRow}>
+      <SafeAreaView edges={['top']} style={styles.safeArea}>
+        {/* Top Row */}
+        <View style={styles.headerRow}>
         {/* Left Side */}
         <View style={styles.leftSection}>
           <View style={styles.logoContainer}>
@@ -113,32 +115,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             )}
           </Pressable>
         </View>
-      </View>
+        </View>
+      </SafeAreaView>
     </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   headerContainer: {
-    paddingTop:
-      Platform.OS === 'android'
-        ? (StatusBar.currentHeight || 0) + 14
-        : 16,
     paddingBottom: 18,
-    paddingHorizontal: 20,
+    paddingHorizontal: Layout.screenPadding,
 
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 8,
+    borderBottomLeftRadius: Radius.xxl,
+    borderBottomRightRadius: Radius.xxl,
+    ...Shadows.lg,
   },
+  safeArea: { flex: 1 },
 
   headerRow: {
     flexDirection: 'row',
@@ -167,8 +159,7 @@ const styles = StyleSheet.create({
 
   brandText: {
     color: '#ffffff',
-    fontSize: 17,
-    fontWeight: '700',
+    ...Typography.h3,
     letterSpacing: 0.8,
   },
 

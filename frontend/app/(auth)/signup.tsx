@@ -291,10 +291,15 @@ export default function SignupScreen() {
                 <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.phone ? styles.inputError : null]}>
                   <Ionicons name="call-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
                   <TextInput
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="off"
+                    importantForAutofill="no"
                     keyboardType="phone-pad"
-                    onChangeText={setField('phone')}
                     placeholderTextColor="#94a3b8"
+                    onChangeText={setField('phone')}
                     placeholder="Phone number"
+                    textContentType="none"
                     value={phone}
                     style={[styles.bare, { fontSize: metrics.bareFontSize }]}
                   />
@@ -308,10 +313,15 @@ export default function SignupScreen() {
                 <View style={[styles.inputRow, { minHeight: metrics.inputMinHeight, paddingHorizontal: metrics.inputHorizontalPadding }, errors.password ? styles.inputError : null]}>
                   <Ionicons name="lock-closed-outline" size={metrics.iconSize} color="#94a3b8" style={[styles.icon, { marginRight: metrics.iconSpacing }]} />
                   <TextInput
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="new-password"
                     onChangeText={setField('password')}
                     placeholderTextColor="#94a3b8"
                     placeholder="Create password"
+                    importantForAutofill="no"
                     secureTextEntry={!showPassword}
+                    textContentType="newPassword"
                     value={password}
                     style={[styles.bare, { fontSize: metrics.bareFontSize }]}
                   />
