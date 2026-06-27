@@ -264,10 +264,10 @@ export default function MetricsScreen() {
           </View>
 
           <View style={styles.heroContent}>
-            <Text style={styles.eyebrow}>YOUR BODY</Text>
+            <Text style={styles.eyebrow}>YOUR BASELINE</Text>
             <Text style={styles.title}>Body Metrics</Text>
             <Text style={styles.subtitle}>
-              Accurate measurements unlock precise AI recommendations.
+              A few quick measurements help us personalize your plan with more accuracy.
             </Text>
           </View>
         </SafeAreaView>
@@ -323,7 +323,7 @@ export default function MetricsScreen() {
           <View style={styles.wristSection}>
             <Text style={styles.optionalLabel}>Wrist Circumference (optional)</Text>
             <Text style={styles.optionalSub}>
-              Helps detect your body frame type (Ectomorph/Endomorph).
+              Helps us estimate your frame size for a better body-type match.
             </Text>
             <View style={styles.wristInput}>
               <Ionicons name="watch-outline" size={18} color="#0d9488" />

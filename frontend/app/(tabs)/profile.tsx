@@ -85,7 +85,7 @@ function ShortcutCard({
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, onboardingSnapshot } = useAuthStore();
   const { resetOnboarding } = useOnboardingStore();
 
   const [age, setAge] = useState(user?.profile.age ? String(user.profile.age) : '');
@@ -101,8 +101,12 @@ export default function ProfileScreen() {
     setProfilePictureUrl(user?.profile.profilePictureUrl ?? '');
   }, [user]);
 
-  const h = Number(heightCm);
-  const w = Number(weightKg);
+  const displayAge = user?.profile.age ?? onboardingSnapshot?.age;
+  const displayHeight = user?.profile.heightCm ?? onboardingSnapshot?.heightCm;
+  const displayWeight = user?.profile.weightKg ?? onboardingSnapshot?.weightKg;
+  const displayGender = user?.profile.gender ?? onboardingSnapshot?.gender;
+  const h = Number(displayHeight ?? heightCm);
+  const w = Number(displayWeight ?? weightKg);
   const bmi = h > 0 && w > 0 ? (w / Math.pow(h / 100, 2)).toFixed(1) : null;
   const bmiCategory = bmi
     ? Number(bmi) < 18.5 ? 'Underweight' : Number(bmi) < 25 ? 'Normal' : Number(bmi) < 30 ? 'Overweight' : 'Obese'
@@ -200,9 +204,9 @@ export default function ProfileScreen() {
 
             {/* Stat pills */}
             <View style={styles.statRow}>
-              {heightCm && <StatPill icon="resize-outline" label="Height" value={`${heightCm}cm`} />}
-              {weightKg && <StatPill icon="barbell-outline" label="Weight" value={`${weightKg}kg`} />}
-              {age && <StatPill icon="calendar-outline" label="Age" value={age} />}
+              {displayHeight && <StatPill icon="resize-outline" label="Height" value={`${displayHeight}cm`} />}
+              {displayWeight && <StatPill icon="barbell-outline" label="Weight" value={`${displayWeight}kg`} />}
+              {displayAge && <StatPill icon="calendar-outline" label="Age" value={String(displayAge)} />}
             </View>
 
             {/* BMI badge */}
@@ -222,6 +226,31 @@ export default function ProfileScreen() {
             )}
           </LinearGradient>
         </Animated.View>
+
+        {onboardingSnapshot && (
+          <Animated.View entering={FadeInDown.delay(140).springify()} style={styles.card}>
+            <SectionHeader icon="clipboard-outline" title="Onboarding Snapshot" />
+            <View style={styles.summaryHeader}>
+              <View style={styles.summaryPill}>
+                <Text style={styles.summaryPillText}>
+                  {onboardingSnapshot.gender.charAt(0).toUpperCase() + onboardingSnapshot.gender.slice(1)}
+                </Text>
+              </View>
+              <Text style={styles.summaryMeta}>
+                Saved on {new Date(onboardingSnapshot.completedAt).toLocaleDateString()}
+              </Text>
+            </View>
+            <View style={styles.infoGrid}>
+              <InfoRow label="Activity" value={onboardingSnapshot.activityLevel.replace(/_/g, ' ')} />
+              <InfoRow label="Experience" value={onboardingSnapshot.experience} />
+              <InfoRow
+                label="Goals"
+                value={onboardingSnapshot.goals.map((goal) => goal.replace(/_/g, ' ')).join(', ')}
+              />
+              <InfoRow label="Wrist" value={onboardingSnapshot.wristCm ? `${onboardingSnapshot.wristCm} cm` : 'â€”'} />
+            </View>
+          </Animated.View>
+        )}
 
         {/* AI Body Scan CTA */}
         <Animated.View entering={FadeInDown.delay(80).springify()} style={styles.scanCta}>
@@ -577,6 +606,32 @@ const styles = StyleSheet.create({
     color: '#1e293b', 
     fontSize: 15, 
     fontWeight: '500' 
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 14,
+  },
+  summaryPill: {
+    backgroundColor: '#f0fdfa',
+    borderWidth: 1,
+    borderColor: '#ccfbf1',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  summaryPillText: {
+    color: '#0d9488',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  summaryMeta: {
+    flex: 1,
+    color: '#64748b',
+    fontSize: 12,
+    textAlign: 'right',
   },
 
   // Edit form

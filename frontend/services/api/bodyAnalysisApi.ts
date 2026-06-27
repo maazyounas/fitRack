@@ -5,6 +5,7 @@
 
 import { apiClient } from './client';
 import type { BodyAnalysisResult } from '@/types/bodyAnalysis';
+import type { OnboardingSnapshot } from '@/types/user';
 
 // ─── Save Analysis ────────────────────────────────────────────────────────────
 
@@ -80,6 +81,11 @@ type SaveOnboardingResponse = {
   record: unknown;
 };
 
+type FetchOnboardingResponse = {
+  message: string;
+  record: OnboardingSnapshot | null;
+};
+
 export async function saveOnboardingToBackend(data: {
   gender: string;
   heightCm: number;
@@ -91,5 +97,12 @@ export async function saveOnboardingToBackend(data: {
   wristCm?: number;
 }): Promise<SaveOnboardingResponse> {
   const response = await apiClient.post<SaveOnboardingResponse>('/body-analysis/onboarding', data);
+  return response.data;
+}
+
+export async function fetchOnboardingFromBackend(accessToken?: string): Promise<FetchOnboardingResponse> {
+  const response = await apiClient.get<FetchOnboardingResponse>('/body-analysis/onboarding', {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+  });
   return response.data;
 }

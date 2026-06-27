@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { OtpTokenModel } from '../models/OtpToken';
 import { PendingRegistrationModel } from '../models/PendingRegistration';
 import { SessionModel } from '../models/Session';
+import { OnboardingData } from '../models/OnboardingData';
 import { UserModel } from '../models/User';
 import {
   sendOtpNotification,
@@ -21,7 +22,17 @@ import {
   verifyRefreshToken,
 } from '../utils/tokens';
 
-function buildUserResponse(user: any) {
+async function resolveOnboardingCompleted(user: any) {
+  if (user.onboardingCompleted || user.fitnessGoals?.setupCompleted) {
+    return true;
+  }
+
+  const onboardingRecord = await OnboardingData.exists({ userId: user.id });
+  return Boolean(onboardingRecord);
+}
+
+async function buildUserResponse(user: any) {
+  const onboardingCompleted = await resolveOnboardingCompleted(user);
   return {
     id: user.id,
     isAdmin: Boolean(user.isAdmin),
@@ -30,7 +41,7 @@ function buildUserResponse(user: any) {
     profile: user.profile,
     preferences: user.preferences,
     fitnessGoals: user.fitnessGoals,
-    onboardingCompleted: Boolean(user.onboardingCompleted),
+    onboardingCompleted,
     verification: user.verification,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
@@ -245,7 +256,7 @@ export async function verifyRegistrationOtp(req: Request, res: Response) {
     await OtpTokenModel.deleteMany({ userId: pending.id });
     await PendingRegistrationModel.findByIdAndDelete(pending.id);
 
-    res.json({ message: 'Verification successful. Account created.', user: buildUserResponse(user) });
+    res.json({ message: 'Verification successful. Account created.', user: await buildUserResponse(user) });
     return;
   }
 
@@ -479,7 +490,7 @@ export async function login(req: Request, res: Response) {
     accessToken,
     refreshToken,
     sessionSecret,
-    user: buildUserResponse(user),
+    user: await buildUserResponse(user),
   });
 }
 

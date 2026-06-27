@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { OnboardingData } from '../models/OnboardingData';
 import { UserModel } from '../models/User';
 import { decryptValue } from '../utils/crypto';
 import { HttpError } from '../utils/http';
@@ -16,7 +17,16 @@ const defaultNotificationSettings = {
   hydrationAlert: { enabled: false, intervalMinutes: 120, startHour: 8, endHour: 21 },
 };
 
-function serializeUser(user: any) {
+async function resolveOnboardingCompleted(user: any) {
+  if (user.onboardingCompleted || user.fitnessGoals?.setupCompleted) {
+    return true;
+  }
+
+  const onboardingRecord = await OnboardingData.exists({ userId: user.id });
+  return Boolean(onboardingRecord);
+}
+
+function serializeUser(user: any, onboardingCompleted: boolean) {
   return {
     id: user.id,
     isAdmin: Boolean(user.isAdmin),
@@ -25,7 +35,7 @@ function serializeUser(user: any) {
     profile: user.profile,
     preferences: user.preferences,
     fitnessGoals: user.fitnessGoals,
-    onboardingCompleted: Boolean(user.onboardingCompleted),
+    onboardingCompleted,
     notificationSettings: user.notificationSettings,
     verification: user.verification,
     createdAt: user.createdAt,
@@ -80,7 +90,7 @@ export async function getMe(req: Request & { userId?: string }, res: Response) {
   if (!user) {
     throw new HttpError(404, 'User not found.');
   }
-  res.json({ user: serializeUser(user) });
+  res.json({ user: serializeUser(user, await resolveOnboardingCompleted(user)) });
 }
 
 export async function updateProfile(req: Request & { userId?: string }, res: Response) {
@@ -113,7 +123,7 @@ export async function updateProfile(req: Request & { userId?: string }, res: Res
   });
 
   await user.save();
-  res.json({ message: 'Profile updated.', user: serializeUser(user) });
+  res.json({ message: 'Profile updated.', user: serializeUser(user, await resolveOnboardingCompleted(user)) });
 }
 
 export async function uploadProfilePicture(req: Request & { userId?: string, file?: any }, res: Response) {
@@ -129,7 +139,11 @@ export async function uploadProfilePicture(req: Request & { userId?: string, fil
   user.profile.profilePictureUrl = req.file.path;
   await user.save();
 
-  res.json({ message: 'Profile picture updated.', profilePictureUrl: req.file.path, user: serializeUser(user) });
+  res.json({
+    message: 'Profile picture updated.',
+    profilePictureUrl: req.file.path,
+    user: serializeUser(user, await resolveOnboardingCompleted(user)),
+  });
 }
 
 export async function getFitnessGoals(req: Request & { userId?: string }, res: Response) {
@@ -159,7 +173,7 @@ export async function updateFitnessGoals(req: Request & { userId?: string }, res
   if (setupCompleted !== undefined) user.fitnessGoals.setupCompleted = setupCompleted;
 
   await user.save();
-  res.json({ message: 'Fitness goals updated.', user: serializeUser(user) });
+  res.json({ message: 'Fitness goals updated.', user: serializeUser(user, await resolveOnboardingCompleted(user)) });
 }
 
 export async function saveOnboardingProfile(req: Request & { userId?: string }, res: Response) {
@@ -222,7 +236,7 @@ export async function saveOnboardingProfile(req: Request & { userId?: string }, 
   user.fitnessGoals.setupCompleted = onboardingCompleted ?? true;
 
   await user.save();
-  res.json({ message: 'Onboarding profile saved.', user: serializeUser(user) });
+  res.json({ message: 'Onboarding profile saved.', user: serializeUser(user, await resolveOnboardingCompleted(user)) });
 }
 
 export async function updatePreferences(req: Request & { userId?: string }, res: Response) {

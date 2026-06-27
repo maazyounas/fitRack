@@ -27,6 +27,7 @@ import { useOnboardingStore } from '@/store/onboardingStore';
 import { useAuthStore } from '@/store/authStore';
 import { PremiumButton } from '@/components/ui/PremiumButton';
 import { Layout, Radius, Shadows, Spacing, Typography } from '@/constants/designSystem';
+import { saveOnboardingToBackend } from '@/services/api/bodyAnalysisApi';
 
 // ─── Scanning Animation ───────────────────────────────────────────────────────
 function ScanAnimation() {
@@ -98,7 +99,7 @@ const scanStyles = StyleSheet.create({
 export default function AiIntroScreen() {
   const router = useRouter();
   const { completeOnboarding, metrics, gender, goals, bodyType } = useOnboardingStore();
-  const { saveOnboardingProfile } = useAuthStore();
+  const { saveOnboardingProfile, refreshOnboardingSnapshot } = useAuthStore();
 
   const primaryGoal =
     goals.includes('lose_weight')
@@ -112,6 +113,28 @@ export default function AiIntroScreen() {
   const syncData = async () => {
     try {
       if (metrics && gender) {
+        const workoutFrequencyPerWeek =
+          metrics.activityLevel === 'sedentary'
+            ? 1
+            : metrics.activityLevel === 'light'
+              ? 2
+              : metrics.activityLevel === 'moderate'
+                ? 3
+                : metrics.activityLevel === 'active'
+                  ? 5
+                  : 6;
+
+        await saveOnboardingToBackend({
+          gender,
+          heightCm: metrics.heightCm,
+          weightKg: metrics.weightKg,
+          age: metrics.age,
+          activityLevel: metrics.activityLevel,
+          experience: metrics.experience,
+          goals,
+          wristCm: metrics.wristCm,
+        });
+
         await saveOnboardingProfile({
           gender,
           heightCm: metrics.heightCm,
@@ -119,19 +142,12 @@ export default function AiIntroScreen() {
           age: metrics.age,
           bodyType: bodyType ?? undefined,
           primaryGoal,
-          workoutFrequencyPerWeek:
-            metrics.activityLevel === 'sedentary'
-              ? 1
-              : metrics.activityLevel === 'light'
-                ? 2
-                : metrics.activityLevel === 'moderate'
-                  ? 3
-                  : metrics.activityLevel === 'active'
-                    ? 5
-                    : 6,
+          workoutFrequencyPerWeek,
           wristCm: metrics.wristCm,
           onboardingCompleted: true,
         });
+
+        await refreshOnboardingSnapshot();
       }
       await completeOnboarding();
     } catch (err) {

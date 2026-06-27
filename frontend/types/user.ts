@@ -34,6 +34,27 @@ export type FitnessGoals = {
   setupCompleted: boolean;
 };
 
+export type OnboardingSnapshot = {
+  id: string;
+  userId: string;
+  gender: 'male' | 'female' | 'other';
+  heightCm: number;
+  weightKg: number;
+  age: number;
+  activityLevel: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  experience: 'beginner' | 'intermediate' | 'advanced';
+  goals: Array<
+    | 'build_muscle'
+    | 'gain_strength'
+    | 'lose_weight'
+    | 'conditioning'
+    | 'fundamentals'
+    | 'sports_performance'
+  >;
+  wristCm?: number;
+  completedAt: string;
+};
+
 export type UserVerification = {
   emailVerified: boolean;
   phoneVerified: boolean;
@@ -49,6 +70,7 @@ export type User = {
   preferences: UserPreferences;
   fitnessGoals: FitnessGoals;
   onboardingCompleted?: boolean;
+  onboardingSnapshot?: OnboardingSnapshot | null;
   notificationSettings?: ReminderSettings;
   verification: UserVerification;
   createdAt: string;

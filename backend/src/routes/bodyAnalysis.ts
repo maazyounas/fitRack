@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  getOnboardingData,
   saveBodyAnalysis,
   getBodyAnalysisHistory,
   deleteBodyAnalysisData,
@@ -30,5 +31,6 @@ router.delete('/data', requireAuth, deleteBodyAnalysisData);
 
 // Save onboarding selections
 router.post('/onboarding', requireAuth, saveOnboardingData);
+router.get('/onboarding', requireAuth, getOnboardingData);
 
 export default router;

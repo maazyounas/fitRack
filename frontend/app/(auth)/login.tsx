@@ -18,7 +18,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
-import { useOnboardingStore } from '@/store/onboardingStore';
 import { AUTH_THEME } from '@/utils/authTheme';
 import { getAuthResponsiveMetrics } from '@/utils/responsive';
 import { validateRequired } from '@/utils/validators';
@@ -47,7 +46,11 @@ export default function LoginScreen() {
       touchActivity();
       await login(identifier.trim(), password, rememberMe);
       const currentUser = useAuthStore.getState().user;
-      const onboardingDone = useOnboardingStore.getState().onboardingCompleted;
+      const onboardingDone = Boolean(
+        currentUser?.onboardingCompleted ||
+          currentUser?.fitnessGoals?.setupCompleted ||
+          useAuthStore.getState().onboardingSnapshot
+      );
       router.replace(
         currentUser?.isAdmin
           ? '/(tabs)/admin'

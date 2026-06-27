@@ -26,10 +26,10 @@ export default function RootLayout() {
     checkInactivity,
     touchActivity,
   } = useAuthStore();
+  const onboardingSnapshot = useAuthStore((state) => state.onboardingSnapshot);
   const {
     initialize: initOnboarding,
     isHydrated: onboardingHydrated,
-    onboardingCompleted,
   } = useOnboardingStore();
   const hydrationReminder = useNutritionStore((state) => state.hydrationReminder);
   const workoutPlans = useWorkoutStore((state) => state.plans);
@@ -40,6 +40,9 @@ export default function RootLayout() {
   const initializeStarted = useRef(false);
 
   const fullyHydrated = isHydrated && onboardingHydrated;
+  const completedOnboarding = Boolean(
+    user?.onboardingCompleted || user?.fitnessGoals?.setupCompleted || onboardingSnapshot
+  );
 
   useEffect(() => {
     if (initializeStarted.current) return;
@@ -94,16 +97,16 @@ export default function RootLayout() {
     }
 
     // Logged in but onboarding not done → start onboarding (except if already there)
-    if (user && !onboardingCompleted && !inOnboardingGroup && !inAuthGroup) {
+    if (user && !completedOnboarding && !inOnboardingGroup && !inAuthGroup) {
       router.replace('/(onboarding)/gender' as any);
       return;
     }
 
     // Logged in and onboarding done → go to home
-    if (user && onboardingCompleted && (inAuthGroup || inOnboardingGroup || pathname === '/')) {
+    if (user && completedOnboarding && (inAuthGroup || inOnboardingGroup || pathname === '/')) {
       router.replace('/(tabs)/home');
     }
-  }, [fullyHydrated, pathname, router, segments, user, onboardingCompleted]);
+  }, [completedOnboarding, fullyHydrated, pathname, router, segments, user]);
 
   // Notifications sync
   useEffect(() => {

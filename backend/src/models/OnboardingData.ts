@@ -7,7 +7,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IOnboardingData extends Document {
   userId: mongoose.Types.ObjectId;
-  gender: 'male' | 'female';
+  gender: 'male' | 'female' | 'other';
   heightCm: number;
   weightKg: number;
   age: number;
@@ -34,7 +34,7 @@ const OnboardingDataSchema = new Schema<IOnboardingData>(
       unique: true, // One record per user (upserted on re-run)
       index: true,
     },
-    gender: { type: String, enum: ['male', 'female'], required: true },
+    gender: { type: String, enum: ['male', 'female', 'other'], required: true },
     heightCm: { type: Number, required: true, min: 100, max: 250 },
     weightKg: { type: Number, required: true, min: 30, max: 200 },
     age: { type: Number, required: true, min: 10, max: 100 },

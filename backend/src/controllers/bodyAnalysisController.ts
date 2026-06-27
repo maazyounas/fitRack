@@ -6,6 +6,24 @@ import mongoose from 'mongoose';
 // Extend Request to include userId set by requireAuth middleware
 type AuthRequest = Request & { userId?: string };
 
+function serializeOnboardingData(record: any) {
+  if (!record) return null;
+
+  return {
+    id: String(record._id ?? record.id ?? ''),
+    userId: String(record.userId),
+    gender: record.gender,
+    heightCm: record.heightCm,
+    weightKg: record.weightKg,
+    age: record.age,
+    activityLevel: record.activityLevel,
+    experience: record.experience,
+    goals: record.goals ?? [],
+    wristCm: record.wristCm,
+    completedAt: record.completedAt,
+  };
+}
+
 /**
  * POST /api/body-analysis/save
  * Save an analysis result to the user's scan history.
@@ -152,5 +170,28 @@ export async function saveOnboardingData(req: Request, res: Response): Promise<v
   } catch (error) {
     console.error('[BodyAnalysis] Onboarding save error:', error);
     res.status(500).json({ message: 'Failed to save onboarding data.' });
+  }
+}
+
+/**
+ * GET /api/body-analysis/onboarding
+ * Fetch the onboarding snapshot for the current user.
+ */
+export async function getOnboardingData(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = (req as AuthRequest).userId;
+    if (!userId) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
+    const record = await OnboardingData.findOne({ userId }).lean();
+    res.status(200).json({
+      message: record ? 'Onboarding data loaded.' : 'No onboarding data found.',
+      record: serializeOnboardingData(record),
+    });
+  } catch (error) {
+    console.error('[BodyAnalysis] Onboarding load error:', error);
+    res.status(500).json({ message: 'Failed to load onboarding data.' });
   }
 }

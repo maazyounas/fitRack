@@ -4,6 +4,7 @@ import {
   deleteStoredImages,
   deactivateUser,
   deleteUser,
+  fetchOnboardingFromBackend,
   fetchImageConsent,
   fetchCurrentUser,
   loginUser,
@@ -26,6 +27,7 @@ import { getSecureItem, removeSecureItem, setSecureItem } from '@/services/stora
 import {
   AuthTokens,
   ImageConsent,
+  OnboardingSnapshot,
   RegisterPayload,
   UpdatePreferencesPayload,
   UpdateProfilePayload,
@@ -42,6 +44,7 @@ type AuthState = {
   user: User | null;
   tokens: AuthTokens | null;
   imageConsent: ImageConsent | null;
+  onboardingSnapshot: OnboardingSnapshot | null;
   isLoading: boolean;
   isHydrated: boolean;
   lastActivityAt: number;
@@ -60,6 +63,7 @@ type AuthState = {
   logout: () => Promise<void>;
   touchActivity: () => void;
   refreshAccessToken: () => Promise<void>;
+  refreshOnboardingSnapshot: () => Promise<void>;
   /** Returns true if the session was expired and the user was logged out */
   checkInactivity: () => Promise<boolean>;
   updateProfile: (payload: UpdateProfilePayload) => Promise<void>;
@@ -102,10 +106,16 @@ async function persistSession(session: { user: User; tokens: AuthTokens } | null
   await setSecureItem(sessionStorageKey, session);
 }
 
+function deriveOnboardingCompleted(user: User | null, snapshot: OnboardingSnapshot | null) {
+  if (!user) return false;
+  return Boolean(user.onboardingCompleted || user.fitnessGoals?.setupCompleted || snapshot);
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   tokens: null,
   imageConsent: null,
+  onboardingSnapshot: null,
   isLoading: false,
   isHydrated: false,
   lastActivityAt: Date.now(),
@@ -159,16 +169,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       try {
         const { user } = await fetchCurrentUser(storedSession.tokens.accessToken);
         let imageConsent: ImageConsent | null = null;
+        let onboardingSnapshot: OnboardingSnapshot | null = null;
         try {
           const response = await fetchImageConsent(storedSession.tokens.accessToken);
           imageConsent = response.consent;
         } catch {
           imageConsent = null;
         }
+        try {
+          const response = await fetchOnboardingFromBackend(storedSession.tokens.accessToken);
+          onboardingSnapshot = response.record;
+        } catch {
+          onboardingSnapshot = null;
+        }
 
         useUiStore.getState().setPreferences(user.preferences);
-        useOnboardingStore.getState().setOnboardingCompleted(Boolean(user.onboardingCompleted));
-        set({ user, imageConsent, isHydrated: true });
+        useOnboardingStore.getState().setOnboardingCompleted(deriveOnboardingCompleted(user, onboardingSnapshot));
+        set({ user, imageConsent, onboardingSnapshot, isHydrated: true });
         await persistSession({ user, tokens: storedSession.tokens });
       } catch (fetchErr) {
         // If this is a network error (backend restarting/down), keep the
@@ -201,16 +218,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
         const { user } = await fetchCurrentUser(nextTokens.accessToken);
         let imageConsent: ImageConsent | null = null;
+        let onboardingSnapshot: OnboardingSnapshot | null = null;
         try {
           const response = await fetchImageConsent(nextTokens.accessToken);
           imageConsent = response.consent;
         } catch {
           imageConsent = null;
         }
+        try {
+          const response = await fetchOnboardingFromBackend(nextTokens.accessToken);
+          onboardingSnapshot = response.record;
+        } catch {
+          onboardingSnapshot = null;
+        }
 
         useUiStore.getState().setPreferences(user.preferences);
-        useOnboardingStore.getState().setOnboardingCompleted(Boolean(user.onboardingCompleted));
-        set({ user, imageConsent, isHydrated: true });
+        useOnboardingStore.getState().setOnboardingCompleted(deriveOnboardingCompleted(user, onboardingSnapshot));
+        set({ user, imageConsent, onboardingSnapshot, isHydrated: true });
         await persistSession({ user, tokens: nextTokens });
       }
     } catch (err) {
@@ -242,7 +266,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } catch (storageErr) {
         console.error('Failed to clear session storage during recovery:', storageErr);
       }
-      set({ user: null, tokens: null, imageConsent: null, isHydrated: true });
+      set({ user: null, tokens: null, imageConsent: null, onboardingSnapshot: null, isHydrated: true });
     }
   },
 
@@ -292,10 +316,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       useUiStore.getState().setPreferences(response.user.preferences);
-      useOnboardingStore.getState().setOnboardingCompleted(Boolean(response.user.onboardingCompleted));
+      let onboardingSnapshot: OnboardingSnapshot | null = null;
+      try {
+        const onboardingResponse = await fetchOnboardingFromBackend(tokens.accessToken);
+        onboardingSnapshot = onboardingResponse.record;
+      } catch {
+        onboardingSnapshot = null;
+      }
+      useOnboardingStore.getState().setOnboardingCompleted(
+        deriveOnboardingCompleted(response.user, onboardingSnapshot)
+      );
       set({
         user: response.user,
         tokens,
+        onboardingSnapshot,
         lastActivityAt: Date.now(),
         sessionWarning: false,
       });
@@ -321,6 +355,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: null,
       tokens: null,
       imageConsent: null,
+      onboardingSnapshot: null,
       isLoading: false,
       lastActivityAt: Date.now(),
       sessionWarning: false,
@@ -347,6 +382,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ tokens: updatedTokens });
     if (get().user && get().rememberMe) {
       await persistSession({ user: get().user as User, tokens: updatedTokens });
+    }
+  },
+
+  refreshOnboardingSnapshot: async () => {
+    const tokens = get().tokens;
+    if (!tokens) return;
+
+    try {
+      const response = await fetchOnboardingFromBackend(tokens.accessToken);
+      const onboardingSnapshot = response.record;
+      set({ onboardingSnapshot });
+      useOnboardingStore.getState().setOnboardingCompleted(
+        deriveOnboardingCompleted(get().user, onboardingSnapshot)
+      );
+    } catch {
+      // Keep cached state if the backend snapshot is unavailable.
     }
   },
 

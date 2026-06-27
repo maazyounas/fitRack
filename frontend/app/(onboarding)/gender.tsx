@@ -39,15 +39,22 @@ const OPTIONS: GenderOption[] = [
     key: 'male',
     label: 'Male',
     icon: 'man-outline',
-    description: 'Optimized male body analysis',
+    description: 'Personalized guidance for male physiology',
     gradient: ['#0d9488', '#0f766e'],
   },
   {
     key: 'female',
     label: 'Female',
     icon: 'woman-outline',
-    description: 'Optimized female body analysis',
+    description: 'Personalized guidance for female physiology',
     gradient: ['#7c3aed', '#6d28d9'],
+  },
+  {
+    key: 'other',
+    label: 'Other',
+    icon: 'sparkles-outline',
+    description: 'Use a balanced default starting point',
+    gradient: ['#0f766e', '#14b8a6'],
   },
 ];
 
@@ -152,9 +159,9 @@ export default function GenderScreen() {
 
           <View style={styles.heroContent}>
             <Text style={styles.eyebrow}>PERSONALIZATION</Text>
-            <Text style={styles.title}>Select Gender</Text>
+            <Text style={styles.title}>Tell us about you</Text>
             <Text style={styles.subtitle}>
-              This helps us accurately calibrate your AI body analysis and personalized plan.
+              We use this to shape your starting calories, body analysis, and suggestions.
             </Text>
           </View>
         </SafeAreaView>
@@ -177,7 +184,7 @@ export default function GenderScreen() {
         <View style={styles.infoBox}>
           <Ionicons name="information-circle-outline" size={18} color="#64748b" />
           <Text style={styles.infoText}>
-            Biological sex is required for accurate body fat and metabolic rate calculations.
+            You can choose the option that feels right. It only helps us fine-tune your plan.
           </Text>
         </View>
       </View>
