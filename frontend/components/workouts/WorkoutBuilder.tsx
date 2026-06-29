@@ -199,12 +199,20 @@ export function WorkoutBuilder({
 
   const handleSave = async () => {
     if (!canSave) {
-      Alert.alert('Missing info', 'Please add a workout name and at least one exercise.');
+      if (Platform.OS === 'web') {
+        window.alert('Please add a workout name and at least one exercise.');
+      } else {
+        Alert.alert('Missing info', 'Please add a workout name and at least one exercise.');
+      }
       return;
     }
 
     if (initialPlan && !hasChanges) {
-      Alert.alert('No changes yet', 'Make at least one change before updating this workout.');
+      if (Platform.OS === 'web') {
+        window.alert('Make at least one change before updating this workout.');
+      } else {
+        Alert.alert('No changes yet', 'Make at least one change before updating this workout.');
+      }
       return;
     }
 

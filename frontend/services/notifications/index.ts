@@ -15,6 +15,32 @@ async function getNotificationsModule() {
   return await import('expo-notifications');
 }
 
+export async function fetchPresentedNotificationsAsync() {
+  if (Platform.OS === 'web' || isExpoGo()) {
+    return [];
+  }
+
+  const Notifications = await getNotificationsModule();
+  const records = await Notifications.getPresentedNotificationsAsync?.();
+
+  return (records ?? []).map((record: any) => ({
+    id: String(record.identifier ?? record.id ?? ''),
+    title: record.request?.content?.title ?? record.content?.title ?? null,
+    body: record.request?.content?.body ?? record.content?.body ?? null,
+    date: record.date ?? null,
+    data: record.request?.content?.data ?? record.content?.data ?? {},
+  }));
+}
+
+export async function clearPresentedNotificationsAsync() {
+  if (Platform.OS === 'web' || isExpoGo()) {
+    return;
+  }
+
+  const Notifications = await getNotificationsModule();
+  await Notifications.dismissAllNotificationsAsync?.();
+}
+
 function isExpoGo() {
   return (
     Constants.executionEnvironment === 'storeClient' ||

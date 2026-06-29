@@ -13,6 +13,15 @@ export const exerciseSchema = z.object({
   _id: z.string().optional(),
 });
 
+export const scheduleEntrySchema = z.object({
+  scheduledDate: z.string().or(z.date()),
+  status: z.enum(['scheduled', 'completed', 'missed']).optional().default('scheduled'),
+  completed: z.boolean().optional().default(false),
+  completedAt: z.string().or(z.date()).optional(),
+  notes: z.string().optional().default(''),
+  missedNotificationSent: z.boolean().optional().default(false),
+});
+
 export const createWorkoutSchema = z.object({
   name: z.string().min(1, 'Workout name is required'),
   description: z.string().optional().default(''),
@@ -24,6 +33,7 @@ export const createWorkoutSchema = z.object({
   exercises: z.array(exerciseSchema).min(1, 'At least one exercise is required'),
   isTemplate: z.boolean().optional(),
   sourceTemplateKey: z.string().optional(),
+  schedule: z.array(scheduleEntrySchema).optional(),
 });
 
 export const updateWorkoutSchema = createWorkoutSchema.partial();

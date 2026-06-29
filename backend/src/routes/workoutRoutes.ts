@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { createWorkoutSchema, updateWorkoutSchema } from '../schemas/workoutSchemas';
+import { asyncHandler } from '../utils/asyncHandler';
 import {
   createWorkoutFromTemplate,
   createWorkoutPlan,
@@ -22,17 +23,17 @@ import {
 export const workoutRoutes = Router();
 
 workoutRoutes.use(requireAuth);
-workoutRoutes.get('/templates', listWorkoutTemplates);
-workoutRoutes.post('/templates/use', createWorkoutFromTemplate);
-workoutRoutes.get('/current', getCurrentWorkoutPlan);
-workoutRoutes.get('/', listWorkoutPlans);
-workoutRoutes.post('/', validate(createWorkoutSchema), createWorkoutPlan);
-workoutRoutes.get('/:id', getWorkoutPlan);
-workoutRoutes.patch('/:id', validate(updateWorkoutSchema), updateWorkoutPlan);
-workoutRoutes.put('/:id/exercises', reorderExercises);
-workoutRoutes.delete('/:id', deleteWorkoutPlan);
-workoutRoutes.post('/:id/schedule', scheduleWorkoutPlan);
-workoutRoutes.put('/:id/schedule', updateWeeklySchedule);
-workoutRoutes.post('/:id/complete', markWorkoutCompleted);
-workoutRoutes.get('/:id/ai-review', getWorkoutAiReview);
-workoutRoutes.post('/:id/ai-review', refreshWorkoutAiReview);
+workoutRoutes.get('/templates', asyncHandler(listWorkoutTemplates));
+workoutRoutes.post('/templates/use', asyncHandler(createWorkoutFromTemplate));
+workoutRoutes.get('/current', asyncHandler(getCurrentWorkoutPlan));
+workoutRoutes.get('/', asyncHandler(listWorkoutPlans));
+workoutRoutes.post('/', validate(createWorkoutSchema), asyncHandler(createWorkoutPlan));
+workoutRoutes.get('/:id', asyncHandler(getWorkoutPlan));
+workoutRoutes.patch('/:id', validate(updateWorkoutSchema), asyncHandler(updateWorkoutPlan));
+workoutRoutes.put('/:id/exercises', asyncHandler(reorderExercises));
+workoutRoutes.delete('/:id', asyncHandler(deleteWorkoutPlan));
+workoutRoutes.post('/:id/schedule', asyncHandler(scheduleWorkoutPlan));
+workoutRoutes.put('/:id/schedule', asyncHandler(updateWeeklySchedule));
+workoutRoutes.post('/:id/complete', asyncHandler(markWorkoutCompleted));
+workoutRoutes.get('/:id/ai-review', asyncHandler(getWorkoutAiReview));
+workoutRoutes.post('/:id/ai-review', asyncHandler(refreshWorkoutAiReview));

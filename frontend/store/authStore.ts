@@ -108,7 +108,11 @@ async function persistSession(session: { user: User; tokens: AuthTokens } | null
 
 function deriveOnboardingCompleted(user: User | null, snapshot: OnboardingSnapshot | null) {
   if (!user) return false;
-  return Boolean(user.onboardingCompleted || user.fitnessGoals?.setupCompleted || snapshot);
+  return Boolean(
+    user.profile?.onboardingCompleted ||
+      user.onboardingCompleted ||
+      user.fitnessGoals?.setupCompleted
+  );
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({

@@ -72,6 +72,11 @@ export async function createIndexes() {
     await tokens.createIndex({ userId: 1 }, { background: true });
     await tokens.createIndex({ expoPushToken: 1 }, { unique: true, background: true });
 
+    // ── UserNotifications ───────────────────────────────────────────────
+    const notifications = db.collection('usernotifications');
+    await notifications.createIndex({ userId: 1, createdAt: -1 }, { background: true });
+    await notifications.createIndex({ userId: 1, read: 1, createdAt: -1 }, { background: true });
+
     // ── Exercises ────────────────────────────────────────────────────────
     const exercises = db.collection('exercises');
     await exercises.createIndex({ slug: 1 }, { unique: true, background: true });

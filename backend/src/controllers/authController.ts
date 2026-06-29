@@ -105,7 +105,11 @@ export async function register(req: Request, res: Response) {
     throw new HttpError(400, 'Name, password, and either email or phone are required.');
   }
 
-  validatePasswordStrength(password);
+  try {
+    validatePasswordStrength(password);
+  } catch (error) {
+    throw new HttpError(400, error instanceof Error ? error.message : 'Invalid password.');
+  }
 
   const emailHash = email ? hashIdentifier(email) : undefined;
   const phoneHash = phone ? hashIdentifier(phone) : undefined;
@@ -441,13 +445,6 @@ export async function login(req: Request, res: Response) {
     throw new HttpError(401, 'Invalid credentials.');
   }
 
-  if (user.deactivatedAt) {
-    if (env.nodeEnv !== 'production') {
-      console.warn('[AUTH] Login failed: account deactivated for user', user.id);
-    }
-    throw new HttpError(403, 'Account is deactivated.');
-  }
-
   if (user.lockUntil && user.lockUntil.getTime() > Date.now()) {
     if (env.nodeEnv !== 'production') {
       console.warn('[AUTH] Login failed: account locked until', user.lockUntil, 'for user', user.id);
@@ -472,6 +469,13 @@ export async function login(req: Request, res: Response) {
     }
     await user.save();
     throw new HttpError(401, 'Invalid credentials.');
+  }
+
+  if (user.deactivatedAt) {
+    if (env.nodeEnv !== 'production') {
+      console.log('[AUTH] Reactivating deactivated account for user', user.id);
+    }
+    user.deactivatedAt = undefined;
   }
 
   user.failedLoginAttempts = 0;
@@ -558,7 +562,11 @@ export async function resetPassword(req: Request, res: Response) {
     throw new HttpError(400, 'Identifier, OTP, and new password are required.');
   }
 
-  validatePasswordStrength(newPassword);
+  try {
+    validatePasswordStrength(newPassword);
+  } catch (error) {
+    throw new HttpError(400, error instanceof Error ? error.message : 'Invalid password.');
+  }
 
   const identifierHash = hashIdentifier(identifier);
   const user = await UserModel.findOne({

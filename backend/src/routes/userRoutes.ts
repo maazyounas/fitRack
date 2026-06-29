@@ -12,6 +12,13 @@ import {
   updateProfile,
   uploadProfilePicture,
 } from '../controllers/userController';
+import {
+  clearNotifications,
+  getNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  savePushToken,
+} from '../controllers/notificationController';
 import { uploadProfileImage } from '../utils/cloudinary';
 import {
   deleteStoredImages,
@@ -33,6 +40,11 @@ userRoutes.put('/onboarding', saveOnboardingProfile);
 userRoutes.patch('/preferences', updatePreferences);
 userRoutes.get('/notification-settings', getNotificationSettings);
 userRoutes.patch('/notification-settings', updateNotificationSettings);
+userRoutes.get('/notifications', getNotifications);
+userRoutes.patch('/notifications/read-all', markAllNotificationsRead);
+userRoutes.patch('/notifications/:notificationId/read', markNotificationRead);
+userRoutes.delete('/notifications', clearNotifications);
+userRoutes.post('/notifications/push-token', savePushToken);
 userRoutes.get('/image-consent', getImageConsent);
 userRoutes.patch('/image-consent', updateImageConsent);
 userRoutes.post('/image-consent/revoke', revokeImageConsent);

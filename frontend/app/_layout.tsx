@@ -41,7 +41,7 @@ export default function RootLayout() {
 
   const fullyHydrated = isHydrated && onboardingHydrated;
   const completedOnboarding = Boolean(
-    user?.onboardingCompleted || user?.fitnessGoals?.setupCompleted || onboardingSnapshot
+    user?.profile?.onboardingCompleted || user?.onboardingCompleted || user?.fitnessGoals?.setupCompleted
   );
 
   useEffect(() => {

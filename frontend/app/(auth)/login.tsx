@@ -47,7 +47,8 @@ export default function LoginScreen() {
       await login(identifier.trim(), password, rememberMe);
       const currentUser = useAuthStore.getState().user;
       const onboardingDone = Boolean(
-        currentUser?.onboardingCompleted ||
+        currentUser?.profile?.onboardingCompleted ||
+          currentUser?.onboardingCompleted ||
           currentUser?.fitnessGoals?.setupCompleted ||
           useAuthStore.getState().onboardingSnapshot
       );

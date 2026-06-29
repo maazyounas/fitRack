@@ -3,14 +3,18 @@
  * Integration tests for the community feed API.
  * Covers: create post, like/unlike, add comment, report post.
  */
-import request from 'supertest';
-import { app } from '../app';
-import { connectTestDb, clearTestDb, disconnectTestDb } from './helpers/testDb';
-
+// Set required env before app initializes
 process.env.MONGODB_URI = 'memory';
 process.env.JWT_ACCESS_SECRET = 'test-access-secret-that-is-long-enough';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-that-is-long-enough';
 process.env.FIELD_ENCRYPTION_KEY = 'test-32-char-encrypt-key!!!!!!!';
+
+import request from 'supertest';
+import { app } from '../app';
+import { connectTestDb, clearTestDb, disconnectTestDb } from './helpers/testDb';
+import { UserModel } from '../models/User';
+import { encryptValue, hashIdentifier } from '../utils/crypto';
+import { hashPassword } from '../utils/password';
 
 const AUTH = '/api/auth';
 const COMMUNITY = '/api/community';
@@ -23,7 +27,15 @@ let tokenB: string;
 let postId: string;
 
 async function registerAndLogin(user: typeof USER_A) {
-  await request(app).post(`${AUTH}/register`).send(user);
+  const passwordHash = await hashPassword(user.password);
+  await UserModel.create({
+    emailEncrypted: encryptValue(user.email),
+    emailHash: hashIdentifier(user.email),
+    passwordHash,
+    profile: { name: user.name },
+    verification: { emailVerified: true, phoneVerified: false, verifiedAt: new Date() },
+  } as any);
+
   const res = await request(app)
     .post(`${AUTH}/login`)
     .send({ identifier: user.email, password: user.password });

@@ -1,8 +1,41 @@
 import { NotificationTokenModel } from '../models/NotificationToken';
+import { UserModel } from '../models/User';
+import { UserNotificationModel, type UserNotificationSource, type UserNotificationType } from '../models/UserNotification';
 import { sendOtpEmail, sendPasswordChangedEmail } from './emailService';
 
 let expoInstance: any = null;
 let expoClass: any = null;
+
+function inferNotificationType(data?: any): UserNotificationType {
+  const rawType = String(data?.type ?? '').toLowerCase();
+  if (rawType.includes('workout') || rawType.includes('exercise')) return 'workout';
+  if (rawType.includes('meal') || rawType.includes('nutrition') || rawType.includes('hydration')) return 'nutrition';
+  if (rawType.includes('community') || rawType.includes('social')) return 'community';
+  return 'system';
+}
+
+async function persistNotifications(
+  userIds: string[],
+  payload: { title: string; body: string; data?: any; source: UserNotificationSource }
+) {
+  const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+  if (!uniqueUserIds.length) {
+    return;
+  }
+
+  await UserNotificationModel.insertMany(
+    uniqueUserIds.map((userId) => ({
+      userId,
+      type: inferNotificationType(payload.data),
+      source: payload.source,
+      title: payload.title.trim(),
+      body: payload.body.trim(),
+      data: payload.data ?? {},
+      read: false,
+      readAt: null,
+    }))
+  );
+}
 
 async function getExpo() {
   if (!expoInstance || !expoClass) {
@@ -15,6 +48,8 @@ async function getExpo() {
 }
 
 export async function sendPushNotification(userIds: string[], title: string, body: string, data?: any) {
+  await persistNotifications(userIds, { title, body, data, source: 'push' });
+
   const tokens = await NotificationTokenModel.find({ userId: { $in: userIds } });
   const messages: any[] = [];
   const { expo, Expo } = await getExpo();
@@ -50,6 +85,10 @@ export async function sendPushNotification(userIds: string[], title: string, bod
 }
 
 export async function broadcastNotification(title: string, body: string, data?: any) {
+  const activeUsers = await UserModel.find({ deactivatedAt: { $exists: false } }).select('_id').lean();
+  const userIds = activeUsers.map((user) => String(user._id));
+  await persistNotifications(userIds, { title, body, data, source: 'broadcast' });
+
   const tokens = await NotificationTokenModel.find();
   const pushTokens = tokens.map(t => t.expoPushToken);
   const { expo, Expo } = await getExpo();

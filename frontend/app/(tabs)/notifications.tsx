@@ -1,54 +1,83 @@
-﻿import React, { useState } from 'react';
-import { StyleSheet, Text, View, FlatList, Pressable, Switch, ScrollView } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTranslation } from '@/hooks/useTranslation';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '@/store/authStore';
+import { useNutritionStore } from '@/store/nutritionStore';
+import { useNotificationStore } from '@/store/notificationStore';
+import { useWorkoutStore } from '@/store/workoutStore';
+import {
+  clearPresentedNotificationsAsync,
+  fetchPresentedNotificationsAsync,
+} from '@/services/notifications';
+import {
+  buildNotificationFeed,
+  type NotificationFeedItem,
+  type NativeNotificationRecord,
+} from '@/services/notifications/feed';
+import { getSecureItem, removeSecureItem, setSecureItem } from '@/services/storage/secureStore';
 
-type Notification = {
-  id: string;
-  title: string;
-  body: string;
-  time: string;
-  read: boolean;
-  type: 'workout' | 'nutrition' | 'community' | 'system';
-};
+const readIdsStorageKey = 'notification-read-ids';
 
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: '1', title: 'New Badge Unlocked! 🏆', body: 'Congratulations! You earned the "7-Day Streak" badge.', time: '2h ago', read: false, type: 'system' },
-  { id: '2', title: 'Workout Reminder', body: "It's time for your Upper Body session. Let's get it!", time: '5h ago', read: true, type: 'workout' },
-  { id: '3', title: 'Meal Suggestion', body: 'Based on your remaining macros, how about a high-protein salad?', time: '1d ago', read: true, type: 'nutrition' },
-  { id: '4', title: 'Hydration Goal Achieved! 💧', body: 'You reached your daily water intake target.', time: '2d ago', read: false, type: 'nutrition' },
-];
+function formatReminderTime(hour: number, minute: number) {
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  const paddedMinute = String(minute).padStart(2, '0');
+  return `${displayHour}:${paddedMinute} ${period}`;
+}
 
-// Notification Card Component
-function NotificationCard({ notification, onPress }: { notification: Notification; onPress?: () => void }) {
-  const getIconConfig = (type: string) => {
-    switch (type) {
-      case 'workout':
-        return { name: 'barbell-outline', color: '#0d9488', gradient: ['#0d9488', '#14b8a6'] as const };
-      case 'nutrition':
-        return { name: 'restaurant-outline', color: '#f59e0b', gradient: ['#f59e0b', '#fbbf24'] as const };
-      case 'community':
-        return { name: 'people-outline', color: '#8b5cf6', gradient: ['#8b5cf6', '#a78bfa'] as const };
-      default:
-        return { name: 'notifications-outline', color: '#3b82f6', gradient: ['#3b82f6', '#60a5fa'] as const };
-    }
-  };
+function getIconConfig(type: NotificationFeedItem['type'], source: NotificationFeedItem['source']) {
+  const dimmed = source === 'upcoming';
 
-  const iconConfig = getIconConfig(notification.type);
+  switch (type) {
+    case 'workout':
+      return {
+        name: 'barbell-outline',
+        colors: dimmed ? ['#5eead4', '#14b8a6'] as const : ['#0d9488', '#14b8a6'] as const,
+      };
+    case 'nutrition':
+      return {
+        name: 'restaurant-outline',
+        colors: dimmed ? ['#fcd34d', '#f59e0b'] as const : ['#f59e0b', '#fbbf24'] as const,
+      };
+    case 'community':
+      return {
+        name: 'people-outline',
+        colors: dimmed ? ['#c4b5fd', '#8b5cf6'] as const : ['#8b5cf6', '#a78bfa'] as const,
+      };
+    default:
+      return {
+        name: 'notifications-outline',
+        colors: dimmed ? ['#93c5fd', '#3b82f6'] as const : ['#3b82f6', '#60a5fa'] as const,
+      };
+  }
+}
+
+function NotificationCard({
+  notification,
+  onPress,
+}: {
+  notification: NotificationFeedItem;
+  onPress?: () => void;
+}) {
+  const iconConfig = getIconConfig(notification.type, notification.source);
 
   return (
-    <Pressable onPress={onPress} style={[styles.card, !notification.read && styles.cardUnread]}>
-      <LinearGradient colors={iconConfig.gradient} style={styles.iconContainer}>
+    <Pressable onPress={onPress} style={[styles.card, notification.source === 'upcoming' && styles.cardUpcoming, !notification.read && styles.cardUnread]}>
+      <LinearGradient colors={iconConfig.colors} style={styles.iconContainer}>
         <Ionicons name={iconConfig.name as any} size={22} color="#ffffff" />
       </LinearGradient>
-      
+
       <View style={styles.cardContent}>
         <View style={styles.cardHeader}>
-          <Text style={[styles.cardTitle, !notification.read && styles.cardTitleUnread]}>
-            {notification.title}
-          </Text>
-          {!notification.read && <View style={styles.unreadDot} />}
+          <View style={styles.titleRow}>
+            <Text style={[styles.cardTitle, !notification.read && styles.cardTitleUnread]}>{notification.title}</Text>
+            <View style={[styles.sourceChip, notification.source === 'upcoming' ? styles.sourceUpcoming : styles.sourceDelivered]}>
+              <Text style={styles.sourceChipText}>{notification.source === 'upcoming' ? 'Scheduled' : 'Recent'}</Text>
+            </View>
+          </View>
+          {!notification.read && notification.source === 'delivered' && <View style={styles.unreadDot} />}
         </View>
         <Text style={styles.cardBody}>{notification.body}</Text>
         <View style={styles.cardFooter}>
@@ -60,59 +89,107 @@ function NotificationCard({ notification, onPress }: { notification: Notificatio
   );
 }
 
-// Preference Item Component
-function PreferenceItem({ 
-  icon, 
-  title, 
-  description, 
-  value, 
-  onValueChange 
-}: { 
-  icon: string; 
-  title: string; 
-  description: string; 
-  value: boolean; 
-  onValueChange: (value: boolean) => void;
-}) {
+function SummaryPill({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.prefItem}>
-      <View style={styles.prefItemLeft}>
-        <View style={styles.prefIcon}>
-          <Ionicons name={icon as any} size={20} color="#0d9488" />
-        </View>
-        <View style={styles.prefContent}>
-          <Text style={styles.prefTitle}>{title}</Text>
-          <Text style={styles.prefDescription}>{description}</Text>
-        </View>
+    <View style={styles.summaryPill}>
+      <Text style={styles.summaryPillLabel}>{label}</Text>
+      <Text style={styles.summaryPillValue}>{value}</Text>
+    </View>
+  );
+}
+
+function SectionHeader({ icon, title, action, onAction }: { icon: React.ComponentProps<typeof Ionicons>['name']; title: string; action?: string; onAction?: () => void }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionHeaderLeft}>
+        <Ionicons name={icon} size={18} color="#0d9488" />
+        <Text style={styles.sectionTitle}>{title}</Text>
       </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: '#e2e8f0', true: '#0d9488' }}
-        thumbColor="#ffffff"
-      />
+      {action && onAction ? (
+        <Pressable onPress={onAction} style={styles.sectionAction}>
+          <Text style={styles.sectionActionText}>{action}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
 export default function NotificationsScreen() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const router = useRouter();
+  const { user } = useAuthStore();
+  const { plans } = useWorkoutStore();
+  const hydrationReminder = useNutritionStore((state) => state.hydrationReminder);
+  const reminderSettings = useNotificationStore((state) => state.settings);
+  const notificationStatus = useNotificationStore((state) => state.status);
+
   const [showPreferences, setShowPreferences] = useState(false);
+  const [deliveredNotifications, setDeliveredNotifications] = useState<NativeNotificationRecord[]>([]);
+  const [readIds, setReadIds] = useState<string[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const notificationsEnabled = user?.preferences.notificationsEnabled ?? false;
+  const effectiveReminderSettings = user?.notificationSettings ?? reminderSettings;
 
-  const markAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const refreshNotifications = async () => {
+    setIsRefreshing(true);
+    try {
+      const [storedReadIds, nativeNotifications] = await Promise.all([
+        getSecureItem<string[]>(readIdsStorageKey),
+        fetchPresentedNotificationsAsync(),
+      ]);
+
+      setReadIds(storedReadIds ?? []);
+      setDeliveredNotifications(nativeNotifications);
+    } catch (error) {
+      console.error('Failed to refresh notifications:', error);
+      Alert.alert('Notifications', 'Unable to refresh notifications right now.');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
+  useEffect(() => {
+    void refreshNotifications();
+  }, [user?.id]);
+
+  const feed = useMemo(() => {
+    return buildNotificationFeed({
+      deliveredNotifications,
+      reminderSettings: effectiveReminderSettings,
+      workouts: plans,
+      notificationsEnabled,
+      readIds,
+    });
+  }, [deliveredNotifications, effectiveReminderSettings, notificationsEnabled, plans, readIds]);
+
+  const persistReadIds = async (nextIds: string[]) => {
+    setReadIds(nextIds);
+    if (nextIds.length > 0) {
+      await setSecureItem(readIdsStorageKey, nextIds);
+    } else {
+      await removeSecureItem(readIdsStorageKey);
+    }
   };
 
-  const clearAll = () => {
-    setNotifications([]);
+  const markAsRead = async (id: string) => {
+    if (readIds.includes(id)) return;
+    await persistReadIds([...readIds, id]);
+  };
+
+  const markAllRead = async () => {
+    const nextIds = feed.recent.map((item) => item.id);
+    await persistReadIds(nextIds);
+  };
+
+  const clearAll = async () => {
+    try {
+      await clearPresentedNotificationsAsync();
+      await persistReadIds([]);
+      setDeliveredNotifications([]);
+    } catch (error) {
+      console.error('Failed to clear notifications:', error);
+      Alert.alert('Notifications', 'Unable to clear notifications right now.');
+    }
   };
 
   if (showPreferences) {
@@ -124,124 +201,132 @@ export default function NotificationsScreen() {
           </Pressable>
           <Text style={styles.headerTitle}>Notification Settings</Text>
         </View>
-        
-        <ScrollView style={styles.prefContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.prefHeader}>
-            <Ionicons name="notifications-outline" size={48} color="#0d9488" />
-            <Text style={styles.prefHeaderTitle}>Manage Alerts</Text>
-            <Text style={styles.prefHeaderSubtitle}>Choose what you want to be notified about</Text>
+
+        <ScrollView contentContainerStyle={styles.prefContainer} showsVerticalScrollIndicator={false}>
+          <LinearGradient colors={['#0f172a', '#0f766e']} style={styles.prefHero}>
+            <Ionicons name="notifications-outline" size={44} color="#ffffff" />
+            <Text style={styles.prefHeaderTitle}>Manage reminders</Text>
+            <Text style={styles.prefHeaderSubtitle}>These are the live settings your reminders use.</Text>
+          </LinearGradient>
+
+          <View style={styles.prefSection}>
+            <SummaryPill label="Push notifications" value={notificationsEnabled ? 'Enabled' : 'Paused'} />
+            <SummaryPill label="Permission" value={notificationStatus.permissionStatus} />
+            <SummaryPill label="Scheduled" value={String(notificationStatus.scheduledCount)} />
           </View>
 
           <View style={styles.prefSection}>
-            <PreferenceItem
-              icon="fitness-outline"
-              title="Workout Reminders"
-              description="Daily nudges to stay consistent with your workouts"
-              value={true}
-              onValueChange={() => {}}
-            />
-            <PreferenceItem
-              icon="water-outline"
-              title="Hydration Alerts"
-              description="Stay on top of your daily water intake"
-              value={true}
-              onValueChange={() => {}}
-            />
-            <PreferenceItem
-              icon="people-outline"
-              title="Community Activity"
-              description="Likes, comments, and new followers"
-              value={false}
-              onValueChange={() => {}}
-            />
-            <PreferenceItem
-              icon="trophy-outline"
-              title="Milestone Celebrations"
-              description="Celebrate your achievements and badges"
-              value={true}
-              onValueChange={() => {}}
-            />
-            <PreferenceItem
-              icon="restaurant-outline"
-              title="Meal Reminders"
-              description="Never miss a meal with timely reminders"
-              value={true}
-              onValueChange={() => {}}
-            />
+            <Text style={styles.prefSectionTitle}>Reminder schedule</Text>
+            <View style={styles.prefRow}>
+              <Text style={styles.prefRowLabel}>Workout</Text>
+              <Text style={styles.prefRowValue}>
+                {effectiveReminderSettings.workoutReminder.enabled
+                  ? formatReminderTime(effectiveReminderSettings.workoutReminder.hour, effectiveReminderSettings.workoutReminder.minute)
+                  : 'Off'}
+              </Text>
+            </View>
+            <View style={styles.prefRow}>
+              <Text style={styles.prefRowLabel}>Meals</Text>
+              <Text style={styles.prefRowValue}>
+                {[effectiveReminderSettings.mealReminders.breakfast, effectiveReminderSettings.mealReminders.lunch, effectiveReminderSettings.mealReminders.dinner, effectiveReminderSettings.mealReminders.snack]
+                  .filter((item) => item.enabled)
+                  .length > 0
+                  ? 'Active'
+                  : 'Off'}
+              </Text>
+            </View>
+            <View style={styles.prefRow}>
+              <Text style={styles.prefRowLabel}>Hydration</Text>
+              <Text style={styles.prefRowValue}>{hydrationReminder.enabled ? `Every ${hydrationReminder.intervalMinutes} min` : 'Off'}</Text>
+            </View>
           </View>
 
-          <View style={styles.prefFooter}>
-            <Text style={styles.prefFooterText}>
-              You can always adjust these settings later in the app
-            </Text>
-          </View>
+          <Pressable onPress={() => router.push('/settings')} style={styles.settingsButton}>
+            <Ionicons name="settings-outline" size={18} color="#ffffff" />
+            <Text style={styles.settingsButtonText}>Open full settings</Text>
+          </Pressable>
         </ScrollView>
       </View>
     );
   }
+
+  const hasRecent = feed.recent.length > 0;
+  const hasUpcoming = feed.upcoming.length > 0;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Notifications</Text>
-          {unreadCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{unreadCount} new</Text>
-            </View>
-          )}
+          <Text style={styles.headerSubtitle}>
+            {notificationsEnabled ? 'Live reminders and device notifications.' : 'Push notifications are paused.'}
+          </Text>
         </View>
         <View style={styles.headerActions}>
-          {notifications.length > 0 && (
-            <Pressable onPress={markAllRead} style={styles.headerButton}>
-              <Ionicons name="checkmark-done-outline" size={20} color="#0d9488" />
-              <Text style={styles.headerButtonText}>Mark all read</Text>
-            </Pressable>
-          )}
-          <Pressable onPress={() => setShowPreferences(true)} style={styles.headerButton}>
+          <Pressable onPress={() => void refreshNotifications()} style={styles.headerIconButton}>
+            <Ionicons name="refresh-outline" size={20} color="#0d9488" />
+          </Pressable>
+          <Pressable onPress={() => setShowPreferences(true)} style={styles.headerIconButton}>
             <Ionicons name="settings-outline" size={20} color="#64748b" />
-            <Text style={[styles.headerButtonText, { color: '#64748b' }]}></Text>
           </Pressable>
         </View>
       </View>
 
-      {notifications.length > 0 && (
-        <View style={styles.toolbar}>
-          <Pressable onPress={clearAll} style={styles.toolbarButton}>
-            <Ionicons name="trash-outline" size={16} color="#ef4444" />
-            <Text style={styles.toolbarButtonText}>Clear all</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <LinearGradient colors={['#0f172a', '#0d9488']} style={styles.summaryCard}>
+          <View style={styles.summaryTopRow}>
+            <View>
+              <Text style={styles.summaryLabel}>Inbox status</Text>
+              <Text style={styles.summaryValue}>{feed.unreadCount} unread</Text>
+            </View>
+            <View style={styles.summaryBadge}>
+              <Text style={styles.summaryBadgeText}>{notificationStatus.permissionStatus}</Text>
+            </View>
+          </View>
+          <View style={styles.summaryStats}>
+            <SummaryPill label="Recent" value={String(feed.recent.length)} />
+            <SummaryPill label="Upcoming" value={String(feed.upcoming.length)} />
+            <SummaryPill label="Scheduled" value={String(notificationStatus.scheduledCount)} />
+          </View>
+        </LinearGradient>
+
+        <View style={styles.actionsRow}>
+          <Pressable onPress={() => void markAllRead()} style={[styles.actionButton, styles.actionButtonSoft]} disabled={!hasRecent}>
+            <Ionicons name="checkmark-done-outline" size={16} color={hasRecent ? '#0d9488' : '#94a3b8'} />
+            <Text style={[styles.actionText, !hasRecent && styles.actionTextDisabled]}>Mark all read</Text>
+          </Pressable>
+          <Pressable onPress={() => void clearAll()} style={[styles.actionButton, styles.actionButtonDanger]} disabled={!hasRecent}>
+            <Ionicons name="trash-outline" size={16} color={hasRecent ? '#ef4444' : '#94a3b8'} />
+            <Text style={[styles.actionText, styles.actionTextDanger, !hasRecent && styles.actionTextDisabled]}>Clear recent</Text>
           </Pressable>
         </View>
-      )}
 
-      <FlatList
-        data={notifications}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <NotificationCard 
-            notification={item} 
-            onPress={() => markAsRead(item.id)}
-          />
-        )}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
+        <SectionHeader icon="notifications-outline" title="Recent notifications" action="Refresh" onAction={() => void refreshNotifications()} />
+        {hasRecent ? (
+          feed.recent.map((item) => (
+            <NotificationCard key={item.id} notification={item} onPress={() => void markAsRead(item.id)} />
+          ))
+        ) : (
           <View style={styles.emptyState}>
-            <LinearGradient 
-              colors={['#f8fafc', '#f1f5f9']} 
-              style={styles.emptyStateGradient}
-            >
-              <View style={styles.emptyStateIcon}>
-                <Ionicons name="notifications-off-outline" size={56} color="#cbd5e1" />
-              </View>
-              <Text style={styles.emptyStateTitle}>All caught up! 🎉</Text>
-              <Text style={styles.emptyStateSubtitle}>
-                You have no new notifications at the moment
-              </Text>
-            </LinearGradient>
+            <Ionicons name="notifications-off-outline" size={56} color="#cbd5e1" />
+            <Text style={styles.emptyStateTitle}>No recent notifications</Text>
+            <Text style={styles.emptyStateSubtitle}>You’ll see delivered push notifications here once they arrive.</Text>
           </View>
-        }
-      />
+        )}
+
+        <SectionHeader icon="time-outline" title="Upcoming reminders" />
+        {hasUpcoming ? (
+          feed.upcoming.map((item) => <NotificationCard key={item.id} notification={item} />)
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="alarm-outline" size={56} color="#cbd5e1" />
+            <Text style={styles.emptyStateTitle}>No reminders configured</Text>
+            <Text style={styles.emptyStateSubtitle}>Enable workout, meal, or hydration reminders in settings.</Text>
+          </View>
+        )}
+
+        <View style={{ height: 24 }} />
+      </ScrollView>
     </View>
   );
 }
@@ -251,97 +336,174 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8fafc',
   },
-  
-  // Header Styles
-  headerWithBack: {
+  header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 18,
     paddingBottom: 12,
     backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  backButton: {
-    marginRight: 16,
-    padding: 8,
-    borderRadius: 8,
+    borderBottomColor: '#e2e8f0',
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '600',
-    color: '#1e293b',
+    fontWeight: '700',
+    color: '#0f172a',
     letterSpacing: -0.5,
   },
-  badge: {
-    position: 'absolute',
-    top: -8,
-    right: -36,
-    backgroundColor: '#0d9488',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#ffffff',
+  headerSubtitle: {
+    marginTop: 4,
+    color: '#64748b',
+    fontSize: 13,
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 10,
   },
-  headerButton: {
-    flexDirection: 'row',
+  headerIconButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    justifyContent: 'center',
+    backgroundColor: '#f1f5f9',
   },
-  headerButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#0d9488',
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 36,
   },
-  
-  // Toolbar Styles
-  toolbar: {
+  summaryCard: {
+    borderRadius: 24,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  summaryTopRow: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  toolbarButton: {
-    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#fef2f2',
   },
-  toolbarButtonText: {
+  summaryLabel: {
+    color: 'rgba(255,255,255,0.72)',
     fontSize: 12,
-    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    fontWeight: '700',
+  },
+  summaryValue: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  summaryBadge: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  summaryBadgeText: {
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  summaryStats: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 16,
+  },
+  summaryPill: {
+    flexGrow: 1,
+    minWidth: 96,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  summaryPillLabel: {
+    color: 'rgba(255,255,255,0.68)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  summaryPillValue: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  actionButton: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  actionButtonSoft: {
+    backgroundColor: '#ecfeff',
+    borderWidth: 1,
+    borderColor: '#99f6e4',
+  },
+  actionButtonDanger: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  actionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  actionTextDanger: {
     color: '#ef4444',
   },
-  
-  // List Styles
-  list: {
-    padding: 16,
-    paddingBottom: 32,
+  actionTextDisabled: {
+    color: '#94a3b8',
   },
-  
-  // Card Styles
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    marginTop: 8,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  sectionAction: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  sectionActionText: {
+    color: '#0d9488',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   card: {
     flexDirection: 'row',
     backgroundColor: '#ffffff',
-    borderRadius: 16,
+    borderRadius: 18,
     marginBottom: 12,
     padding: 16,
     shadowColor: '#000',
@@ -355,46 +517,72 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#0d9488',
   },
+  cardUpcoming: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
   iconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
   cardContent: {
     flex: 1,
+    minWidth: 0,
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    alignItems: 'flex-start',
+    marginBottom: 6,
+  },
+  titleRow: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 10,
   },
   cardTitle: {
     fontSize: 15,
-    fontWeight: '500',
-    color: '#1e293b',
-    flex: 1,
+    fontWeight: '700',
+    color: '#0f172a',
+    flexShrink: 1,
   },
   cardTitleUnread: {
-    fontWeight: '600',
+    color: '#0d9488',
+  },
+  sourceChip: {
+    alignSelf: 'flex-start',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 8,
+  },
+  sourceUpcoming: {
+    backgroundColor: '#ecfeff',
+  },
+  sourceDelivered: {
+    backgroundColor: '#eff6ff',
+  },
+  sourceChipText: {
+    fontSize: 10,
+    fontWeight: '700',
     color: '#0f172a',
   },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#0d9488',
-    marginLeft: 8,
+    marginTop: 5,
   },
   cardBody: {
     fontSize: 13,
-    fontWeight: '400',
-    color: '#64748b',
-    lineHeight: 18,
-    marginBottom: 8,
+    color: '#475569',
+    lineHeight: 19,
+    marginBottom: 10,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -402,128 +590,112 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   cardTime: {
-    fontSize: 11,
-    fontWeight: '400',
+    fontSize: 12,
     color: '#94a3b8',
+    fontWeight: '600',
   },
-  
-  // Empty State Styles
   emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 80,
-    paddingHorizontal: 32,
-  },
-  emptyStateGradient: {
-    alignItems: 'center',
-    padding: 32,
-    borderRadius: 24,
-  },
-  emptyStateIcon: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
     backgroundColor: '#ffffff',
+    borderRadius: 18,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    marginBottom: 12,
   },
   emptyStateTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 8,
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
   },
   emptyStateSubtitle: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#94a3b8',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  
-  // Preferences Styles
-  prefContainer: {
-    flex: 1,
-  },
-  prefHeader: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 24,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-  },
-  prefHeaderTitle: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 12,
-    marginBottom: 6,
-  },
-  prefHeaderSubtitle: {
-    fontSize: 14,
-    fontWeight: '400',
+    marginTop: 6,
+    fontSize: 13,
     color: '#64748b',
     textAlign: 'center',
+    lineHeight: 19,
+  },
+  headerWithBack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  backButton: {
+    marginRight: 16,
+    padding: 8,
+    borderRadius: 8,
+  },
+  prefContainer: {
+    padding: 16,
+    paddingBottom: 36,
+  },
+  prefHero: {
+    borderRadius: 24,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  prefHeaderTitle: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 10,
+  },
+  prefHeaderSubtitle: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 19,
   },
   prefSection: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
     padding: 16,
-    gap: 12,
+    marginBottom: 16,
+    gap: 10,
   },
-  prefItem: {
+  prefSectionTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 4,
+  },
+  prefRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    padding: 16,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  prefRowLabel: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  prefRowValue: {
+    fontSize: 13,
+    color: '#0f172a',
+    fontWeight: '700',
+  },
+  settingsButton: {
+    backgroundColor: '#0d9488',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
-  },
-  prefItemLeft: {
+    paddingVertical: 14,
+    alignItems: 'center',
     flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 14,
-  },
-  prefIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0fdfa',
-    alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
-  prefContent: {
-    flex: 1,
-  },
-  prefTitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1e293b',
-    marginBottom: 2,
-  },
-  prefDescription: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#64748b',
-    lineHeight: 16,
-  },
-  prefFooter: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  prefFooterText: {
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#94a3b8',
-    textAlign: 'center',
+  settingsButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

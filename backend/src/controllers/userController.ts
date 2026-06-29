@@ -17,22 +17,26 @@ const defaultNotificationSettings = {
   hydrationAlert: { enabled: false, intervalMinutes: 120, startHour: 8, endHour: 21 },
 };
 
-async function resolveOnboardingCompleted(user: any) {
-  if (user.onboardingCompleted || user.fitnessGoals?.setupCompleted) {
-    return true;
-  }
+function resolveUserOnboardingCompleted(user: any) {
+  return Boolean(user?.profile?.onboardingCompleted || user?.onboardingCompleted || user?.fitnessGoals?.setupCompleted);
+}
 
-  const onboardingRecord = await OnboardingData.exists({ userId: user.id });
-  return Boolean(onboardingRecord);
+async function resolveOnboardingCompleted(user: any) {
+  return resolveUserOnboardingCompleted(user);
 }
 
 function serializeUser(user: any, onboardingCompleted: boolean) {
+  const profile = typeof user.profile?.toObject === 'function' ? user.profile.toObject() : user.profile;
+
   return {
     id: user.id,
     isAdmin: Boolean(user.isAdmin),
     email: decryptValue(user.emailEncrypted),
     phone: decryptValue(user.phoneEncrypted),
-    profile: user.profile,
+    profile: {
+      ...profile,
+      onboardingCompleted,
+    },
     preferences: user.preferences,
     fitnessGoals: user.fitnessGoals,
     onboardingCompleted,
@@ -233,6 +237,7 @@ export async function saveOnboardingProfile(req: Request & { userId?: string }, 
   if (onboardingCompleted !== undefined) {
     user.onboardingCompleted = onboardingCompleted;
   }
+  user.profile.onboardingCompleted = onboardingCompleted ?? true;
   user.fitnessGoals.setupCompleted = onboardingCompleted ?? true;
 
   await user.save();
@@ -275,7 +280,7 @@ export async function updatePreferences(req: Request & { userId?: string }, res:
   }
 
   await user.save();
-  res.json({ message: 'Preferences updated.', user: serializeUser(user) });
+  res.json({ message: 'Preferences updated.', user: serializeUser(user, await resolveOnboardingCompleted(user)) });
 }
 
 export async function getNotificationSettings(req: Request & { userId?: string }, res: Response) {

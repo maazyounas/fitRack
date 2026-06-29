@@ -56,27 +56,45 @@ export default function WorkoutsScreen() {
   };
 
   const handleDeletePlan = (planId: string, planName: string) => {
-    Alert.alert('Delete workout?', `Remove "${planName}" permanently?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            setDeletingPlanId(planId);
-            try {
-              await deletePlan(planId);
-              await initialize();
-              Alert.alert('Deleted', `"${planName}" was removed successfully.`);
-            } catch (error) {
-              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to delete workout.');
-            } finally {
-              setDeletingPlanId((current) => (current === planId ? null : current));
-            }
-          })();
+    const performDelete = async () => {
+      setDeletingPlanId(planId);
+      try {
+        await deletePlan(planId);
+        await initialize();
+        if (Platform.OS === 'web') {
+          window.alert(`"${planName}" was removed successfully.`);
+        } else {
+          Alert.alert('Deleted', `"${planName}" was removed successfully.`);
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : 'Failed to delete workout.';
+        if (Platform.OS === 'web') {
+          window.alert(msg);
+        } else {
+          Alert.alert('Error', msg);
+        }
+      } finally {
+        setDeletingPlanId((current) => (current === planId ? null : current));
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmDelete = window.confirm(`Remove "${planName}" permanently?`);
+      if (confirmDelete) {
+        void performDelete();
+      }
+    } else {
+      Alert.alert('Delete workout?', `Remove "${planName}" permanently?`, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void performDelete();
+          },
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   return (

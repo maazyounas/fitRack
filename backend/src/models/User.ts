@@ -38,6 +38,7 @@ const profileSchema = new Schema(
       enum: ['ectomorph', 'mesomorph', 'endomorph', 'balanced'],
       default: 'balanced',
     },
+    onboardingCompleted: { type: Boolean, default: false },
     profilePictureUrl: { type: String, default: '' },
   },
   { _id: false }

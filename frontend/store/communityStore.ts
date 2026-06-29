@@ -13,6 +13,7 @@ type CommunityState = {
   addComment: (postId: string, content: string) => Promise<void>;
   toggleFollow: (userId: string) => Promise<boolean | null>;
   joinChallenge: (challengeId: string) => Promise<void>;
+  logChallengeProgress: (challengeId: string, scoreDelta?: number) => Promise<void>;
   reportPost: (postId: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   searchUsers: (query: string) => Promise<CommunityMember[]>;
@@ -122,6 +123,19 @@ export const useCommunityStore = create<CommunityState>((set, get) => ({
       await get().initialize();
     } catch (error) {
       console.error('Join challenge failed', error);
+    }
+  },
+
+  logChallengeProgress: async (challengeId, scoreDelta = 1) => {
+    try {
+      await apiRequest(`/community/challenges/${challengeId}/progress`, {
+        method: 'POST',
+        accessToken: getAccessToken(),
+        body: { scoreDelta },
+      });
+      await get().initialize();
+    } catch (error) {
+      console.error('Log challenge progress failed', error);
     }
   },
 

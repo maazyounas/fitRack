@@ -7,6 +7,8 @@ import {
   registerForPushNotificationsAsync,
   syncReminderNotifications,
 } from '@/services/notifications';
+import { savePushToken } from '@/services/api/notifications';
+import { Platform } from 'react-native';
 import { HydrationReminder } from '@/types/nutrition';
 import { ReminderSettings, NotificationStatus, DailyReminder, MealReminders } from '@/types/notifications';
 import { WorkoutPlan } from '@/types/workout';
@@ -154,6 +156,18 @@ async function persistBackendSettings(settings: ReminderSettings) {
   await updateNotificationSettings(accessToken, settings);
 }
 
+async function persistBackendPushToken(token: string | null) {
+  if (!token) return;
+  const accessToken = getAuthToken();
+  if (!accessToken) return;
+
+  try {
+    await savePushToken(accessToken, token, Platform.OS);
+  } catch (err) {
+    console.error('Failed to save push token:', err);
+  }
+}
+
 async function runScheduler(settings: ReminderSettings, context: ReminderContext): Promise<NotificationStatus> {
   if (!context.notificationsEnabled || isExpoGo()) {
     await clearScheduledReminderNotifications();
@@ -217,6 +231,9 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       });
       await persistSettings(merged);
       await persistBackendSettings(merged);
+      if (status.expoPushToken) {
+        await persistBackendPushToken(status.expoPushToken);
+      }
       set({ status, settings: merged, isSyncing: false });
     } catch {
       set({ isSyncing: false });
@@ -238,6 +255,9 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       });
       await persistSettings(currentSettings);
       await persistBackendSettings(currentSettings);
+      if (status.expoPushToken) {
+        await persistBackendPushToken(status.expoPushToken);
+      }
       set({ settings: currentSettings, status, isSyncing: false });
     } catch {
       set({ isSyncing: false });

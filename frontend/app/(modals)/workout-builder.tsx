@@ -38,7 +38,12 @@ export default function WorkoutBuilderModal() {
           }
           closeModal();
         } catch (error) {
-          Alert.alert('Save failed', error instanceof Error ? error.message : 'Please try again.');
+          const msg = error instanceof Error ? error.message : 'Please try again.';
+          if (Platform.OS === 'web') {
+            window.alert(`Save failed: ${msg}`);
+          } else {
+            Alert.alert('Save failed', msg);
+          }
         }
       }}
       saving={isLoading}

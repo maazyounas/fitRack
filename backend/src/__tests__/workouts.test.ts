@@ -1,12 +1,15 @@
+// Set required env before app initializes
+process.env.MONGODB_URI = 'memory';
+process.env.JWT_ACCESS_SECRET = 'test-access-secret-that-is-long-enough';
+process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-that-is-long-enough';
+process.env.FIELD_ENCRYPTION_KEY = 'test-32-char-encrypt-key!!!!!!!';
+
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { app } from '../app';
 import { connectTestDb, clearTestDb, disconnectTestDb } from './helpers/testDb';
 
-process.env.MONGODB_URI = 'memory';
-process.env.JWT_ACCESS_SECRET = 'test-access-secret-that-is-long-enough';
-process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-that-is-long-enough';
-process.env.FIELD_ENCRYPTION_KEY = 'test-32-char-encrypt-key!!!!!!!';
+jest.setTimeout(60000);
 
 const AUTH = '/api/auth';
 const WORKOUTS = '/api/workouts';
@@ -602,5 +605,25 @@ describe('POST /api/workouts and PATCH /api/workouts/:id — multi-exercise payl
     expect(updateRes.status).toBe(200);
     expect(updateRes.body.workout.exercises).toHaveLength(2);
     expect(updateRes.body.workout.exercises.map((exercise: any) => exercise.name)).toEqual(['Push-Up', 'Lunge']);
+  });
+});
+
+describe('DELETE /api/workouts/:id', () => {
+  const validExercise = { name: 'E1', muscleGroup: 'Legs', sets: 1, reps: 1, restSeconds: 0, intensity: 'low' as const, order: 1 };
+
+  it('deletes the plan successfully', async () => {
+    const createRes = await request(app).post(WORKOUTS).set('Authorization', `Bearer ${accessToken}`).send({ name: 'Delete Me', difficulty: 'beginner', estimatedDurationMinutes: 30, exercises: [validExercise] });
+    const workoutId = createRes.body.workout.id;
+
+    const deleteRes = await request(app).delete(`${WORKOUTS}/${workoutId}`).set('Authorization', `Bearer ${accessToken}`);
+    expect(deleteRes.status).toBe(200);
+
+    const getRes = await request(app).get(`${WORKOUTS}/${workoutId}`).set('Authorization', `Bearer ${accessToken}`);
+    expect(getRes.status).toBe(404);
+  });
+
+  it('returns 404 for non-existent plan', async () => {
+    const deleteRes = await request(app).delete(`${WORKOUTS}/${new mongoose.Types.ObjectId()}`).set('Authorization', `Bearer ${accessToken}`);
+    expect(deleteRes.status).toBe(404);
   });
 });

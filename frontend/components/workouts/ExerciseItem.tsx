@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Animated, PanResponder, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Animated, PanResponder, Platform, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WorkoutExercise } from '@/types/workout';
@@ -30,34 +30,43 @@ export function ExerciseItem({
   const { width } = useWindowDimensions();
   const isCompact = width < 390;
 
-  const responder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => {
-      Animated.spring(scale, {
-        toValue: 1.02,
-        friction: 3,
-        useNativeDriver: true,
-      }).start();
-    },
-    onPanResponderMove: Animated.event([null, { dy: translateY }], {
-      useNativeDriver: false,
-    }),
-    onPanResponderRelease: (_event, gesture) => {
-      const offset = Math.round(gesture.dy / ITEM_HEIGHT);
-      const nextIndex = Math.max(0, Math.min(total - 1, index + offset));
-      
-      Animated.spring(scale, {
-        toValue: 1,
-        friction: 3,
-        useNativeDriver: true,
-      }).start();
-      translateY.setValue(0);
-      
-      if (nextIndex !== index) {
-        onReorder(index, nextIndex);
-      }
-    },
-  });
+  // Wrap in useRef so the PanResponder instance is stable across renders.
+  // Only used on native — web reordering uses the up/down arrow buttons instead.
+  const responderRef = useRef(
+    PanResponder.create({
+      // Only claim the responder when the gesture starts on the drag handle;
+      // the handle itself sets this via its own panHandlers attachment.
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_evt, gestureState) =>
+        Math.abs(gestureState.dy) > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+      onPanResponderGrant: () => {
+        Animated.spring(scale, {
+          toValue: 1.02,
+          friction: 3,
+          useNativeDriver: true,
+        }).start();
+      },
+      onPanResponderMove: Animated.event([null, { dy: translateY }], {
+        useNativeDriver: false,
+      }),
+      onPanResponderRelease: (_event, gesture) => {
+        const offset = Math.round(gesture.dy / ITEM_HEIGHT);
+        const nextIndex = Math.max(0, Math.min(total - 1, index + offset));
+
+        Animated.spring(scale, {
+          toValue: 1,
+          friction: 3,
+          useNativeDriver: true,
+        }).start();
+        translateY.setValue(0);
+
+        if (nextIndex !== index) {
+          onReorder(index, nextIndex);
+        }
+      },
+    })
+  );
+  const responder = responderRef.current;
 
   const incrementValue = (field: keyof WorkoutExercise, current: number, step: number = 1) => {
     const newValue = current + step;
@@ -74,6 +83,8 @@ export function ExerciseItem({
   };
 
   return (
+    // Do NOT attach panHandlers to the root card — that swallows all taps inside on web.
+    // Pan gesture is only wired to the drag handle below (native only).
     <Animated.View style={[styles.card, { transform: [{ translateY }, { scale }] }]}>
       <LinearGradient
         colors={['#ffffff', '#f8fafc']}
@@ -102,9 +113,29 @@ export function ExerciseItem({
         </View>
         
         <View style={[styles.actions, isCompact && styles.actionsCompact]}>
-          <Pressable {...responder.panHandlers} style={styles.dragHandle}>
-            <Ionicons name="menu" size={20} color="#64748b" />
-          </Pressable>
+          {/* Reorder buttons: on web use up/down arrows; on native use drag handle */}
+          {Platform.OS === 'web' ? (
+            <View style={styles.reorderButtons}>
+              <Pressable
+                onPress={() => index > 0 && onReorder(index, index - 1)}
+                style={[styles.reorderBtn, index === 0 && styles.reorderBtnDisabled]}
+                disabled={index === 0}
+              >
+                <Ionicons name="chevron-up" size={16} color={index === 0 ? '#cbd5e1' : '#475569'} />
+              </Pressable>
+              <Pressable
+                onPress={() => index < total - 1 && onReorder(index, index + 1)}
+                style={[styles.reorderBtn, index === total - 1 && styles.reorderBtnDisabled]}
+                disabled={index === total - 1}
+              >
+                <Ionicons name="chevron-down" size={16} color={index === total - 1 ? '#cbd5e1' : '#475569'} />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable {...responder.panHandlers} style={styles.dragHandle}>
+              <Ionicons name="menu" size={20} color="#64748b" />
+            </Pressable>
+          )}
           {onDuplicate && (
             <Pressable onPress={() => onDuplicate(index)} style={styles.duplicateButton}>
               <Ionicons name="copy-outline" size={18} color="#0d9488" />
@@ -257,6 +288,20 @@ const styles = StyleSheet.create({
     padding: 6,
     backgroundColor: '#f1f5f9',
     borderRadius: 10,
+  },
+  reorderButtons: {
+    flexDirection: 'column',
+    gap: 2,
+  },
+  reorderBtn: {
+    padding: 4,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reorderBtnDisabled: {
+    backgroundColor: '#f8fafc',
   },
   removeButton: {
     padding: 6,

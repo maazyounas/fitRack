@@ -11,6 +11,7 @@ export type UserProfile = {
   weightKg?: number;
   dailyCalories?: number | null;
   bodyType?: 'ectomorph' | 'mesomorph' | 'endomorph' | 'balanced';
+  onboardingCompleted?: boolean;
   profilePictureUrl?: string;
 };
 

@@ -7,17 +7,21 @@ import { useNutritionStore } from '@/store/nutritionStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useNotificationStore } from '@/store/notificationStore';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { DailyReminder } from '@/types/notifications';
-import { parseVoiceRoute, speakText, startVoiceRecognition } from '@/services/voice';
 import { AppHeader } from '@/components/common/AppHeader';
 
 // Section Header Component
 function SettingsSection({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+  const cardColor = useThemeColor({}, 'card');
+  const borderColor = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
+
   return (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionHeader}>
+    <View style={[styles.sectionCard, { backgroundColor: cardColor }]}>
+      <View style={[styles.sectionHeader, { borderBottomColor: borderColor }]}>
         <Ionicons name={icon as any} size={22} color="#0d9488" />
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={[styles.sectionTitle, { color: textColor }]}>{title}</Text>
       </View>
       <View style={styles.sectionContent}>
         {children}
@@ -42,8 +46,12 @@ function SettingRow({
   onValueChange?: (value: boolean) => void;
   rightElement?: React.ReactNode;
 }) {
+  const borderColor = useThemeColor({}, 'border');
+  const textColor = useThemeColor({}, 'text');
+  const mutedTextColor = useThemeColor({}, 'mutedText');
+
   return (
-    <View style={styles.settingRow}>
+    <View style={[styles.settingRow, { borderBottomColor: borderColor }]}>
       <View style={styles.settingLeft}>
         {icon && (
           <View style={styles.settingIcon}>
@@ -51,8 +59,8 @@ function SettingRow({
           </View>
         )}
         <View style={styles.settingContent}>
-          <Text style={styles.settingLabel}>{label}</Text>
-          {description && <Text style={styles.settingDescription}>{description}</Text>}
+          <Text style={[styles.settingLabel, { color: textColor }]}>{label}</Text>
+          {description && <Text style={[styles.settingDescription, { color: mutedTextColor }]}>{description}</Text>}
         </View>
       </View>
       <View style={styles.settingRight}>
@@ -71,19 +79,22 @@ function SettingRow({
 
 // Time Adjustment Buttons
 function TimeAdjustButtons({ onAdjust }: { onAdjust: (patch: Partial<DailyReminder>) => void }) {
+  const surfaceColor = useThemeColor({}, 'surface');
+  const mutedTextColor = useThemeColor({}, 'mutedText');
+
   return (
     <View style={styles.timeButtonGroup}>
-      <TouchableOpacity style={styles.timeButton} onPress={() => onAdjust({ hour: -1 })}>
-        <Text style={styles.timeButtonText}>-1h</Text>
+      <TouchableOpacity style={[styles.timeButton, { backgroundColor: surfaceColor }]} onPress={() => onAdjust({ hour: -1 })}>
+        <Text style={[styles.timeButtonText, { color: mutedTextColor }]}>-1h</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.timeButton} onPress={() => onAdjust({ hour: 1 })}>
-        <Text style={styles.timeButtonText}>+1h</Text>
+      <TouchableOpacity style={[styles.timeButton, { backgroundColor: surfaceColor }]} onPress={() => onAdjust({ hour: 1 })}>
+        <Text style={[styles.timeButtonText, { color: mutedTextColor }]}>+1h</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.timeButton} onPress={() => onAdjust({ minute: -15 })}>
-        <Text style={styles.timeButtonText}>-15m</Text>
+      <TouchableOpacity style={[styles.timeButton, { backgroundColor: surfaceColor }]} onPress={() => onAdjust({ minute: -15 })}>
+        <Text style={[styles.timeButtonText, { color: mutedTextColor }]}>-15m</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.timeButton} onPress={() => onAdjust({ minute: 15 })}>
-        <Text style={styles.timeButtonText}>+15m</Text>
+      <TouchableOpacity style={[styles.timeButton, { backgroundColor: surfaceColor }]} onPress={() => onAdjust({ minute: 15 })}>
+        <Text style={[styles.timeButtonText, { color: mutedTextColor }]}>+15m</Text>
       </TouchableOpacity>
     </View>
   );
@@ -94,10 +105,13 @@ function formatReminderTime(reminder: DailyReminder) {
 }
 
 function ReminderSummaryRow({ label, value }: { label: string; value: string }) {
+  const textColor = useThemeColor({}, 'text');
+  const mutedTextColor = useThemeColor({}, 'mutedText');
+
   return (
     <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
+      <Text style={[styles.summaryLabel, { color: mutedTextColor }]}>{label}</Text>
+      <Text style={[styles.summaryValue, { color: textColor }]}>{value}</Text>
     </View>
   );
 }
@@ -123,7 +137,6 @@ export default function SettingsScreen() {
     updateWorkoutReminder,
     updateMissedWorkoutAlert,
   } = useNotificationStore();
-  const [voiceStatus, setVoiceStatus] = useState('');
 
   useEffect(() => {
     if (!user) {
@@ -179,54 +192,45 @@ export default function SettingsScreen() {
     minute: patch.minute !== undefined ? current.minute + patch.minute : current.minute,
   });
 
-  const handleVoicePreview = async () => {
-    if (!preferences.textToSpeechEnabled) {
-      Alert.alert('Text to speech is off', 'Enable text to speech first to preview spoken guidance.');
-      return;
+  const handleDeactivate = async () => {
+    try {
+      touchActivity();
+      await deactivateAccount();
+      router.replace('/login');
+    } catch (error) {
+      Alert.alert('Deactivation failed', error instanceof Error ? error.message : 'Please try again.');
     }
-    await speakText(t('voice_preview_message'));
   };
 
-  const handleTryVoiceCommand = async () => {
-    setVoiceStatus(t('voice_listening'));
-    const result = await startVoiceRecognition(language);
-
-    if (!result.supported) {
-      setVoiceStatus(t('voice_not_supported'));
-      Alert.alert('Voice commands unavailable', t('voice_not_supported'));
-      return;
+  const handleDelete = async () => {
+    try {
+      touchActivity();
+      await deleteAccount('DELETE');
+      router.replace('/login');
+    } catch (error) {
+      Alert.alert('Deletion failed', error instanceof Error ? error.message : 'Please try again.');
     }
-
-    if (!result.transcript) {
-      setVoiceStatus(t('voice_no_match'));
-      return;
-    }
-
-    const route = parseVoiceRoute(result.transcript);
-    if (!route) {
-      setVoiceStatus(`${t('voice_no_match')} "${result.transcript}"`);
-      return;
-    }
-
-    setVoiceStatus(result.transcript);
-    router.push(route as never);
   };
+
+  const backgroundColor = useThemeColor({}, 'background');
+  const mutedTextColor = useThemeColor({}, 'mutedText');
+  const tintColor = useThemeColor({}, 'tint');
+  const surfaceColor = useThemeColor({}, 'surface');
+  const borderColor = useThemeColor({}, 'border');
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, { backgroundColor }]}>
       <AppHeader title={t('settings_title')} />
       <ScrollView 
         contentContainerStyle={styles.container} 
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.pageSubtitle}>
+        <Text style={[styles.pageSubtitle, { color: mutedTextColor }]}>
           {t('settings_subtitle')}
         </Text>
 
         {/* Accessibility Section */}
         <SettingsSection icon="accessibility-outline" title="Accessibility">
-          
-          
           <SettingRow
             icon="moon-outline"
             label="Dark Mode"
@@ -234,7 +238,6 @@ export default function SettingsScreen() {
             value={preferences.darkMode}
             onValueChange={(value) => handlePreferenceUpdate({ darkMode: value })}
           />
-          
         </SettingsSection>
 
         {/* Voice Section */}
@@ -246,32 +249,6 @@ export default function SettingsScreen() {
             value={preferences.voiceCommandsEnabled}
             onValueChange={(value) => handlePreferenceUpdate({ voiceCommandsEnabled: value })}
           />
-          
-          <SettingRow
-            icon="volume-high-outline"
-            label="Text to Speech"
-            description="Enable spoken feedback and guidance"
-            value={preferences.textToSpeechEnabled}
-            onValueChange={(value) => handlePreferenceUpdate({ textToSpeechEnabled: value })}
-          />
-          
-          <View style={styles.voiceButtonGroup}>
-            <TouchableOpacity style={styles.voiceButton} onPress={handleVoicePreview}>
-              <Ionicons name="play-outline" size={18} color="#0d9488" />
-              <Text style={styles.voiceButtonText}>Preview Voice</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.voiceButton, styles.voiceButtonPrimary]} onPress={handleTryVoiceCommand}>
-              <Ionicons name="mic-outline" size={18} color="#fff" />
-              <Text style={[styles.voiceButtonText, styles.voiceButtonTextPrimary]}>Try Voice Command</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {voiceStatus && (
-            <View style={styles.voiceStatusContainer}>
-              <Ionicons name="chatbubble-outline" size={16} color="#64748b" />
-              <Text style={styles.voiceStatusText}>{voiceStatus}</Text>
-            </View>
-          )}
         </SettingsSection>
 
         {/* Preferences Section */}
@@ -303,13 +280,13 @@ export default function SettingsScreen() {
 
         {/* Reminders Section */}
         <SettingsSection icon="alarm-outline" title="Reminders">
-          <Text style={styles.reminderInfo}>
+          <Text style={[styles.reminderInfo, { color: mutedTextColor }]}>
             Scheduled reminders for workouts, meals, and hydration
           </Text>
           
-          <View style={styles.statusBadge}>
+          <View style={[styles.statusBadge, { backgroundColor: surfaceColor }]}>
             <View style={[styles.statusDot, { backgroundColor: notificationStatus.permissionStatus === 'granted' ? '#10b981' : '#ef4444' }]} />
-            <Text style={styles.statusText}>
+            <Text style={[styles.statusText, { color: mutedTextColor }]}>
               Permission: {notificationStatus.permissionStatus === 'granted' ? 'Enabled' : 'Disabled'}
             </Text>
           </View>
@@ -363,16 +340,16 @@ export default function SettingsScreen() {
           </View>
 
           {remindersSyncing && (
-            <Text style={styles.syncingText}>Updating reminders...</Text>
+            <Text style={[styles.syncingText, { color: tintColor }]}>Updating reminders...</Text>
           )}
         </SettingsSection>
 
         {/* Saved Backend Snapshot */}
         <SettingsSection icon="server-outline" title="Backend Reminder Snapshot">
-          <Text style={styles.reminderInfo}>
+          <Text style={[styles.reminderInfo, { color: mutedTextColor }]}>
             These values are hydrated from the server user profile and saved back on change.
           </Text>
-          <View style={styles.snapshotCard}>
+          <View style={[styles.snapshotCard, { backgroundColor: surfaceColor }]}>
             <ReminderSummaryRow
               label="Workout"
               value={`${reminderSnapshot.workoutReminder.enabled ? 'On' : 'Off'} · ${formatReminderTime(reminderSnapshot.workoutReminder)}`}
@@ -394,22 +371,22 @@ export default function SettingsScreen() {
 
         {/* Account Section */}
         <SettingsSection icon="person-outline" title="Account Management">
-          <TouchableOpacity 
-            style={styles.accountButton}
+          <TouchableOpacity
+            style={[styles.accountButton, { borderBottomColor: borderColor }]}
             onPress={() => Alert.alert('Deactivate account', 'You can log back in later to restore access.', [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Deactivate', style: 'destructive', onPress: () => deactivateAccount().then(() => router.replace('/login')) },
+              { text: 'Deactivate', style: 'destructive', onPress: handleDeactivate },
             ])}
           >
             <Ionicons name="pause-circle-outline" size={20} color="#f59e0b" />
             <Text style={[styles.accountButtonText, { color: '#f59e0b' }]}>Deactivate Account</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={[styles.accountButton, styles.accountButtonDanger]}
             onPress={() => Alert.alert('Delete account', 'This permanently deletes all your data.', [
               { text: 'Cancel', style: 'cancel' },
-              { text: 'Delete', style: 'destructive', onPress: () => deleteAccount('DELETE').then(() => router.replace('/login')) },
+              { text: 'Delete', style: 'destructive', onPress: handleDelete },
             ])}
           >
             <Ionicons name="trash-outline" size={20} color="#ef4444" />

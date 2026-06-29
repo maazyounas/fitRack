@@ -1,12 +1,16 @@
-import React from 'react';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, View, Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CommunityChallenge } from '@/types/community';
 import { useCommunityStore } from '@/store/communityStore';
 
 export function ChallengeCard({ challenge }: { challenge: CommunityChallenge }) {
-  const { joinChallenge } = useCommunityStore();
+  const { joinChallenge, logChallengeProgress } = useCommunityStore();
+  const [isLogging, setIsLogging] = useState(false);
+  const [progressInput, setProgressInput] = useState('1');
+  const [isSaving, setIsSaving] = useState(false);
+
   const isExpired = new Date(challenge.endDate) < new Date();
   const progress = challenge.joined && challenge.targetValue 
     ? (challenge.myScore / challenge.targetValue) * 100 
@@ -96,9 +100,70 @@ export function ChallengeCard({ challenge }: { challenge: CommunityChallenge }) 
         )}
 
         {challenge.joined && !isExpired && (
-          <View style={styles.joinedContainer}>
-            <Ionicons name="checkmark-circle" size={18} color="#5eead4" />
-            <Text style={styles.joinedText}>You&apos;re participating</Text>
+          <View style={styles.joinedActionsContainer}>
+            {!isLogging ? (
+              <View style={styles.joinedRow}>
+                <View style={styles.joinedStatus}>
+                  <Ionicons name="checkmark-circle" size={16} color="#5eead4" />
+                  <Text style={styles.joinedText}>Participating</Text>
+                </View>
+                <View style={styles.logButtonsRow}>
+                  <Pressable 
+                    style={styles.quickLogButton} 
+                    onPress={async () => {
+                      setIsSaving(true);
+                      await logChallengeProgress(challenge.id, 1);
+                      setIsSaving(false);
+                    }}
+                    disabled={isSaving}
+                  >
+                    <Ionicons name="add" size={14} color="#0f766e" />
+                    <Text style={styles.quickLogText}>+1 {challenge.unitLabel || 'Score'}</Text>
+                  </Pressable>
+                  <Pressable 
+                    style={styles.customLogButton} 
+                    onPress={() => setIsLogging(true)}
+                  >
+                    <Text style={styles.customLogText}>Log Custom</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={styles.textInput}
+                  keyboardType="numeric"
+                  value={progressInput}
+                  onChangeText={setProgressInput}
+                  placeholder="Delta"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                />
+                <Pressable
+                  style={styles.saveButton}
+                  onPress={async () => {
+                    const delta = parseInt(progressInput, 10);
+                    if (isNaN(delta) || delta <= 0) return;
+                    setIsSaving(true);
+                    await logChallengeProgress(challenge.id, delta);
+                    setIsSaving(false);
+                    setIsLogging(false);
+                    setProgressInput('1');
+                  }}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Add'}</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setIsLogging(false);
+                    setProgressInput('1');
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </Pressable>
+              </View>
+            )}
           </View>
         )}
 
@@ -258,20 +323,94 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#0f172a',
   },
-  joinedContainer: {
+  joinedActionsContainer: {
+    marginTop: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12,
+    padding: 10,
+  },
+  joinedRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(94,234,212,0.15)',
-    borderRadius: 12,
-    marginTop: 4,
+    justifyContent: 'space-between',
+  },
+  joinedStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   joinedText: {
     fontSize: 13,
     fontWeight: '500',
     color: '#5eead4',
+  },
+  logButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickLogButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 2,
+  },
+  quickLogText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0f766e',
+  },
+  customLogButton: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    justifyContent: 'center',
+  },
+  customLogText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#ffffff',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  textInput: {
+    flex: 1,
+    height: 36,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    color: '#ffffff',
+    fontSize: 14,
+  },
+  saveButton: {
+    backgroundColor: '#5eead4',
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  cancelButton: {
+    paddingHorizontal: 8,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#94a3b8',
   },
   completedContainer: {
     flexDirection: 'row',

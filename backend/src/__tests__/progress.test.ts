@@ -3,14 +3,18 @@
  * Integration tests for the progress tracking API.
  * Covers: log entry, streak update, milestone detection.
  */
-import request from 'supertest';
-import { app } from '../app';
-import { connectTestDb, clearTestDb, disconnectTestDb } from './helpers/testDb';
-
+// Set required env before app initializes
 process.env.MONGODB_URI = 'memory';
 process.env.JWT_ACCESS_SECRET = 'test-access-secret-that-is-long-enough';
 process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-that-is-long-enough';
 process.env.FIELD_ENCRYPTION_KEY = 'test-32-char-encrypt-key!!!!!!!';
+
+import request from 'supertest';
+import { app } from '../app';
+import { connectTestDb, clearTestDb, disconnectTestDb } from './helpers/testDb';
+import { UserModel } from '../models/User';
+import { encryptValue, hashIdentifier } from '../utils/crypto';
+import { hashPassword } from '../utils/password';
 
 const AUTH = '/api/auth';
 const PROGRESS = '/api/progress';
@@ -23,7 +27,15 @@ beforeAll(async () => { await connectTestDb(); });
 afterAll(async () => { await disconnectTestDb(); });
 
 beforeEach(async () => {
-  await request(app).post(`${AUTH}/register`).send(TEST_USER);
+  const passwordHash = await hashPassword(TEST_USER.password);
+  await UserModel.create({
+    emailEncrypted: encryptValue(TEST_USER.email),
+    emailHash: hashIdentifier(TEST_USER.email),
+    passwordHash,
+    profile: { name: TEST_USER.name },
+    verification: { emailVerified: true, phoneVerified: false, verifiedAt: new Date() },
+  } as any);
+
   const res = await request(app)
     .post(`${AUTH}/login`)
     .send({ identifier: TEST_USER.email, password: TEST_USER.password });
@@ -43,17 +55,19 @@ describe('POST /api/progress', () => {
     expect(res.body.entry.weightKg).toBe(82.5);
   });
 
-  it('logs a workout volume entry', async () => {
+  it('logs a gym performance entry', async () => {
     const res = await request(app)
       .post(PROGRESS)
       .set('Authorization', `Bearer ${accessToken}`)
       .send({
-        workoutVolumeKg: 1200,
-        exercises: [{ name: 'Bench Press', sets: 4, reps: 8, weightKg: 80 }],
+        gymPerformance: [{ exerciseName: 'Bench Press', sets: 4, reps: 8, weightKg: 80 }],
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.entry.workoutVolumeKg).toBe(1200);
+    expect(res.body.entry.gymPerformance[0].exerciseName).toBe('Bench Press');
+    expect(res.body.entry.gymPerformance[0].sets).toBe(4);
+    expect(res.body.entry.gymPerformance[0].reps).toBe(8);
+    expect(res.body.entry.gymPerformance[0].weightKg).toBe(80);
   });
 
   it('rejects unauthenticated requests', async () => {
@@ -79,8 +93,8 @@ describe('GET /api/progress/charts', () => {
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('weightTrend');
-    expect(Array.isArray(res.body.weightTrend)).toBe(true);
+    expect(res.body).toHaveProperty('charts');
+    expect(Array.isArray(res.body.charts)).toBe(true);
   });
 });
 
@@ -91,8 +105,8 @@ describe('POST /api/progress/streak', () => {
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
-    expect(typeof res.body.streak).toBe('number');
-    expect(res.body.streak).toBeGreaterThanOrEqual(1);
+    expect(typeof res.body.streakDays).toBe('number');
+    expect(res.body.streakDays).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -103,6 +117,6 @@ describe('GET /api/progress/milestones', () => {
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body.milestones)).toBe(true);
+    expect(Array.isArray(res.body.achievements)).toBe(true);
   });
 });

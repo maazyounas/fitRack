@@ -207,7 +207,12 @@ Example JSON:
 
 User message: ${message}`;
 
-  const result = await model.generateContent(prompt);
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
   const responseText = result.response.text();
   const parsed = parseJsonPayload(responseText);
 
@@ -362,19 +367,32 @@ export function buildCoachSummary(snapshot: CoachingSnapshot) {
 }
 
 export async function answerCoachQuestion(snapshot: CoachingSnapshot, message: string) {
+  // 1. Try Gemini
+  try {
+    const geminiResponse = await answerWithGemini(snapshot, message);
+    if (geminiResponse) {
+      return geminiResponse;
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[AI Coach] Gemini response failed, trying OpenAI:', error);
+  }
+
+  // 2. Try OpenAI
+  try {
+    const openAiResponse = await answerWithOpenAi(snapshot, message);
+    if (openAiResponse) {
+      return openAiResponse;
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('[AI Coach] OpenAI response failed, falling back to rule-based logic:', error);
+  }
+
+  // 3. Fallback to Rule-Based keyword matching
   const workoutResponse = buildWorkoutCoachReply(snapshot, message);
   if (workoutResponse) {
     return workoutResponse;
-  }
-
-  const geminiResponse = await answerWithGemini(snapshot, message);
-  if (geminiResponse) {
-    return geminiResponse;
-  }
-
-  const openAiResponse = await answerWithOpenAi(snapshot, message);
-  if (openAiResponse) {
-    return openAiResponse;
   }
 
   // Fallback Rule-Based Logic
