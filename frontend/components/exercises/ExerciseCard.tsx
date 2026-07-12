@@ -25,14 +25,13 @@ export const ExerciseCard: React.FC<ExerciseCardProps> = ({
       case 'beginner':
         return { color: '#10b981', label: 'Beginner' };
       case 'intermediate':
-        return { color: '#f59e0b', label: 'Intermediate' };
+        return { color: '#d1ae67', label: 'Intermediate' };
       case 'advanced':
-        return { color: '#ef4444', label: 'Advanced' };
+        return { color: '#d9a8a8', label: 'Advanced' };
       default:
         return { color: '#64748b', label: difficulty };
     }
   };
-
   const difficultyConfig = getDifficultyConfig(exercise.difficulty);
 
   return (

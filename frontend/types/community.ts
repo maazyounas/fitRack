@@ -64,9 +64,27 @@ export type CommunityChallenge = {
   leaderboard: ChallengeLeaderboardEntry[];
 };
 
+export type CommunityFriendChallenge = {
+  id: string;
+  challengeId: string;
+  friendId: string;
+  friendName: string;
+  friendImage: string;
+  challengeTitle: string;
+  metric: string;
+  unitLabel: string;
+  targetValue: number;
+  myScore: number;
+  friendScore: number;
+  isActive: boolean;
+  startDate: string;
+  endDate: string;
+};
+
 export type CommunityDashboard = {
   me: CommunityMember;
   suggestions: CommunityMember[];
   posts: CommunityPost[];
   challenges: CommunityChallenge[];
+  friendChallenges: CommunityFriendChallenge[];
 };

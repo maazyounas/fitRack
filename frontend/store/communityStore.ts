@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { apiRequest } from '@/services/api/client';
-import { CommunityDashboard, CommunityPost, CommunityChallenge, CommunityMember } from '@/types/community';
+import { CommunityDashboard, CommunityPost, CommunityMember } from '@/types/community';
 import { useAuthStore } from './authStore';
 
 type CommunityState = {

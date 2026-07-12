@@ -197,6 +197,38 @@ function serializeChallenge(challenge: any, currentUserId: string, usersMap: Map
   };
 }
 
+function serializeFriendChallenge(challenge: any, currentUserId: string, usersMap: Map<string, any>) {
+  const friendParticipant = [...(challenge.participants ?? [])]
+    .filter((participant: any) => String(participant.userId) !== currentUserId)
+    .sort((left: any, right: any) => right.score - left.score || left.joinedAt.getTime() - right.joinedAt.getTime())[0];
+
+  if (!friendParticipant) {
+    return null;
+  }
+
+  const friend = usersMap.get(String(friendParticipant.userId));
+  const myEntry = (challenge.participants ?? []).find(
+    (participant: any) => String(participant.userId) === currentUserId
+  );
+
+  return {
+    id: `${String(challenge.id)}:${String(friendParticipant.userId)}`,
+    challengeId: String(challenge.id),
+    friendId: String(friendParticipant.userId),
+    friendName: friend?.profile?.name ?? 'Member',
+    friendImage: friend?.profile?.profilePictureUrl ?? '',
+    challengeTitle: challenge.title,
+    metric: challenge.metricLabel,
+    unitLabel: challenge.unitLabel,
+    targetValue: getChallengeTargetValue(challenge),
+    myScore: myEntry?.score ?? 0,
+    friendScore: friendParticipant.score ?? 0,
+    isActive: Boolean(myEntry || friendParticipant),
+    startDate: challenge.startDate,
+    endDate: challenge.endDate,
+  };
+}
+
 async function buildCommunityDashboard(currentUserId: string, search = '') {
   const socialProfile = await getOrCreateSocialProfile(currentUserId);
   const challenges = await ensureWeeklyChallenges();
@@ -230,6 +262,11 @@ async function buildCommunityDashboard(currentUserId: string, search = '') {
     String(post.authorId),
     ...post.comments.map((comment: any) => String(comment.authorId)),
   ]);
+  const friendChallengeUserIds = challenges.flatMap((challenge) =>
+    (challenge.participants ?? [])
+      .filter((participant: any) => String(participant.userId) !== currentUserId)
+      .map((participant: any) => String(participant.userId))
+  );
 
   const usersMap = await loadUsersMap([
     currentUserId,
@@ -237,12 +274,17 @@ async function buildCommunityDashboard(currentUserId: string, search = '') {
     ...matchedUsers.map((user) => user.id),
     ...challengeParticipantIds,
     ...postUserIds,
+    ...friendChallengeUserIds,
   ]);
   const socialProfilesMap = await loadSocialProfilesMap([currentUserId, ...matchedUsers.map((user) => user.id)]);
 
   const suggestions = matchedUsers.map((user) =>
     serializeMember(user, socialProfilesMap.get(String(user.id)), currentUserId)
   );
+  const friendChallenges = challenges
+    .map((challenge) => serializeFriendChallenge(challenge, currentUserId, usersMap))
+    .filter((challenge): challenge is NonNullable<typeof challenge> => Boolean(challenge))
+    .slice(0, 6);
 
   return {
     me: serializeMember(
@@ -253,6 +295,7 @@ async function buildCommunityDashboard(currentUserId: string, search = '') {
     suggestions,
     posts: posts.map((post) => serializePost(post, currentUserId, usersMap)),
     challenges: challenges.map((challenge) => serializeChallenge(challenge, currentUserId, usersMap)),
+    friendChallenges,
   };
 }
 

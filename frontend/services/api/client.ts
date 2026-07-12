@@ -40,7 +40,11 @@ apiClient.interceptors.request.use(
     // Lazy import to avoid circular dependency. The store is set at runtime.
     const { useAuthStore } = require('@/store/authStore');
     const accessToken = useAuthStore.getState().tokens?.accessToken;
-    if (accessToken) {
+    
+    // Don't add Authorization header to auth routes
+    const isAuthRoute = /\/auth\/(login|register|verify|resend-otp|refresh|forgot-password|reset-password|logout)/.test(config.url ?? '');
+    
+    if (accessToken && !isAuthRoute) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
